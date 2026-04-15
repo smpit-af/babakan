@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415g" />
+  <link rel="stylesheet" href="style.css?v=20260415h" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -53,7 +53,7 @@
         </a>
         <ul class="nav-links" id="navLinks">
           <li><a href="#beranda" class="nav-link" onclick="navTo('#beranda'); return false;">Beranda</a></li>
-          <li class="nav-dropdown">
+          <li class="nav-dropdown desktop-only-nav">
             <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown(event)"
               style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
                 xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -66,6 +66,9 @@
               <a href="#eskul" class="nav-dropdown-item" onclick="navTo('#eskul'); return false;">Ekstrakurikuler</a>
             </div>
           </li>
+          <li class="mobile-only-nav"><a href="#tentang" class="nav-link" onclick="navTo('#tentang'); return false;">Visi &amp; Misi</a></li>
+          <li class="mobile-only-nav"><a href="#sarana" class="nav-link" onclick="navTo('#sarana'); return false;">Sarana &amp; Prasarana</a></li>
+          <li class="mobile-only-nav"><a href="#eskul" class="nav-link" onclick="navTo('#eskul'); return false;">Ekstrakurikuler</a></li>
           <li><a href="#berita" class="nav-link" onclick="navTo('#berita'); return false;">Berita</a></li>
           <li><a href="#spmb" class="nav-link" onclick="navTo('#spmb'); return false;">SPMB</a></li>
           <li><a href="#kontak" class="nav-link" onclick="navTo('#kontak'); return false;">Kontak</a></li>
@@ -603,7 +606,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415g"></script>
+  <script src="app.js?v=20260415h"></script>
 
 
 
