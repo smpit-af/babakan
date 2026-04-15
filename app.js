@@ -5389,3 +5389,21 @@ async function deleteArsipAsesmen(id) {
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
 }
+
+
+// Auto wrap dashboard tables for responsive scrolling
+const tableObserver = new MutationObserver((mutations) => {
+  document.querySelectorAll('.dash-table').forEach(table => {
+    if (!table.parentElement.classList.contains('table-responsive')) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-responsive';
+      wrapper.style.overflowX = 'auto';
+      wrapper.style.width = '100%';
+      wrapper.style.marginBottom = '1rem';
+      wrapper.style.WebkitOverflowScrolling = 'touch';
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    }
+  });
+});
+tableObserver.observe(document.body, { childList: true, subtree: true });
