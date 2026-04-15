@@ -3845,46 +3845,58 @@ body.dark-mode .toast-info {
 ================================== */
 .table-responsive {
   display: block;
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  width: auto;
+  overflow-x: visible;
   margin-bottom: 1rem;
 }
 
 @media (max-width: 768px) {
-  /* Prevent viewport bleed globally */
-  html, body {
+  /* KHUSUS LANDING PAGE: Cekal overflow */
+  html:not(:has(.dashboard-body)), body:not(.dashboard-body) {
     overflow-x: hidden;
     max-width: 100vw;
   }
   
-  /* Main area must be strictly bounded */
-  .main-content, .dash-content-area {
-    width: 100% !important;
-    max-width: 100vw !important;
-    box-sizing: border-box !important;
-    min-width: 0;
-    overflow-x: hidden; 
+  /* KHUSUS DASHBOARD: Bebaskan lebar absolut sehingga SELURUH HALAMAN bisa di-scroll / digeser ke samping! */
+  html:has(.dashboard-body), body.dashboard-body {
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    max-width: none !important;
+    min-width: 100vw;
+    width: auto !important;
   }
   
-  /* Cards must be elastic and bounded */
-  .card, .dash-card, .stat-card, div[class$="-card"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
+  body.dashboard-body .main-content, 
+  body.dashboard-body .dash-content-area {
+    width: max-content !important;
+    min-width: 100vw !important;
+    max-width: none !important;
+    overflow-x: visible !important;
+    padding-right: 2rem; /* Spasi napas di ujung kanan */
   }
   
-  /* Fix hardcoded grid causing bleed */
-  div[style*="grid-template-columns:1fr 1fr"], 
-  div[style*="grid-template-columns: 1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-    align-items: stretch !important;
+  body.dashboard-body .card, 
+  body.dashboard-body .dash-card, 
+  body.dashboard-body .stat-card, 
+  body.dashboard-body div[class$="-card"] {
+    width: max-content !important;
+    min-width: calc(100vw - 2rem) !important;
+    max-width: none !important;
+    overflow-x: visible !important;
+  }
+
+  /* Biarkan grid tetap melebar */
+  body.dashboard-body div[style*="grid-template-columns:1fr 1fr"], 
+  body.dashboard-body div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr 1fr !important; /* Kembalikan ke 2 kolom agar memang melebar */
+  }
+
+  body.dashboard-body .table-responsive {
+    overflow-x: visible !important;
   }
   
-  /* Tables must trigger scrollbar by exceeding screen width internally, not externally */
-  .dash-table {
-    min-width: 650px; /* Memaksa tabel lebih lebar dari layar HP sehingga scrollbar internal selalu muncul */
+  body.dashboard-body .dash-table {
+    min-width: 700px;
   }
 }
 
