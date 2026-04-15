@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415k" />
+  <link rel="stylesheet" href="style.css?v=20260415l" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -54,45 +54,45 @@
         <ul class="nav-links" id="navLinks">
           <!-- Tombol silang untuk tutup menu di bagian atas -->
           <li class="mobile-only-nav mobile-close-btn-container" style="text-align: right; margin-bottom: 1rem;">
-            <button onclick="closeMobileNav()" class="mobile-close-btn" style="background:none; border:none; color: var(--text); padding: 8px; cursor: pointer;">
+            <button class="mobile-close-btn mobile-nav-action" data-action="close" style="background:none; border:none; color: var(--text); padding: 8px; cursor: pointer;">
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </li>
-          <li><a href="javascript:void(0)" onclick="navToMobile('#beranda')" class="nav-link">Beranda</a></li>
+          <!-- Navigasi Utama -->
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#beranda">Beranda</a></li>
           <li class="nav-dropdown desktop-only-nav">
-            <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown(event)"
-              style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
+            <a class="nav-link" style="cursor:pointer; display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
                 xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m6 9 6 6 6-6" />
               </svg></a>
             <div class="nav-dropdown-menu">
-              <!-- Desktop use anchor link since it's normal hover -->
+              <!-- Desktop use normal links -->
               <a href="#tentang" class="nav-dropdown-item">Visi & Misi</a>
               <a href="#sarana" class="nav-dropdown-item">Sarana & Prasarana</a>
               <a href="#eskul" class="nav-dropdown-item">Ekstrakurikuler</a>
             </div>
           </li>
-          <li class="mobile-only-nav"><a href="javascript:void(0)" onclick="navToMobile('#tentang')" class="nav-link">Visi &amp; Misi</a></li>
-          <li class="mobile-only-nav"><a href="javascript:void(0)" onclick="navToMobile('#sarana')" class="nav-link">Sarana &amp; Prasarana</a></li>
-          <li class="mobile-only-nav"><a href="javascript:void(0)" onclick="navToMobile('#eskul')" class="nav-link">Ekstrakurikuler</a></li>
-          <li><a href="javascript:void(0)" onclick="navToMobile('#berita')" class="nav-link">Berita</a></li>
-          <li><a href="javascript:void(0)" onclick="navToMobile('#spmb')" class="nav-link">SPMB</a></li>
-          <li><a href="javascript:void(0)" onclick="navToMobile('#kontak')" class="nav-link">Kontak</a></li>
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#tentang">Visi &amp; Misi</a></li>
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#sarana">Sarana &amp; Prasarana</a></li>
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#eskul">Ekstrakurikuler</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#berita">Berita</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#spmb">SPMB</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#kontak">Kontak</a></li>
           <li>
-            <button class="btn btn-accent btn-sm" id="btnOpenLogin" onclick="navLogin()">
+            <button class="btn btn-accent btn-sm mobile-nav-action" data-action="login" id="btnOpenLogin">
               <i data-lucide="log-in" style="width:16px;height:16px"></i>
               Login
             </button>
           </li>
         </ul>
-        <button class="nav-hamburger" id="hamburger" onclick="toggleMobileNav()">
+        <button class="nav-hamburger mobile-nav-action" data-action="toggle" id="hamburger">
           <span></span><span></span><span></span>
         </button>
       </div>
     </div>
   </nav>
-  <div class="nav-overlay" id="navOverlay" onclick="toggleMobileNav()"></div>
+  <div class="nav-overlay mobile-nav-action" data-action="close" id="navOverlay"></div>
 
   <!-- ========== HERO ========== -->
   <section class="hero" id="beranda">
@@ -613,7 +613,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415k"></script>
+  <script src="app.js?v=20260415l"></script>
 
 
 
@@ -705,46 +705,42 @@
       document.getElementById('navOverlay').classList.toggle('open');
     }
 
-    function toggleDropdown(e) {
-      if (window.innerWidth <= 768) {
-        e.preventDefault();
-        e.stopPropagation();
-        var dropdown = e.target.closest('.nav-dropdown');
-        if (dropdown) dropdown.classList.toggle('open');
-      }
-    }
-
-    function navToMobile(hash) {
-      if (window.innerWidth <= 768) {
-        // Mode mobile: jalankan scroll secara manual via javascript!
-        var el = document.querySelector(hash);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        // Jangan di-close secara instant untuk menghindari cancel scroll di Safari/Android.
-        // Beri jeda secukupnya agar scroll bisa bergulir
-        setTimeout(function () {
-          closeMobileNav();
-        }, 800);
-      } else {
-        // Mode desktop:
-        var el = document.querySelector(hash);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function navLogin() {
-      // Jalankan Modal
-      if (typeof openLoginModal === 'function') {
-        openLoginModal();
-      }
-      // Tutup menu sejenak kemudian
-      if (window.innerWidth <= 768) {
-        setTimeout(function () {
-          closeMobileNav();
-        }, 400);
-      }
-    }
+    // ==========================================
+    // JS MURNI UNTUK NAVIGASI MOBILE (ANTI MACET)
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', function() {
+      var navActions = document.querySelectorAll('.mobile-nav-action');
+      navActions.forEach(function(item) {
+        item.addEventListener('click', function(e) {
+          e.preventDefault();
+          var action = this.getAttribute('data-action');
+          
+          if (action === 'toggle') {
+            document.getElementById('navLinks').classList.toggle('open');
+            document.getElementById('navOverlay').classList.toggle('open');
+          }
+          else if (action === 'close') {
+            closeMobileNav();
+          }
+          else if (action === 'login') {
+            if (typeof openLoginModal === 'function') openLoginModal();
+            if (window.innerWidth <= 768) {
+              setTimeout(function () { closeMobileNav(); }, 400);
+            }
+          }
+          else if (action === 'target') {
+            var targetId = this.getAttribute('data-target');
+            var el = document.querySelector(targetId);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            if (window.innerWidth <= 768) {
+              setTimeout(function () { closeMobileNav(); }, 800);
+            }
+          }
+        });
+      });
+    });
   </script>
 </body>
 
