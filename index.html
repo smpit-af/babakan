@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415c" />
+  <link rel="stylesheet" href="style.css?v=20260415d" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -603,7 +603,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415c"></script>
+  <script src="app.js?v=20260415d"></script>
 
 
 
@@ -654,68 +654,42 @@
       }, { threshold: 0.15 });
       revealEls.forEach(function (el) { window._revealObserver.observe(el); });
 
-      // Smooth scroll — close mobile nav FIRST, then scroll after delay
-      document.querySelectorAll('a[href^="#"]').forEach(function (a) {
-        var href = a.getAttribute('href');
-        if (href.length <= 1) return;
-        // Skip the dropdown parent link on mobile (it toggles submenu instead)
-        if (a.closest('.nav-dropdown') && a.classList.contains('nav-link')) return;
-        a.addEventListener('click', function (e) {
-          e.preventDefault();
-          closeMobileNav();
-          var targetHref = href;
-          setTimeout(function () {
-            var target = document.querySelector(targetHref);
-            if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 350);
+      // ===== MOBILE NAV — SIMPLE APPROACH =====
+      // Let browser handle anchor scroll natively (CSS scroll-behavior:smooth).
+      // JS only closes the hamburger menu.
+
+      // Nav links inside mobile menu — just close menu on click
+      document.querySelectorAll('#navLinks a.nav-link, #navLinks .nav-dropdown-item').forEach(function (link) {
+        link.addEventListener('click', function () {
+          // On mobile, close the hamburger menu
+          if (window.innerWidth <= 768) {
+            setTimeout(closeMobileNav, 100);
+          }
         });
       });
 
       // Mobile dropdown toggle — tap "Tentang Kami" to show/hide submenu
-      document.querySelectorAll('.nav-dropdown > .nav-link').forEach(function (link) {
-        link.addEventListener('click', function (e) {
+      var dropdownParents = document.querySelectorAll('.nav-dropdown > .nav-link');
+      dropdownParents.forEach(function (parentLink) {
+        parentLink.addEventListener('click', function (e) {
           if (window.innerWidth <= 768) {
             e.preventDefault();
-            e.stopPropagation();
             this.closest('.nav-dropdown').classList.toggle('open');
           }
         });
       });
 
-      // Dropdown items — close menu FIRST, then scroll
-      document.querySelectorAll('.nav-dropdown-item').forEach(function (item) {
-        item.addEventListener('click', function (e) {
-          e.preventDefault();
-          var targetHref = this.getAttribute('href');
-          closeMobileNav();
-          setTimeout(function () {
-            var target = document.querySelector(targetHref);
-            if (target) {
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }, 350);
-        });
-      });
-
-      // Login button — close nav FIRST, then open modal after delay
+      // Login button — close nav, then open login modal
       var btnLogin = document.getElementById('btnOpenLogin');
       if (btnLogin) {
-        // Remove inline onclick to prevent conflict
         btnLogin.removeAttribute('onclick');
-        btnLogin.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
+        btnLogin.addEventListener('click', function () {
           closeMobileNav();
           setTimeout(function () {
-            if (typeof openLoginModal === 'function') {
-              openLoginModal();
-            }
+            openLoginModal();
           }, 400);
         });
       }
-
 
       // Close modals on overlay click
       ['loginModal', 'spmbModal'].forEach(function (id) {
@@ -741,14 +715,13 @@
       }
     });
 
-    // Mobile nav helpers (global)
+    // Mobile nav helpers (global scope)
     function closeMobileNav() {
-      document.getElementById('navLinks').classList.remove('open');
-      document.getElementById('navOverlay').classList.remove('open');
-      // Also close any open dropdowns
-      document.querySelectorAll('.nav-dropdown.open').forEach(function (d) {
-        d.classList.remove('open');
-      });
+      var n = document.getElementById('navLinks');
+      var o = document.getElementById('navOverlay');
+      if (n) n.classList.remove('open');
+      if (o) o.classList.remove('open');
+      document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
     }
 
     function toggleMobileNav() {
