@@ -416,12 +416,13 @@ button {
     max-width: 280px;
     height: 100vh;
     flex-direction: column;
-    background: var(--primary-900);
+    background: var(--bg-card); /* Light background */
     padding: 5rem 1.5rem 2rem;
     gap: .5rem;
     transition: var(--transition);
     z-index: 200;
     overflow-y: auto;
+    box-shadow: -5px 0 20px rgba(0,0,0,0.1);
   }
 
   .nav-links.open {
@@ -433,18 +434,18 @@ button {
   }
 
   .nav-link {
-    color: rgba(255, 255, 255, .85);
+    color: var(--text); /* Dark text for light background */
     font-size: 1rem;
-    padding: .6rem .75rem;
+    padding: .8rem .75rem; /* slightly larger tap target */
     display: block;
     border-radius: 8px;
     transition: background .2s ease;
     cursor: pointer;
-    -webkit-tap-highlight-color: rgba(255,255,255,.1);
+    -webkit-tap-highlight-color: rgba(0,0,0,0.05); /* Dark highlight */
   }
 
-  .nav-link:active {
-    background: rgba(255,255,255,.12);
+  .nav-link:active, .nav-link:hover {
+    background: rgba(0,0,0,0.05);
   }
 
   /* Dropdown hidden by default on mobile, shown via JS toggle */
