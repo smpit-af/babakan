@@ -231,7 +231,7 @@ button {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 1000; /* HARUS LEBIH TINGGI DARI OVERLAY */
   transition: var(--transition);
   background: transparent;
 }
@@ -410,23 +410,31 @@ button {
   .nav-links {
     position: fixed;
     top: 0;
-    right: -100%;
+    right: 0;
     width: auto;
-    min-width: 220px;
-    max-width: 280px;
+    min-width: 260px;
+    max-width: 300px;
     height: 100vh;
     flex-direction: column;
     background: var(--bg-card); /* Light background */
     padding: 5rem 1.5rem 2rem;
     gap: .5rem;
-    transition: var(--transition);
-    z-index: 200;
+    z-index: 1010; /* Lebih tinggi dari container */
     overflow-y: auto;
     box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+    
+    /* Animasi Bulat / Circular Reveal */
+    clip-path: circle(0px at calc(100% - 40px) 40px);
+    visibility: hidden;
+    transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0.5s;
+    pointer-events: none; /* Cegah klik saat hidden */
   }
 
   .nav-links.open {
-    right: 0;
+    clip-path: circle(150% at calc(100% - 40px) 40px);
+    visibility: visible;
+    transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s 0s;
+    pointer-events: auto;
   }
 
   .nav-links li {
@@ -512,7 +520,7 @@ button {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, .5);
-    z-index: 150;
+    z-index: 900; /* LEBIH RENDAH DARI nav-landing */
   }
 
   .nav-overlay.open {
