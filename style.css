@@ -283,6 +283,29 @@ button {
   transition: var(--transition);
 }
 
+@media (max-width: 480px) {
+  .nav-logo {
+    gap: .5rem;
+  }
+  .nav-logo-img {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  .nav-logo-text {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .nav-logo-text {
+    font-size: .85rem;
+  }
+  .nav-logo-img {
+    width: 34px !important;
+    height: 34px !important;
+  }
+}
+
 .nav-links {
   display: flex;
   align-items: center;
