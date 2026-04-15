@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415" />
+  <link rel="stylesheet" href="style.css?v=20260415b" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -603,7 +603,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415"></script>
+  <script src="app.js?v=20260415b"></script>
 
 
 
@@ -657,17 +657,44 @@
       // Smooth scroll — only for real section anchors (href length > 1)
       document.querySelectorAll('a[href^="#"]').forEach(function (a) {
         var href = a.getAttribute('href');
-        if (href.length <= 1) return; // skip "#" only links
+        if (href.length <= 1) return;
+        // Skip the dropdown parent link on mobile (it toggles submenu instead)
+        if (a.closest('.nav-dropdown') && a.classList.contains('nav-link')) return;
         a.addEventListener('click', function (e) {
           e.preventDefault();
           var target = document.querySelector(href);
           if (target) {
             target.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-          // Close mobile nav after a short delay so scroll can start
+          // Close mobile nav after a short delay
           setTimeout(function () {
-            document.getElementById('navLinks').classList.remove('open');
-            document.getElementById('navOverlay').classList.remove('open');
+            closeMobileNav();
+          }, 300);
+        });
+      });
+
+      // Mobile dropdown toggle — tap "Tentang Kami" to show/hide submenu
+      document.querySelectorAll('.nav-dropdown > .nav-link').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+          if (window.innerWidth <= 768) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.closest('.nav-dropdown').classList.toggle('open');
+          }
+        });
+      });
+
+      // Dropdown items — navigate then close menu
+      document.querySelectorAll('.nav-dropdown-item').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+          e.preventDefault();
+          var href = this.getAttribute('href');
+          var target = document.querySelector(href);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          setTimeout(function () {
+            closeMobileNav();
           }, 300);
         });
       });
@@ -675,9 +702,10 @@
       // Login button inside hamburger — close nav then open modal
       var btnLogin = document.getElementById('btnOpenLogin');
       if (btnLogin) {
-        btnLogin.addEventListener('click', function () {
-          document.getElementById('navLinks').classList.remove('open');
-          document.getElementById('navOverlay').classList.remove('open');
+        btnLogin.addEventListener('click', function (e) {
+          e.stopPropagation();
+          closeMobileNav();
+          // openLoginModal is called via onclick attribute
         });
       }
 
@@ -706,7 +734,16 @@
       }
     });
 
-    // Mobile nav toggle (global)
+    // Mobile nav helpers (global)
+    function closeMobileNav() {
+      document.getElementById('navLinks').classList.remove('open');
+      document.getElementById('navOverlay').classList.remove('open');
+      // Also close any open dropdowns
+      document.querySelectorAll('.nav-dropdown.open').forEach(function (d) {
+        d.classList.remove('open');
+      });
+    }
+
     function toggleMobileNav() {
       document.getElementById('navLinks').classList.toggle('open');
       document.getElementById('navOverlay').classList.toggle('open');
