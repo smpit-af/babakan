@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415e" />
+  <link rel="stylesheet" href="style.css?v=20260415f" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -52,7 +52,7 @@
           <span class="nav-logo-text">SMP IT AL FATHONAH</span>
         </a>
         <ul class="nav-links" id="navLinks">
-          <li><a href="#beranda" class="nav-link" onclick="closeMobileNav()">Beranda</a></li>
+          <li><a href="#beranda" class="nav-link" onclick="navTo('#beranda'); return false;">Beranda</a></li>
           <li class="nav-dropdown">
             <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown(event)"
               style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
@@ -61,16 +61,16 @@
                 <path d="m6 9 6 6 6-6" />
               </svg></a>
             <div class="nav-dropdown-menu">
-              <a href="#tentang" class="nav-dropdown-item" onclick="closeMobileNav()">Visi & Misi</a>
-              <a href="#sarana" class="nav-dropdown-item" onclick="closeMobileNav()">Sarana & Prasarana</a>
-              <a href="#eskul" class="nav-dropdown-item" onclick="closeMobileNav()">Ekstrakurikuler</a>
+              <a href="#tentang" class="nav-dropdown-item" onclick="navTo('#tentang'); return false;">Visi & Misi</a>
+              <a href="#sarana" class="nav-dropdown-item" onclick="navTo('#sarana'); return false;">Sarana & Prasarana</a>
+              <a href="#eskul" class="nav-dropdown-item" onclick="navTo('#eskul'); return false;">Ekstrakurikuler</a>
             </div>
           </li>
-          <li><a href="#berita" class="nav-link" onclick="closeMobileNav()">Berita</a></li>
-          <li><a href="#spmb" class="nav-link" onclick="closeMobileNav()">SPMB</a></li>
-          <li><a href="#kontak" class="nav-link" onclick="closeMobileNav()">Kontak</a></li>
+          <li><a href="#berita" class="nav-link" onclick="navTo('#berita'); return false;">Berita</a></li>
+          <li><a href="#spmb" class="nav-link" onclick="navTo('#spmb'); return false;">SPMB</a></li>
+          <li><a href="#kontak" class="nav-link" onclick="navTo('#kontak'); return false;">Kontak</a></li>
           <li>
-            <button class="btn btn-accent btn-sm" id="btnOpenLogin" onclick="closeMobileNav(); setTimeout(openLoginModal, 400)">
+            <button class="btn btn-accent btn-sm" id="btnOpenLogin" onclick="navLogin(); return false;">
               <i data-lucide="log-in" style="width:16px;height:16px"></i>
               Login
             </button>
@@ -603,7 +603,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415e"></script>
+  <script src="app.js?v=20260415f"></script>
 
 
 
@@ -702,6 +702,23 @@
         var dropdown = e.target.closest('.nav-dropdown');
         if (dropdown) dropdown.classList.toggle('open');
       }
+    }
+
+    function navTo(hash) {
+      closeMobileNav();
+      setTimeout(function () {
+        var el = document.querySelector(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300);
+    }
+
+    function navLogin() {
+      closeMobileNav();
+      setTimeout(function () {
+        openLoginModal();
+      }, 400);
     }
   </script>
 </body>
