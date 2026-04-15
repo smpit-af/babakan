@@ -42,6 +42,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
@@ -50,6 +51,7 @@ body {
   color: var(--text);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
 a {
@@ -426,7 +428,7 @@ button {
   position: absolute;
   inset: 0;
   background-size: cover;
-  background-position: center;
+  background-position: top center;
   background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 1.2s ease-in-out;
@@ -3710,4 +3712,4 @@ body.dark-mode .toast-info {
     justify-content: center;
   }
 }
-
+
