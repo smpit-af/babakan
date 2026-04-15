@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415h" />
+  <link rel="stylesheet" href="style.css?v=20260415i" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -52,7 +52,7 @@
           <span class="nav-logo-text">SMP IT AL FATHONAH</span>
         </a>
         <ul class="nav-links" id="navLinks">
-          <li><a href="#beranda" class="nav-link" onclick="navTo('#beranda'); return false;">Beranda</a></li>
+          <li><a href="#beranda" class="nav-link">Beranda</a></li>
           <li class="nav-dropdown desktop-only-nav">
             <a href="javascript:void(0)" class="nav-link" onclick="toggleDropdown(event)"
               style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
@@ -66,14 +66,14 @@
               <a href="#eskul" class="nav-dropdown-item" onclick="navTo('#eskul'); return false;">Ekstrakurikuler</a>
             </div>
           </li>
-          <li class="mobile-only-nav"><a href="#tentang" class="nav-link" onclick="navTo('#tentang'); return false;">Visi &amp; Misi</a></li>
-          <li class="mobile-only-nav"><a href="#sarana" class="nav-link" onclick="navTo('#sarana'); return false;">Sarana &amp; Prasarana</a></li>
-          <li class="mobile-only-nav"><a href="#eskul" class="nav-link" onclick="navTo('#eskul'); return false;">Ekstrakurikuler</a></li>
-          <li><a href="#berita" class="nav-link" onclick="navTo('#berita'); return false;">Berita</a></li>
-          <li><a href="#spmb" class="nav-link" onclick="navTo('#spmb'); return false;">SPMB</a></li>
-          <li><a href="#kontak" class="nav-link" onclick="navTo('#kontak'); return false;">Kontak</a></li>
+          <li class="mobile-only-nav"><a href="#tentang" class="nav-link">Visi &amp; Misi</a></li>
+          <li class="mobile-only-nav"><a href="#sarana" class="nav-link">Sarana &amp; Prasarana</a></li>
+          <li class="mobile-only-nav"><a href="#eskul" class="nav-link">Ekstrakurikuler</a></li>
+          <li><a href="#berita" class="nav-link">Berita</a></li>
+          <li><a href="#spmb" class="nav-link">SPMB</a></li>
+          <li><a href="#kontak" class="nav-link">Kontak</a></li>
           <li>
-            <button class="btn btn-accent btn-sm" id="btnOpenLogin" onclick="navLogin(); return false;">
+            <button class="btn btn-accent btn-sm" id="btnOpenLogin" onclick="navLogin()">
               <i data-lucide="log-in" style="width:16px;height:16px"></i>
               Login
             </button>
@@ -606,7 +606,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415h"></script>
+  <script src="app.js?v=20260415i"></script>
 
 
 
@@ -707,15 +707,20 @@
       }
     }
 
-    function navTo(hash) {
-      closeMobileNav();
-      setTimeout(function () {
-        var el = document.querySelector(hash);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 300);
-    }
+    // Passive listener for mobile nav clicks: Wait 400ms before removing the menu
+    // This allows the browser to perform the native anchor scroll first!
+    document.addEventListener('DOMContentLoaded', function () {
+      var mobileLinks = document.querySelectorAll('#navLinks a.nav-link');
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth <= 768) {
+            setTimeout(function () {
+              closeMobileNav();
+            }, 400);
+          }
+        });
+      });
+    });
 
     function navLogin() {
       closeMobileNav();
