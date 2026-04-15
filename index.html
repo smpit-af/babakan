@@ -661,14 +661,25 @@
         a.addEventListener('click', function (e) {
           e.preventDefault();
           var target = document.querySelector(href);
-          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          document.getElementById('navLinks').classList.remove('open');
-          document.getElementById('navOverlay').classList.remove('open');
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+          // Close mobile nav after a short delay so scroll can start
+          setTimeout(function () {
+            document.getElementById('navLinks').classList.remove('open');
+            document.getElementById('navOverlay').classList.remove('open');
+          }, 300);
         });
       });
 
-
-
+      // Login button inside hamburger — close nav then open modal
+      var btnLogin = document.getElementById('btnOpenLogin');
+      if (btnLogin) {
+        btnLogin.addEventListener('click', function () {
+          document.getElementById('navLinks').classList.remove('open');
+          document.getElementById('navOverlay').classList.remove('open');
+        });
+      }
 
 
       // Close modals on overlay click
