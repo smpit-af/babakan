@@ -306,6 +306,11 @@ button {
   }
 }
 
+/* Desktop/Mobile nav item visibility */
+.mobile-only-nav {
+  display: none !important;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
@@ -392,6 +397,14 @@ button {
 @media (max-width: 768px) {
   .nav-hamburger {
     display: flex;
+  }
+
+  /* Swap nav items: hide dropdown, show flat items */
+  .desktop-only-nav {
+    display: none !important;
+  }
+  .mobile-only-nav {
+    display: block !important;
   }
 
   .nav-links {
