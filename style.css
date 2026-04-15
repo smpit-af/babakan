@@ -440,12 +440,12 @@ button {
   }
 
   .nav-dropdown-menu {
-    position: static;
-    opacity: 0;
-    visibility: hidden;
+    position: static !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
     max-height: 0;
     overflow: hidden;
-    transform: none;
+    transform: none !important;
     background: rgba(255,255,255,.08);
     box-shadow: none;
     border-radius: 8px;
@@ -453,11 +453,20 @@ button {
     padding: 0;
     margin-top: 0;
     transition: all .3s ease;
+    z-index: auto !important;
+  }
+
+  /* KILL hover dropdown on mobile — it blocks touch events */
+  .nav-dropdown:hover .nav-dropdown-menu {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    max-height: 0;
+    transform: none !important;
   }
 
   .nav-dropdown.open .nav-dropdown-menu {
-    opacity: 1;
-    visibility: visible;
+    opacity: 1 !important;
+    visibility: visible !important;
     max-height: 300px;
     padding: .25rem 0;
     margin-top: .25rem;
