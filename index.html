@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415b" />
+  <link rel="stylesheet" href="style.css?v=20260415c" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -603,7 +603,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415b"></script>
+  <script src="app.js?v=20260415c"></script>
 
 
 
@@ -654,7 +654,7 @@
       }, { threshold: 0.15 });
       revealEls.forEach(function (el) { window._revealObserver.observe(el); });
 
-      // Smooth scroll — only for real section anchors (href length > 1)
+      // Smooth scroll — close mobile nav FIRST, then scroll after delay
       document.querySelectorAll('a[href^="#"]').forEach(function (a) {
         var href = a.getAttribute('href');
         if (href.length <= 1) return;
@@ -662,14 +662,14 @@
         if (a.closest('.nav-dropdown') && a.classList.contains('nav-link')) return;
         a.addEventListener('click', function (e) {
           e.preventDefault();
-          var target = document.querySelector(href);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-          // Close mobile nav after a short delay
+          closeMobileNav();
+          var targetHref = href;
           setTimeout(function () {
-            closeMobileNav();
-          }, 300);
+            var target = document.querySelector(targetHref);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 350);
         });
       });
 
@@ -684,28 +684,35 @@
         });
       });
 
-      // Dropdown items — navigate then close menu
+      // Dropdown items — close menu FIRST, then scroll
       document.querySelectorAll('.nav-dropdown-item').forEach(function (item) {
         item.addEventListener('click', function (e) {
           e.preventDefault();
-          var href = this.getAttribute('href');
-          var target = document.querySelector(href);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
+          var targetHref = this.getAttribute('href');
+          closeMobileNav();
           setTimeout(function () {
-            closeMobileNav();
-          }, 300);
+            var target = document.querySelector(targetHref);
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 350);
         });
       });
 
-      // Login button inside hamburger — close nav then open modal
+      // Login button — close nav FIRST, then open modal after delay
       var btnLogin = document.getElementById('btnOpenLogin');
       if (btnLogin) {
+        // Remove inline onclick to prevent conflict
+        btnLogin.removeAttribute('onclick');
         btnLogin.addEventListener('click', function (e) {
+          e.preventDefault();
           e.stopPropagation();
           closeMobileNav();
-          // openLoginModal is called via onclick attribute
+          setTimeout(function () {
+            if (typeof openLoginModal === 'function') {
+              openLoginModal();
+            }
+          }, 400);
         });
       }
 
