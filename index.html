@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260415q" />
+  <link rel="stylesheet" href="style.css?v=20260416a" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -52,12 +52,6 @@
           <span class="nav-logo-text">SMP IT AL FATHONAH</span>
         </a>
         <ul class="nav-links" id="navLinks">
-          <!-- Tombol silang untuk tutup menu di bagian atas -->
-          <li class="mobile-only-nav mobile-close-btn-container" style="text-align: right; margin-bottom: 1rem;">
-            <button class="mobile-close-btn mobile-nav-action" data-action="close" style="background:none; border:none; color: var(--text); padding: 8px; cursor: pointer;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </li>
           <!-- Navigasi Utama -->
           <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#beranda">Beranda</a></li>
           <li class="nav-dropdown desktop-only-nav">
@@ -83,6 +77,13 @@
             <button class="btn btn-accent btn-sm mobile-nav-action" data-action="login" id="btnOpenLogin">
               <i data-lucide="log-in" style="width:16px;height:16px"></i>
               Login
+            </button>
+          </li>
+          <!-- Tombol Tutup di paling bawah -->
+          <li class="mobile-only-nav mobile-close-bottom">
+            <button class="mobile-close-btn mobile-nav-action" data-action="close">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              Tutup
             </button>
           </li>
         </ul>
@@ -118,7 +119,7 @@
             <i data-lucide="info" style="width:18px;height:18px"></i>
             Tentang Kami
           </a>
-          <a href="#kontak" class="btn btn-accent btn-lg">
+          <a href="#kontak" class="btn btn-success btn-lg">
             <i data-lucide="phone" style="width:18px;height:18px"></i>
             Hubungi Kami
           </a>
@@ -449,6 +450,11 @@
             </button>
           </div>
         </div>
+        
+        <div style="text-align: right; margin-top: -0.5rem; margin-bottom: 1.5rem;" id="forgotPasswordContainer">
+          <a href="#" onclick="openForgotPasswordModal(event)" style="font-size: 13px; color: var(--primary-light); text-decoration: none; font-weight: 500;">Lupa Kata Sandi?</a>
+        </div>
+        
         <button type="button" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" id="loginBtn"
           onclick="handleAuthSubmit(event)">
           <span id="loginBtnText">Masuk</span>
@@ -459,6 +465,55 @@
           <a href="#" onclick="toggleAuthMode(event)" id="authToggleLink"
             style="color:var(--primary-light);font-weight:600;text-decoration:none;">Daftar Akun Baru</a>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== FORGOT PASSWORD MODAL ========== -->
+  <div class="modal-overlay" id="forgotPasswordModal">
+    <div class="modal" style="position:relative;">
+      <button class="modal-close" onclick="closeForgotPasswordModal()">
+        <i data-lucide="x" style="width:22px;height:22px"></i>
+      </button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background: rgba(245, 158, 11, .1); color: #f59e0b;">
+          <i data-lucide="mail-warning" style="width:26px;height:26px"></i>
+        </div>
+        <h3>Atur Ulang Sandi</h3>
+        <p>Masukkan email terdaftar Anda untuk menerima tautan pemulihan sandi.</p>
+      </div>
+      <form id="forgotPasswordForm" action="javascript:void(0)" onsubmit="event.preventDefault();">
+        <div class="form-group">
+          <label for="forgotEmail">Email Terdaftar</label>
+          <input type="email" class="form-input" id="forgotEmail" placeholder="email@contoh.com" required />
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" id="btnForgot" onclick="handleForgotPasswordSubmit()">
+          <span id="btnForgotText">Kirim Tautan Pemulihan</span>
+          <div class="spinner" id="forgotSpinner" style="display:none;"></div>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== RESET PASSWORD MODAL (From Email Link) ========== -->
+  <div class="modal-overlay" id="resetPasswordModal">
+    <div class="modal" style="position:relative;">
+      <div class="modal-header">
+        <div class="modal-logo" style="background: rgba(34, 197, 94, .1); color: #22c55e;">
+          <i data-lucide="key-round" style="width:26px;height:26px"></i>
+        </div>
+        <h3>Kata Sandi Baru</h3>
+        <p>Buat kata sandi baru untuk akun Anda.</p>
+      </div>
+      <form id="resetPasswordForm" action="javascript:void(0)" onsubmit="event.preventDefault();">
+        <div class="form-group">
+          <label for="newPassword">Kata Sandi Baru</label>
+          <input type="password" class="form-input" id="newPassword" placeholder="Minimal 6 karakter" required minlength="6" />
+        </div>
+        <button type="button" class="btn btn-success btn-lg" style="width:100%;justify-content:center;" id="btnResetPassword" onclick="handleResetPasswordSubmit()">
+          <span id="btnResetText">Simpan Kata Sandi</span>
+          <div class="spinner" id="resetSpinner" style="display:none;"></div>
+        </button>
       </form>
     </div>
   </div>
@@ -613,7 +668,7 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260415q"></script>
+  <script src="app.js?v=20260416m"></script>
 
 
 
