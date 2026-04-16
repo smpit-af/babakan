@@ -900,14 +900,14 @@ DROP POLICY IF EXISTS "asesmen_select" ON public.asesmen;
 CREATE POLICY "asesmen_select" ON public.asesmen FOR SELECT USING (true);
 DROP POLICY IF EXISTS "asesmen_all_admin" ON public.asesmen;
 CREATE POLICY "asesmen_all_admin" ON public.asesmen FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'guru_mapel', 'wali_kelas'))
 );
 
 DROP POLICY IF EXISTS "asesmen_soal_select" ON public.asesmen_soal;
 CREATE POLICY "asesmen_soal_select" ON public.asesmen_soal FOR SELECT USING (true);
 DROP POLICY IF EXISTS "asesmen_soal_all_admin" ON public.asesmen_soal;
 CREATE POLICY "asesmen_soal_all_admin" ON public.asesmen_soal FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'guru_mapel', 'wali_kelas'))
 );
 
 -- ========================================================================================
