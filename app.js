@@ -12,6 +12,20 @@ let currentRole = null;
 try {
     if (window.supabase && window.supabase.createClient) {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Listener for Password Recovery Redirect
+        supabaseClient.auth.onAuthStateChange(function (event, session) {
+            if (event === 'PASSWORD_RECOVERY') {
+                setTimeout(function() {
+                    // Tutup modal lain bila ada yang terbuka
+                    var lm = document.getElementById('loginModal');
+                    if(lm) lm.classList.remove('active');
+                    
+                    var rm = document.getElementById('resetPasswordModal');
+                    if (rm) rm.classList.add('active');
+                }, 500);
+            }
+        });
     }
 } catch (e) { console.warn('Supabase init error:', e); }
 
@@ -77,6 +91,23 @@ function showToast(message, type) {
     toast.addEventListener('mouseleave', function () { timeout = setTimeout(function () { dismissToast(toast); }, 2000); });
 }
 function dismissToast(t) { t.classList.add('toast-hide'); t.addEventListener('animationend', function () { t.remove(); }); }
+
+// ============================================================
+// GLOBAL LOADER OVERLAY
+// ============================================================
+function showGlobalLoader(text) {
+    var loader = document.getElementById('globalLoader');
+    if (loader) {
+        var textEl = document.getElementById('globalLoaderText');
+        if (textEl) textEl.innerHTML = text || 'Sedang memproses...';
+        loader.classList.add('active');
+        if (window.lucide) lucide.createIcons();
+    }
+}
+function hideGlobalLoader() {
+    var loader = document.getElementById('globalLoader');
+    if (loader) loader.classList.remove('active');
+}
 
 // ============================================================
 // CUSTOM NOTIFICATION MODAL
@@ -152,6 +183,7 @@ function toggleAuthMode(e) {
     var btnText = document.getElementById('loginBtnText');
     var toggleText = document.getElementById('authToggleText');
     var toggleLink = document.getElementById('authToggleLink');
+    var forgotContainer = document.getElementById('forgotPasswordContainer');
     if (isRegisterMode) {
         if (nameGroup) nameGroup.style.display = 'block';
         if (titleText) titleText.textContent = 'Daftar Akun';
@@ -159,6 +191,7 @@ function toggleAuthMode(e) {
         if (btnText) btnText.textContent = 'Daftar';
         if (toggleText) toggleText.textContent = 'Sudah punya akun? ';
         if (toggleLink) toggleLink.textContent = 'Login';
+        if (forgotContainer) forgotContainer.style.display = 'none';
     } else {
         if (nameGroup) nameGroup.style.display = 'none';
         if (titleText) titleText.textContent = 'Login';
@@ -166,6 +199,7 @@ function toggleAuthMode(e) {
         if (btnText) btnText.textContent = 'Masuk';
         if (toggleText) toggleText.textContent = 'Belum punya akun? ';
         if (toggleLink) toggleLink.textContent = 'Daftar Akun Baru';
+        if (forgotContainer) forgotContainer.style.display = 'block';
     }
 }
 
@@ -174,6 +208,91 @@ function shakeLoginModal() {
     if (!m) return;
     m.classList.add('modal-shake');
     setTimeout(function () { m.classList.remove('modal-shake'); }, 600);
+}
+
+// ===========================================
+// LUPA KATA SANDI (PASSWORD RESET) 
+// ===========================================
+function openForgotPasswordModal(e) {
+    if (e) e.preventDefault();
+    closeLoginModal();
+    document.getElementById('forgotPasswordModal').classList.add('active');
+}
+
+function closeForgotPasswordModal() {
+    var m = document.getElementById('forgotPasswordModal');
+    if(m) m.classList.remove('active');
+}
+
+async function handleForgotPasswordSubmit() {
+    var email = document.getElementById('forgotEmail').value.trim();
+    if (!email) {
+        showNotifModal('Data Tidak Lengkap', 'Silakan masukkan email terdaftar Anda.', 'error');
+        return;
+    }
+    
+    var btnText = document.getElementById('btnForgotText');
+    var spinner = document.getElementById('forgotSpinner');
+    var btn = document.getElementById('btnForgot');
+    
+    try {
+        btnText.style.display = 'none';
+        spinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        var { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + window.location.pathname + '#pemulihan'
+        });
+        
+        if (error) throw error;
+        
+        showNotifModal('Tautan Terkirim! 🎉', 'Tautan untuk mengatur ulang kata sandi telah dikirim ke <strong>' + email + '</strong>.<br><br>Silakan periksa kotak masuk atau folder spam Anda.', 'success');
+        closeForgotPasswordModal();
+        
+    } catch (error) {
+        showNotifModal('Pengiriman Gagal', error.message || 'Gagal mengirim tautan. Pastikan email terdaftar atau coba lagi nanti.', 'error');
+    } finally {
+        btnText.style.display = 'inline-block';
+        spinner.style.display = 'none';
+        btn.disabled = false;
+    }
+}
+
+async function handleResetPasswordSubmit() {
+    var newPassword = document.getElementById('newPassword').value;
+    if (newPassword.length < 6) {
+        showNotifModal('Gagal', 'Kata sandi minimal harus <strong>6 karakter</strong>.', 'error');
+        return;
+    }
+    
+    var btnText = document.getElementById('btnResetText');
+    var spinner = document.getElementById('resetSpinner');
+    var btn = document.getElementById('btnResetPassword');
+    
+    try {
+        btnText.style.display = 'none';
+        spinner.style.display = 'inline-block';
+        btn.disabled = true;
+        
+        var { data, error } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+        
+        if (error) throw error;
+        
+        showNotifModal('Sukses Berubah', 'Kata sandi Anda berhasil diperbarui.<br>Silakan masuk menggunakan kata sandi baru Anda.', 'success');
+        document.getElementById('resetPasswordModal').classList.remove('active');
+        
+        await supabaseClient.auth.signOut(); // logout sesi recovery
+        setTimeout(function() { openLoginModal(); }, 1500);
+        
+    } catch (error) {
+        showNotifModal('Gagal Menyimpan', error.message || 'Terjadi kesalahan saat memproses ganti sandi.', 'error');
+    } finally {
+        btnText.style.display = 'inline-block';
+        spinner.style.display = 'none';
+        btn.disabled = false;
+    }
 }
 
 async function handleAuthSubmit(e) {
@@ -544,8 +663,9 @@ async function initDashboard() {
             loadPengumumanAdmin();
         }
 
-        // Load pengumuman + siswa for dashboard (all roles)
+        // Load pengumuman, galeri, + siswa for dashboard (all roles)
         loadDashboardPengumuman();
+        loadGaleriBeranda();
         if (['admin', 'kurikulum'].includes(currentRole)) {
             loadDashSiswa();
         }
@@ -601,6 +721,12 @@ function applyRoleVisibility() {
     var isMonitoring = ['admin', 'kurikulum', 'kepala_sekolah'].includes(role);
     document.querySelectorAll('.role-monitoring').forEach(function (el) {
         el.style.display = isMonitoring ? '' : 'none';
+    });
+
+    // Non Siswa
+    var isNonSiswa = role !== 'siswa';
+    document.querySelectorAll('.role-non-siswa').forEach(function (el) {
+        el.style.display = isNonSiswa ? '' : 'none';
     });
 
     // Welcome message
@@ -665,7 +791,7 @@ window.showSection = function (sectionId, linkEl) {
         if (['admin', 'kurikulum'].includes(currentRole)) { loadDashSiswa(); }
     }
     if (sectionId === 'sectionTahunKelas') { loadActiveYear(); loadMasterKelas(); loadMasterMapel(); }
-    if (sectionId === 'sectionGuru') loadGuruData();
+    if (sectionId === 'sectionGuru') { loadMasterMapel(); loadGuruData(); }
     if (sectionId === 'sectionSiswa') { loadMasterKelas(); loadSiswaData(); }
     if (sectionId === 'sectionAlumni') loadAlumniData();
     if (sectionId === 'sectionBankSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadBankSoal(); }
@@ -696,6 +822,9 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionPrestasiSiswa') { loadPrestasiData(); }
     if (sectionId === 'sectionBimbinganKonseling') { loadBkData(); }
     if (sectionId === 'sectionKesehatanSiswa') { loadKesehatanData(); }
+    // ================= GALERI ================= //
+    if (sectionId === 'sectionGaleri') { loadGaleri(); }
+    // ========================================== //
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); populateArsipFilters(); loadArsipAsesmen(); }
     if (sectionId === 'sectionLaporanNilai') {
@@ -1660,8 +1789,9 @@ async function toggleMaintenanceMode() {
     }
 }
 
-// Global listener untuk catch redirect param
+// Global listener untuk catch redirect param + auto-login redirect
 window.addEventListener('DOMContentLoaded', function() {
+    // Tampilkan notif maintenance jika ada
     if (window.location.search.includes('maintenance=1')) {
         setTimeout(function() {
             if (typeof showNotifModal === 'function') {
@@ -1669,6 +1799,27 @@ window.addEventListener('DOMContentLoaded', function() {
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }, 500);
+    }
+
+    // ========================================================
+    // AUTO-REDIRECT: Jika user sudah login, langsung ke dashboard
+    // Hanya berlaku di halaman LANDING PAGE (index.html)
+    // ========================================================
+    var isLandingPage = !document.body.classList.contains('dashboard-body');
+    if (isLandingPage && supabaseClient) {
+        supabaseClient.auth.getSession().then(function(result) {
+            var session = result.data && result.data.session;
+            if (session && session.user) {
+                // Cek apakah profil valid (bukan menunggu/nonaktif)
+                supabaseClient.from('profiles').select('role').eq('id', session.user.id).single().then(function(profileResult) {
+                    var profile = profileResult.data;
+                    if (profile && profile.role && profile.role !== 'menunggu_persetujuan' && profile.role !== 'nonaktif') {
+                        // Sesi valid & role aktif — langsung ke dashboard!
+                        window.location.href = 'dashboard.html';
+                    }
+                });
+            }
+        });
     }
 });
 
@@ -1957,12 +2108,13 @@ async function loadGuruData() {
         var tbody = document.getElementById('guruTableBody');
         if (!tbody) return;
         if (guruList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data guru.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data guru.</td></tr>';
             return;
         }
         tbody.innerHTML = guruList.map(function(g, i) {
             var statusBadge = g.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Aktif</span>' : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">Nonaktif</span>';
-            return '<tr><td>' + (i+1) + '</td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (g.mata_pelajaran||'-') + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+            var sertifikasiBadge = g.status_sertifikasi === 'SERDIK' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SERDIK</span>' : (g.status_sertifikasi === 'Belum SERDIK' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Belum SERDIK</span>' : '-');
+            return '<tr><td>' + (i+1) + '</td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.jabatan_tambahan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (g.mata_pelajaran||'-') + '</td><td>' + sertifikasiBadge + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editGuru(\'' + g.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteGuru(\'' + g.id + '\',\'' + (g.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
@@ -1975,10 +2127,12 @@ function openGuruModal() {
     document.getElementById('formGuruNama').value = '';
     document.getElementById('formGuruJK').value = '';
     document.getElementById('formGuruJabatan').value = '';
+    document.getElementById('formGuruJabatanTambahan').value = '';
     document.getElementById('formGuruNIK').value = '';
     document.getElementById('formGuruHP').value = '';
     document.getElementById('formGuruEmail').value = '';
     populateMapelDropdown('formGuruMapel', '');
+    document.getElementById('formGuruSertifikasi').value = '';
     document.getElementById('formGuruAlamat').value = '';
     document.getElementById('formGuruStatus').value = 'Aktif';
     document.getElementById('guruModalTitle').textContent = 'Tambah Guru';
@@ -1993,10 +2147,12 @@ function editGuru(id) {
     document.getElementById('formGuruNama').value = g.nama_lengkap || '';
     document.getElementById('formGuruJK').value = g.jenis_kelamin || '';
     document.getElementById('formGuruJabatan').value = g.jabatan || '';
+    document.getElementById('formGuruJabatanTambahan').value = g.jabatan_tambahan || '';
     document.getElementById('formGuruNIK').value = g.nik || '';
     document.getElementById('formGuruHP').value = g.nomor_hp || '';
     document.getElementById('formGuruEmail').value = g.email || '';
     populateMapelDropdown('formGuruMapel', g.mata_pelajaran || '');
+    document.getElementById('formGuruSertifikasi').value = g.status_sertifikasi || '';
     document.getElementById('formGuruAlamat').value = g.alamat || '';
     document.getElementById('formGuruStatus').value = g.status || 'Aktif';
     document.getElementById('guruModalTitle').textContent = 'Edit Guru';
@@ -2009,10 +2165,12 @@ async function saveGuru() {
         nama_lengkap: document.getElementById('formGuruNama').value.trim(),
         jenis_kelamin: document.getElementById('formGuruJK').value || null,
         jabatan: document.getElementById('formGuruJabatan').value.trim() || null,
+        jabatan_tambahan: document.getElementById('formGuruJabatanTambahan').value.trim() || null,
         nik: document.getElementById('formGuruNIK').value.trim() || null,
         nomor_hp: document.getElementById('formGuruHP').value.trim() || null,
         email: document.getElementById('formGuruEmail').value.trim() || null,
         mata_pelajaran: document.getElementById('formGuruMapel').value.trim() || null,
+        status_sertifikasi: document.getElementById('formGuruSertifikasi').value || null,
         alamat: document.getElementById('formGuruAlamat').value.trim() || null,
         status: document.getElementById('formGuruStatus').value
     };
@@ -3003,14 +3161,18 @@ async function loadBankSoal() {
         var tbody = document.getElementById('bankSoalTableBody');
         if (!tbody) return;
         if (bankSoalList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data bank soal.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data bank soal.</td></tr>';
             return;
         }
         tbody.innerHTML = bankSoalList.map(function(b, i) {
             var kelasNama = b.master_kelas ? b.master_kelas.nama_kelas + ' (Tingkat ' + b.master_kelas.tingkat + ')' : '-';
             var linkBadge = '<a href="' + b.link_soal + '" target="_blank" class="btn btn-sm btn-primary" style="padding:4px 8px;font-size:0.75rem;"><i data-lucide="external-link" style="width:12px;height:12px;margin-right:4px;"></i>Buka Link</a>';
-            var tipeBadge = b.tipe_ujian === 'STS' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">STS</span>' : '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">SAS</span>';
-            return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
+            var tipeBadge = b.tipe_ujian === 'STS' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">STS</span>' : 
+                            b.tipe_ujian === 'SAS' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">SAS</span>' :
+                            b.tipe_ujian === 'SAJ' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SAJ</span>' :
+                            '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">SAT</span>';
+            var semesterBadge = b.semester === 'Genap' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Genap</span>' : '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">Ganjil</span>';
+            return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
@@ -3028,6 +3190,7 @@ function openBankSoalModal() {
     populateMapelDropdown('formBankMapel', '');
     populateKelasDropdown('formBankKelas', '');
     document.getElementById('formBankTipe').value = 'STS';
+    document.getElementById('formBankSemester').value = 'Ganjil';
     document.getElementById('formBankLink').value = '';
     
     document.getElementById('bankSoalModalTitle').textContent = 'Tambah Bank Soal';
@@ -3044,6 +3207,7 @@ function editBankSoal(id) {
     populateMapelDropdown('formBankMapel', b.mapel || '');
     populateKelasDropdown('formBankKelas', b.kelas_id || '');
     document.getElementById('formBankTipe').value = b.tipe_ujian || 'STS';
+    document.getElementById('formBankSemester').value = b.semester || 'Ganjil';
     document.getElementById('formBankLink').value = b.link_soal || '';
     document.getElementById('bankSoalModalTitle').textContent = 'Edit Bank Soal';
     document.getElementById('bankSoalModal').classList.add('active');
@@ -3055,6 +3219,7 @@ async function saveBankSoal() {
         mapel: document.getElementById('formBankMapel').value.trim(),
         kelas_id: document.getElementById('formBankKelas').value || null,
         tipe_ujian: document.getElementById('formBankTipe').value,
+        semester: document.getElementById('formBankSemester').value,
         link_soal: document.getElementById('formBankLink').value.trim(),
         tahun_pelajaran: document.getElementById('formBankTahun').value.trim()
     };
@@ -3442,14 +3607,18 @@ async function loadPenilaianTable() {
         tbody.innerHTML = siswaData.map(function(s, i) {
             var nsts = nilaiDict[s.id] && nilaiDict[s.id].nilai_sts !== null ? nilaiDict[s.id].nilai_sts : '';
             var nsas = nilaiDict[s.id] && nilaiDict[s.id].nilai_sas !== null ? nilaiDict[s.id].nilai_sas : '';
+            var nsaj = nilaiDict[s.id] && nilaiDict[s.id].nilai_saj !== null ? nilaiDict[s.id].nilai_saj : '';
+            var nsat = nilaiDict[s.id] && nilaiDict[s.id].nilai_sat !== null ? nilaiDict[s.id].nilai_sat : '';
             
             return '<tr class="tr-penilaian" data-siswa="' + s.id + '">' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
                 '<td style="font-weight:600;">' + s.nama_lengkap + '</td>' +
                 '<td style="color:var(--text-light);font-size:0.85rem;">' + kelasNama + '</td>' +
                 '<td style="text-align:center;font-weight:bold;">' + kkmBadge + '</td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-sts" style="padding:4px 8px;text-align:center;width:80px;margin:0 auto;" value="' + nsts + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-sas" style="padding:4px 8px;text-align:center;width:80px;margin:0 auto;" value="' + nsas + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
+                '<td style="text-align:center;"><input type="number" class="form-input val-sts" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsts + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
+                '<td style="text-align:center;"><input type="number" class="form-input val-sas" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsas + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
+                '<td style="text-align:center;"><input type="number" class="form-input val-saj" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsaj + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
+                '<td style="text-align:center;"><input type="number" class="form-input val-sat" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsat + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
                 '<td class="td-rata" style="text-align:center;font-weight:bold;font-size:0.9rem;">-</td>' +
                 '<td class="td-ket" style="text-align:center;font-size:0.8rem;">-</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-outline" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'" ) + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:14px;height:14px"></i></button></td>' +
@@ -3468,10 +3637,12 @@ function calcRowStatus(el) {
     var tr = el.closest('tr');
     var inputSts = tr.querySelector('.val-sts').value;
     var inputSas = tr.querySelector('.val-sas').value;
+    var inputSaj = tr.querySelector('.val-saj').value;
+    var inputSat = tr.querySelector('.val-sat').value;
     var tdRata = tr.querySelector('.td-rata');
     var tdKet = tr.querySelector('.td-ket');
     
-    if (inputSts === '' && inputSas === '') {
+    if (inputSts === '' && inputSas === '' && inputSaj === '' && inputSat === '') {
         tdRata.innerHTML = '<span style="color:var(--text-light)">-</span>';
         tdKet.innerHTML = '<span style="color:var(--text-light)">-</span>';
         return;
@@ -3480,6 +3651,8 @@ function calcRowStatus(el) {
     var pembagi = 0; var total = 0;
     if (inputSts !== '') { total += (parseInt(inputSts) || 0); pembagi++; }
     if (inputSas !== '') { total += (parseInt(inputSas) || 0); pembagi++; }
+    if (inputSaj !== '') { total += (parseInt(inputSaj) || 0); pembagi++; }
+    if (inputSat !== '') { total += (parseInt(inputSat) || 0); pembagi++; }
     
     var avg = pembagi > 0 ? Math.round(total / pembagi) : 0;
     tdRata.innerHTML = '<span style="font-size:1rem;">' + avg + '</span>';
@@ -3511,8 +3684,10 @@ async function saveSemuaNilai() {
         var siswaId = tr.getAttribute('data-siswa');
         var inputSts = tr.querySelector('.val-sts').value;
         var inputSas = tr.querySelector('.val-sas').value;
+        var inputSaj = tr.querySelector('.val-saj').value;
+        var inputSat = tr.querySelector('.val-sat').value;
         
-        if (inputSts !== '' || inputSas !== '') {
+        if (inputSts !== '' || inputSas !== '' || inputSaj !== '' || inputSat !== '') {
             payload.push({
                 tahun_pelajaran: filterTahun,
                 semester: filterSemester,
@@ -3521,6 +3696,8 @@ async function saveSemuaNilai() {
                 siswa_id: siswaId,
                 nilai_sts: inputSts !== '' ? parseInt(inputSts) : null,
                 nilai_sas: inputSas !== '' ? parseInt(inputSas) : null,
+                nilai_saj: inputSaj !== '' ? parseInt(inputSaj) : null,
+                nilai_sat: inputSat !== '' ? parseInt(inputSat) : null,
                 updated_at: new Date().toISOString()
             });
         }
@@ -3585,7 +3762,7 @@ async function openRiwayatNilai(siswaId, namaSiswa) {
             html += '<div style="margin-bottom:1.5rem;">' +
                 '<h4 style="margin-bottom:0.5rem;color:var(--primary);">📅 T.P. ' + tahun + '</h4>' +
                 '<div style="overflow-x:auto;"><table class="dash-table" style="font-size:0.85rem;"><thead><tr>' +
-                '<th>Semester</th><th>Kelas</th><th>Mapel</th><th style="text-align:center;">STS</th><th style="text-align:center;">SAS</th>' +
+                '<th>Semester</th><th>Kelas</th><th>Mapel</th><th style="text-align:center;">STS</th><th style="text-align:center;">SAS</th><th style="text-align:center;">SAJ</th><th style="text-align:center;">SAT</th>' +
                 '</tr></thead><tbody>';
             items.forEach(function(n) {
                 var kelasNama = n.master_kelas ? n.master_kelas.nama_kelas : '-';
@@ -3596,6 +3773,8 @@ async function openRiwayatNilai(siswaId, namaSiswa) {
                     '<td>' + mapelNama + '</td>' +
                     '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sts !== null ? n.nilai_sts : '-') + '</td>' +
                     '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sas !== null ? n.nilai_sas : '-') + '</td>' +
+                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_saj !== null ? n.nilai_saj : '-') + '</td>' +
+                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sat !== null ? n.nilai_sat : '-') + '</td>' +
                     '</tr>';
             });
             html += '</tbody></table></div></div>';
@@ -3665,19 +3844,23 @@ async function loadLaporanNilai() {
         var html = '<h3 style="margin-bottom:0.5rem;">Laporan Nilai — <strong>' + mapelNama + '</strong></h3>';
         html += '<p style="color:var(--text-light);margin-bottom:1rem;font-size:0.9rem;">Kelas: <strong>' + kelasNama + '</strong> | Semester: <strong>' + filterSemester + '</strong> | T.P.: <strong>' + filterTahun + '</strong> | KKM: <strong>' + (kkm > 0 ? kkm : 'Belum diatur') + '</strong></p>';
         html += '<div style="overflow-x:auto;"><table class="dash-table" id="tabelLaporan" style="font-size:0.9rem;"><thead><tr>';
-        html += '<th style="width:40px;">No</th><th>Nama Siswa</th><th style="text-align:center;width:90px;">Nilai STS</th><th style="text-align:center;width:90px;">Nilai SAS</th><th style="text-align:center;width:90px;">Rata-Rata</th><th style="text-align:center;width:100px;">Keterangan</th>';
+        html += '<th style="width:40px;">No</th><th>Nama Siswa</th><th style="text-align:center;width:90px;">Nilai STS</th><th style="text-align:center;width:90px;">Nilai SAS</th><th style="text-align:center;width:90px;">Nilai SAJ</th><th style="text-align:center;width:90px;">Nilai SAT</th><th style="text-align:center;width:90px;">Rata-Rata</th><th style="text-align:center;width:100px;">Keterangan</th>';
         html += '</tr></thead><tbody>';
         
         siswaData.forEach(function(s, i) {
             var val = nilaiDict[s.id];
             var sts = val && val.nilai_sts !== null ? val.nilai_sts : '-';
             var sas = val && val.nilai_sas !== null ? val.nilai_sas : '-';
+            var saj = val && val.nilai_saj !== null ? val.nilai_saj : '-';
+            var sat = val && val.nilai_sat !== null ? val.nilai_sat : '-';
             var avg = '-'; var ketHtml = '<span style="color:var(--text-light);">-</span>';
             
-            if (val && (val.nilai_sts !== null || val.nilai_sas !== null)) {
+            if (val && (val.nilai_sts !== null || val.nilai_sas !== null || val.nilai_saj !== null || val.nilai_sat !== null)) {
                 var total = 0; var cnt = 0;
                 if (val.nilai_sts !== null) { total += val.nilai_sts; cnt++; }
                 if (val.nilai_sas !== null) { total += val.nilai_sas; cnt++; }
+                if (val.nilai_saj !== null) { total += val.nilai_saj; cnt++; }
+                if (val.nilai_sat !== null) { total += val.nilai_sat; cnt++; }
                 avg = cnt > 0 ? Math.round(total / cnt) : 0;
                 
                 if (kkm > 0) {
@@ -3693,6 +3876,8 @@ async function loadLaporanNilai() {
             html += '<td style="font-weight:600;">' + s.nama_lengkap + '</td>';
             html += '<td style="text-align:center;font-weight:bold;">' + sts + '</td>';
             html += '<td style="text-align:center;font-weight:bold;">' + sas + '</td>';
+            html += '<td style="text-align:center;font-weight:bold;">' + saj + '</td>';
+            html += '<td style="text-align:center;font-weight:bold;">' + sat + '</td>';
             html += '<td style="text-align:center;font-weight:bold;">' + avg + '</td>';
             html += '<td style="text-align:center;">' + ketHtml + '</td></tr>';
         });
@@ -4665,7 +4850,8 @@ async function openAsesmenBuilder(existingId) {
                     opsi_b: s.opsi_b || '',
                     opsi_c: s.opsi_c || '',
                     opsi_d: s.opsi_d || '',
-                    kunci: s.kunci_jawaban || ''
+                    kunci: s.kunci_jawaban || '',
+                    gambar_url: s.gambar_url || ''
                 };
             });
         } catch(e) { showToast('Gagal memuat draft: ' + e.message, 'error'); }
@@ -4796,6 +4982,9 @@ function collectSoalFromDOM() {
         var s = asesmenBuilderSoalList[i];
         var naskahEl = card.querySelector('.soal-naskah-input');
         if (naskahEl) s.naskah = naskahEl.value;
+        // Preserve gambar_url from hidden input
+        var gambarUrlEl = card.querySelector('.soal-gambar-url');
+        if (gambarUrlEl && gambarUrlEl.value) s.gambar_url = gambarUrlEl.value;
         if (s.tipe === 'pg') {
             var aEl = card.querySelector('.soal-opsi-a');
             var bEl = card.querySelector('.soal-opsi-b');
@@ -4834,6 +5023,42 @@ function collectSoalFromDOM() {
     });
 }
 
+// --- Image Upload for Soal ---
+async function handleSoalImageUpload(idx, inputEl) {
+    var file = inputEl.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('Ukuran gambar maksimal 2MB!', 'warning');
+        inputEl.value = '';
+        return;
+    }
+    
+    showGlobalLoader('Mengupload gambar soal...');
+    try {
+        var fileName = 'soal_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        var { data, error } = await supabaseClient.storage.from('soal-images').upload(fileName, file, { upsert: true });
+        if (error) throw error;
+        
+        var { data: urlData } = supabaseClient.storage.from('soal-images').getPublicUrl(fileName);
+        var publicUrl = urlData.publicUrl;
+        
+        collectSoalFromDOM();
+        asesmenBuilderSoalList[idx].gambar_url = publicUrl;
+        renderSoalCards();
+        showToast('Gambar berhasil diupload!', 'success');
+    } catch(e) {
+        showToast('Gagal upload gambar: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+function removeSoalImage(idx) {
+    collectSoalFromDOM();
+    asesmenBuilderSoalList[idx].gambar_url = '';
+    renderSoalCards();
+}
+
 function renderSoalCards() {
     var area = document.getElementById('soalCardsArea');
     if (!area) return;
@@ -4846,9 +5071,19 @@ function renderSoalCards() {
     }
 
     area.className = 'soal-cards-area';
+    // Pre-compute separate PG and Essay counters
+    var pgCounter = 0;
+    var essayCounter = 0;
     area.innerHTML = asesmenBuilderSoalList.map(function(s, i) {
-        var num = i + 1;
         var isPG = s.tipe === 'pg';
+        var displayNum;
+        if (isPG) {
+            pgCounter++;
+            displayNum = 'PG ' + pgCounter;
+        } else {
+            essayCounter++;
+            displayNum = 'Essay ' + essayCounter;
+        }
         var cardClass = isPG ? 'soal-card' : 'soal-card soal-card-essay';
         var badgeClass = isPG ? 'soal-type-badge soal-type-badge-pg' : 'soal-type-badge soal-type-badge-essay';
         var badgeText = isPG ? 'Pilihan Ganda' : 'Essay';
@@ -4856,13 +5091,22 @@ function renderSoalCards() {
         var html = '<div class="' + cardClass + '">' +
             '<div class="soal-card-top">' +
             '<div class="soal-card-left">' +
-            '<div class="soal-number-circle">' + num + '</div>' +
-            '<span class="' + badgeClass + '">' + badgeText + '</span>' +
+            '<div class="soal-number-circle">' + (i + 1) + '</div>' +
+            '<span class="' + badgeClass + '">' + displayNum + '</span>' +
             '</div>' +
             '<button class="btn-icon btn-icon-red" onclick="removeSoalCard(' + i + ')" title="Hapus Soal"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>' +
             '</div>' +
             '<div class="form-group"><label class="form-label">Naskah Soal</label>' +
             '<textarea class="form-input soal-naskah-input" rows="2" placeholder="Tulis soal di sini...">' + escHtml(s.naskah || '') + '</textarea></div>';
+
+        // Image upload field
+        var imgPreview = s.gambar_url ? '<img src="' + escAttr(s.gambar_url) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.5rem;" />' : '';
+        html += '<div class="form-group" style="margin-bottom:0.5rem;">' +
+            '<label class="form-label" style="font-size:0.8rem;"><i data-lucide="image" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Gambar Soal (Opsional)</label>' +
+            '<input type="file" class="form-input soal-gambar-input" accept="image/*" onchange="handleSoalImageUpload(' + i + ', this)" style="font-size:0.8rem;padding:6px;" />' +
+            '<input type="hidden" class="soal-gambar-url" value="' + escAttr(s.gambar_url || '') + '" />' +
+            (imgPreview ? '<div class="soal-gambar-preview">' + imgPreview + ' <button type="button" class="btn-icon btn-icon-red" onclick="removeSoalImage(' + i + ')" title="Hapus Gambar" style="margin-left:0.5rem;vertical-align:top;"><i data-lucide="x" style="width:14px;height:14px"></i></button></div>' : '') +
+            '</div>';
 
         if (isPG) {
             html += '<div class="soal-options-grid">' +
@@ -4947,6 +5191,7 @@ async function saveDraftAsesmen(autoCloseBuilder) {
     if (!tanggal) { showToast('Tanggal ujian wajib diisi!', 'warning'); return; }
 
     try {
+        showGlobalLoader('Menyimpan draft asesmen...');
         var asesmenPayload = {
             judul: judul.trim(),
             mata_pelajaran: mapel,
@@ -4982,7 +5227,8 @@ async function saveDraftAsesmen(autoCloseBuilder) {
                     asesmen_id: asesmenId,
                     nomor_soal: i + 1,
                     tipe_soal: s.tipe,
-                    naskah_soal: s.naskah || ''
+                    naskah_soal: s.naskah || '',
+                    gambar_url: s.gambar_url || null
                 };
                 if (s.tipe === 'pg') {
                     row.opsi_a = s.opsi_a || '';
@@ -5004,13 +5250,14 @@ async function saveDraftAsesmen(autoCloseBuilder) {
             closeAsesmenBuilder();
         }
         loadAsesmenList();
-    } catch(e) { showToast('Gagal menyimpan draft: ' + e.message, 'error'); }
+    } catch(e) { showToast('Gagal menyimpan draft: ' + e.message, 'error'); } 
+    finally { hideGlobalLoader(); }
 }
 
 // --- Delete Asesmen ---
 async function deleteAsesmen(id) {
     showCustomConfirm('Hapus Asesmen?', 'Asesmen ini akan <strong>dihapus permanen</strong> dari Dashboard, termasuk file Form dan Sheet-nya di Google Drive. Lanjutkan?', 'Ya, Hapus', async function() {
-        showToast('Sedang menghapus data...', 'info');
+        showGlobalLoader('Menghapus Asesmen...');
         try {
             // Get URL beforehand
             const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
@@ -5033,6 +5280,19 @@ async function deleteAsesmen(id) {
                 }
             }
 
+            // Hapus gambar soal dari Supabase Storage
+            try {
+                const { data: soalData } = await supabaseClient.from('asesmen_soal').select('gambar_url').eq('asesmen_id', id);
+                if (soalData) {
+                    var filesToDelete = soalData
+                        .filter(function(s) { return s.gambar_url && s.gambar_url.indexOf('/soal-images/') > -1; })
+                        .map(function(s) { return s.gambar_url.split('/soal-images/').pop(); });
+                    if (filesToDelete.length > 0) {
+                        await supabaseClient.storage.from('soal-images').remove(filesToDelete);
+                    }
+                }
+            } catch(e) { console.warn('Gagal hapus gambar storage', e); }
+
             // Delete soal from Supabase first (cascade should handle, but just in case)
             await supabaseClient.from('asesmen_soal').delete().eq('asesmen_id', id);
             // Delete asesmen from Supabase
@@ -5041,6 +5301,7 @@ async function deleteAsesmen(id) {
             closeAsesmenBuilder();
             loadAsesmenList();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
     });
 }
 
@@ -5141,7 +5402,8 @@ async function publishToGoogleForm() {
             var item = {
                 nomor: i + 1,
                 tipe: s.tipe,
-                naskah: s.naskah || ''
+                naskah: s.naskah || '',
+                gambar_url: s.gambar_url || ''
             };
             if (s.tipe === 'pg') {
                 item.opsi = { a: s.opsi_a || '', b: s.opsi_b || '', c: s.opsi_c || '', d: s.opsi_d || '' };
@@ -5154,7 +5416,7 @@ async function publishToGoogleForm() {
     };
 
     // 4. Send to GAS
-    showToast('Mengirim soal ke Google Form...', 'info');
+    showGlobalLoader('Menerbitkan ke Google Form... Harap tunggu');
     try {
         var response = await fetch(gasUrl, {
             method: 'POST',
@@ -5178,10 +5440,17 @@ async function publishToGoogleForm() {
 
             await supabaseClient.from('asesmen').update(updatePayload).eq('id', asesmenId);
 
+            var warningHtml = '';
+            if (result.message && result.message.indexOf('PERINGATAN') !== -1) {
+                var warnText = result.message.substring(result.message.indexOf('PERINGATAN')).replace(/\n/g, '<br>');
+                warningHtml = '<div style="margin-top:1rem;padding:1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#d97706;font-size:0.85rem;">' + warnText + '</div>';
+            }
+
             showNotifModal('Berhasil Diterbitkan! 🎉',
                 'Soal asesmen berhasil dikirim ke Google Form!<br><br>' +
                 (result.formUrl ? '📋 <strong>Link Form:</strong><br><a href="' + result.formUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.formUrl + '</a>' : '') +
-                (result.sheetUrl ? '<br><br>📊 <strong>Link Sheets:</strong><br><a href="' + result.sheetUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.sheetUrl + '</a>' : ''),
+                (result.sheetUrl ? '<br><br>📊 <strong>Link Sheets:</strong><br><a href="' + result.sheetUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.sheetUrl + '</a>' : '') +
+                warningHtml,
                 'success');
 
             closeAsesmenBuilder();
@@ -5191,6 +5460,8 @@ async function publishToGoogleForm() {
         }
     } catch(e) {
         showNotifModal('Gagal Menerbitkan', 'Terjadi kesalahan saat mengirim ke Google Apps Script:<br><br><strong>' + e.message + '</strong><br><br>Pastikan URL GAS benar dan sudah di-deploy sebagai Web App.', 'error');
+    } finally {
+        hideGlobalLoader();
     }
 }
 
@@ -5201,7 +5472,7 @@ async function publishToGoogleForm() {
 
 async function archiveAsesmen(id) {
     showCustomConfirm('Arsipkan Asesmen?', 'Asesmen ini akan dipindahkan ke <strong>Arsip</strong>.<br><br>⚠️ <strong>Link Form akan ditutup</strong> (siswa tidak bisa mengakses lagi).<br>Link Rekap Nilai tetap bisa diakses dari menu Arsip.', 'Ya, Arsipkan', async function() {
-        showToast('Menutup form dan mengarsipkan...', 'info');
+        showGlobalLoader('Menutup form dan mengarsipkan...');
         try {
             // Ambil data URL form
             const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
@@ -5234,6 +5505,7 @@ async function archiveAsesmen(id) {
             showToast('Asesmen berhasil diarsipkan! Form sudah ditutup.', 'success');
             loadAsesmenList();
         } catch(e) { showToast('Gagal mengarsipkan: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
     });
 }
 
@@ -5343,6 +5615,7 @@ async function loadArsipAsesmen() {
 
 async function restoreArsipAsesmen(id) {
     showCustomConfirm('Kembalikan Asesmen?', 'Asesmen ini akan dikembalikan ke daftar aktif dengan status <strong>Draft</strong>.<br><br>Anda bisa mengedit soal dan menerbitkan ulang ke Google Form baru.', 'Ya, Kembalikan', async function() {
+        showGlobalLoader('Mengembalikan Asesmen...');
         try {
             await supabaseClient.from('asesmen').update({ 
                 archived_at: null,
@@ -5356,12 +5629,13 @@ async function restoreArsipAsesmen(id) {
             showToast('Asesmen berhasil dikembalikan sebagai Draft!', 'success');
             loadArsipAsesmen();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
     });
 }
 
 async function deleteArsipAsesmen(id) {
     showCustomConfirm('Hapus Arsip Permanen?', 'Asesmen ini akan <strong>dihapus permanen</strong> dari database dan Google Drive. Data tidak bisa dikembalikan!', 'Ya, Hapus Permanen', async function() {
-        showToast('Sedang menghapus...', 'info');
+        showGlobalLoader('Menghapus Arsip Permanen...');
         try {
             const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
             
@@ -5382,11 +5656,25 @@ async function deleteArsipAsesmen(id) {
                 }
             }
             
+            // Hapus gambar soal dari Supabase Storage
+            try {
+                const { data: soalData } = await supabaseClient.from('asesmen_soal').select('gambar_url').eq('asesmen_id', id);
+                if (soalData) {
+                    var filesToDelete = soalData
+                        .filter(function(s) { return s.gambar_url && s.gambar_url.indexOf('/soal-images/') > -1; })
+                        .map(function(s) { return s.gambar_url.split('/soal-images/').pop(); });
+                    if (filesToDelete.length > 0) {
+                        await supabaseClient.storage.from('soal-images').remove(filesToDelete);
+                    }
+                }
+            } catch(e) { console.warn('Gagal hapus gambar storage', e); }
+
             await supabaseClient.from('asesmen_soal').delete().eq('asesmen_id', id);
             await supabaseClient.from('asesmen').delete().eq('id', id);
             showToast('Arsip berhasil dihapus permanen!', 'success');
             loadArsipAsesmen();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
     });
 }
 
@@ -5407,3 +5695,336 @@ const tableObserver = new MutationObserver((mutations) => {
   });
 });
 tableObserver.observe(document.body, { childList: true, subtree: true });
+
+// =========================================================
+// GALERI & MOMEN SEKOLAH
+// =========================================================
+
+// Global cache for galeri data
+var galeriDataAll = [];
+
+// Fungsi membuka gambar full di Lightbox
+function openGaleriLightbox(imgUrl, captionEncoded) {
+    var lb = document.getElementById('galeriLightbox');
+    var img = document.getElementById('galeriLightboxImg');
+    var cap = document.getElementById('galeriLightboxCaption');
+    if (!lb || !img) return;
+    
+    img.src = imgUrl;
+    cap.innerText = captionEncoded ? decodeURIComponent(captionEncoded) : '';
+    lb.classList.add('active');
+}
+
+async function loadGaleriBeranda() {
+    var area = document.getElementById('dashboardGaleriArea');
+    var gridUrl = document.getElementById('dashboardGaleriGrid');
+    if (!area || !gridUrl) return;
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('galeri')
+            .select('*')
+            .order('tanggal', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(6);
+            
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            area.style.display = 'none';
+            return;
+        }
+        
+        area.style.display = '';
+        var html = '';
+        
+        data.forEach(function(g) {
+            var dateStr = '-';
+            try { if (g.tanggal) { var d = new Date(g.tanggal); dateStr = d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); } }catch(e){}
+            
+            var captions = g.keterangan || g.album_nama;
+            var safeUrl = encodeURIComponent(g.gambar_url);
+            var safeCap = encodeURIComponent(captions);
+            html += `
+            <div style="flex:0 0 auto; width:220px; border-radius:8px; overflow:hidden; border:1px solid var(--border-color); cursor:pointer; position:relative; group" onclick="openGaleriLightbox('${g.gambar_url}', '${safeCap}')">
+              <img src="${g.gambar_url}" style="width:100%; height:140px; object-fit:cover; display:block; transition:transform 0.3s ease;">
+              <div style="padding:0.75rem; background:#fff;">
+                <p style="margin:0; font-weight:600; font-size:0.85rem; color:var(--text-dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${g.album_nama}</p>
+                <p style="margin:0.2rem 0 0 0; font-size:0.75rem; color:var(--text-light);"><i data-lucide="calendar" style="width:12px;height:12px;vertical-align:-2px;"></i> ${dateStr}</p>
+              </div>
+            </div>`;
+        });
+        
+        gridUrl.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        console.error('Galeri Beranda error:', e.message);
+    }
+}
+
+async function loadGaleri() {
+    var gridArea = document.getElementById('galeriGridArea');
+    if (!gridArea) return;
+    
+    gridArea.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;"><i data-lucide="loader" class="icon-spin" style="width:32px;height:32px;color:var(--primary-light);"></i></div>';
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('galeri')
+            .select('*')
+            .order('tanggal', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        galeriDataAll = data || [];
+        
+        // Update Filter Album Options
+        var albumSet = new Set();
+        galeriDataAll.forEach(function(g) { if(g.album_nama) albumSet.add(g.album_nama); });
+        
+        var filterEl = document.getElementById('galeriFilterAlbum');
+        var currentSelected = filterEl ? filterEl.value : 'Semua';
+        
+        var albumHtml = '<option value="Semua">Semua Album</option>';
+        var arrAlbum = Array.from(albumSet).sort();
+        arrAlbum.forEach(function(a) {
+            albumHtml += '<option value="'+a+'" '+(a===currentSelected?'selected':'')+'>'+a+'</option>';
+        });
+        if(filterEl) filterEl.innerHTML = albumHtml;
+
+        renderGaleri();
+    } catch(e) {
+        gridArea.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--danger);">Gagal memuat galeri: ' + e.message + '</div>';
+    }
+}
+
+function renderGaleri() {
+    var gridArea = document.getElementById('galeriGridArea');
+    if (!gridArea) return;
+    
+    var filterEl = document.getElementById('galeriFilterAlbum');
+    var filterValue = filterEl ? filterEl.value : 'Semua';
+    
+    var filtered = galeriDataAll;
+    if (filterValue !== 'Semua') {
+        filtered = galeriDataAll.filter(function(g) { return g.album_nama === filterValue; });
+    }
+    
+    if (filtered.length === 0) {
+        gridArea.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1;color:var(--text-light);">Belum ada foto.</div>';
+        return;
+    }
+    
+    var html = '';
+    filtered.forEach(function(g) {
+        var dateStr = '-';
+        try { if(g.tanggal) { var d = new Date(g.tanggal); dateStr = d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); } }catch(e){}
+        
+        var captions = g.keterangan || g.album_nama || '';
+        
+        html += `
+        <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="height:180px; position:relative; background:#eee; cursor:pointer;" onclick="openGaleriLightbox('${g.gambar_url}', '${encodeURIComponent(captions)}')">
+                <img src="${g.gambar_url}" style="width:100%; height:100%; object-fit:cover;">
+                <div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">
+                    ${dateStr}
+                </div>
+            </div>
+            <div style="padding:1rem; flex:1; display:flex; flex-direction:column;">
+                <h4 style="margin:0 0 0.5rem 0; font-size:1rem; color:var(--text-dark);">${g.album_nama}</h4>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-light); flex:1;">${g.keterangan || '-'}</p>
+                <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:0.5rem;">
+                    <div style="display:flex; gap:0.5rem;">
+                      <button class="btn btn-outline" style="padding:6px; height:auto; color:var(--text-light)" onclick="openGaleriLightbox('${g.gambar_url}', '${encodeURIComponent(captions)}')" title="Lihat">
+                          <i data-lucide="maximize-2" style="width:16px;height:16px;margin:0;"></i>
+                      </button>
+                      <button class="btn btn-outline" style="padding:6px; height:auto; color:var(--primary)" onclick="downloadGaleriImage('${g.gambar_url}', 'galeri_${g.id}.jpg')" title="Download">
+                          <i data-lucide="download" style="width:16px;height:16px;margin:0;"></i>
+                      </button>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                      <button class="btn btn-outline" style="padding:6px; height:auto; color:#10b981;" onclick="archiveGaleriToDrive('${g.id}', '${g.gambar_url}', '${encodeURIComponent(g.album_nama)}')" title="Arsipkan ke Google Drive (Pindah)">
+                          <i data-lucide="hard-drive" style="width:16px;height:16px;margin:0;"></i>
+                      </button>
+                      <button class="btn btn-danger" style="padding:6px; height:auto;" onclick="deleteGaleri('${g.id}', '${g.gambar_url}')" title="Hapus Permanen">
+                          <i data-lucide="trash-2" style="width:16px;height:16px;margin:0;"></i>
+                      </button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    });
+    
+    gridArea.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+}
+
+async function handleUploadGaleri() {
+    var albumEl = document.getElementById('galeriAlbum');
+    var ketEl = document.getElementById('galeriKeterangan');
+    var tglEl = document.getElementById('galeriTanggal');
+    var fileInput = document.getElementById('galeriFiles');
+    
+    var album = (albumEl.value || '').trim();
+    var keterangan = (ketEl.value || '').trim();
+    var tgl = tglEl.value;
+    
+    if (!album) { showToast('Nama Album wajib diisi!', 'warning'); return; }
+    if (!tgl) { showToast('Tanggal wajib dipilih!', 'warning'); return; }
+    if (!fileInput.files || fileInput.files.length === 0) { showToast('Tidak ada gambar yang dipilih!', 'warning'); return; }
+
+    var files = Array.from(fileInput.files);
+    var MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+    
+    // Validate sizes
+    for (var i = 0; i < files.length; i++) {
+        if (files[i].size > MAX_SIZE) {
+            showToast('File "' + files[i].name + '" lebih dari 5MB! Silakan kompres terlebih dahulu.', 'warning');
+            return;
+        }
+    }
+
+    showGlobalLoader('Mengunggah ' + files.length + ' Foto... Mohon jangan tutup halaman!');
+    
+    try {
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            var ext = file.name.split('.').pop().toLowerCase();
+            var fileName = 'gal_' + Date.now() + '_' + Math.random().toString(36).substring(7) + '.' + ext;
+            
+            // Upload to storage
+            var { data: uploadData, error: uploadError } = await supabaseClient.storage
+                .from('galeri-images')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
+                
+            if (uploadError) throw uploadError;
+            
+            var publicUrlResult = supabaseClient.storage.from('galeri-images').getPublicUrl(fileName);
+            var publicUrl = publicUrlResult.data.publicUrl;
+            
+            // Insert to array
+            var rowToInsert = {
+                album_nama: album,
+                keterangan: keterangan,
+                tanggal: tgl,
+                gambar_url: publicUrl,
+                ukuran_file: file.size,
+                created_by: (typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null)
+            };
+            
+            var { error: insertErr } = await supabaseClient.from('galeri').insert(rowToInsert);
+            if (insertErr) throw insertErr;
+        }
+        
+        showToast(files.length + ' Foto berhasil diupload!', 'success');
+        
+        // Reset forms (keep Album name to make it easier for consecutive uploads)
+        ketEl.value = '';
+        fileInput.value = '';
+        
+        loadGaleri();
+        loadGaleriBeranda();
+    } catch(e) {
+        showToast('Gagal upload: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+async function deleteGaleri(id, url) {
+    showCustomConfirm('Hapus Foto Permanen?', 'Foto akan dihapus permanen dari Supabase Storage dan Database. Lanjutkan?', 'Ya, Hapus', async function() {
+        showGlobalLoader('Menghapus foto...');
+        try {
+            // Delete from storage
+            if (url) {
+                var fileName = url.split('/galeri-images/').pop();
+                if (fileName) {
+                    await supabaseClient.storage.from('galeri-images').remove([fileName]);
+                }
+            }
+            
+            // Delete from database
+            await supabaseClient.from('galeri').delete().eq('id', id);
+            
+            showToast('Foto berhasil dihapus!', 'success');
+            loadGaleri();
+            loadGaleriBeranda();
+        } catch(e) {
+            showToast('Gagal hapus: ' + e.message, 'error');
+        } finally {
+            hideGlobalLoader();
+        }
+    });
+}
+
+function downloadGaleriImage(url, filename) {
+    showToast('Memulai unduhan...', 'info');
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename || 'download.jpg';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+      })
+      .catch(e => {
+        showToast('Gagal mengunduh gambar: ' + e.message, 'error');
+      });
+}
+
+async function archiveGaleriToDrive(id, url, albumEncoded) {
+    var album = albumEncoded ? decodeURIComponent(albumEncoded) : '';
+    showCustomConfirm('Pindahkan ke Google Drive?', 'Tindakan ini akan mengunduh foto ini ke Google Drive (pada folder "Arsip Galeri SMPIT"), lalu menghapusnya secara **permanen** dari sistem (Supabase) agar ruang penyimpanan Anda lega.<br><br>Gunakan fitur ini untuk foto yang sudah tidak aktif namun tetap ingin disave di Drive.', 'Ya, Pindahkan', async function() {
+        showGlobalLoader('Memindahkan ke Google Drive...');
+        try {
+            var gasUrl = (document.getElementById('gasUrlInput') || {}).value;
+            if (!gasUrl) {
+                throw new Error('URL Konfigurasi Google Apps Script belum disetel! Harap setel di Buat Soal Asesmen > Konfigurasi.');
+            }
+            
+            // Generate filename based on ID
+            var filename = 'galeri_' + id + '.jpg';
+            
+            // Shoot POST to GAS
+            var response = await fetch(gasUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({
+                    action: 'archive_galeri',
+                    url: url,
+                    album_nama: album,
+                    filename: filename
+                })
+            });
+            
+            var result = await response.json();
+            if (result.status !== 'success') {
+                throw new Error(result.message);
+            }
+            
+            // Delete from DB & supabase Storage
+            if (url) {
+                var sName = url.split('/galeri-images/').pop();
+                if (sName) {
+                    await supabaseClient.storage.from('galeri-images').remove([sName]);
+                }
+            }
+            await supabaseClient.from('galeri').delete().eq('id', id);
+            
+            showToast('Foto berhasil diarsipkan ke Google Drive!', 'success');
+            loadGaleri();
+            loadGaleriBeranda();
+        } catch(e) {
+            showToast('Gagal memindahkan: ' + e.message, 'error');
+        } finally {
+            hideGlobalLoader();
+        }
+    });
+}
+
