@@ -328,7 +328,7 @@ CREATE TABLE IF NOT EXISTS public.bank_soal (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     mapel TEXT NOT NULL,
     kelas_id UUID REFERENCES public.master_kelas(id) ON DELETE CASCADE,
-    tipe_ujian TEXT NOT NULL CHECK (tipe_ujian IN ('STS', 'SAS')),
+    tipe_ujian TEXT NOT NULL CHECK (tipe_ujian IN ('STS', 'SAS', 'SAJ', 'SAT')),
     link_soal TEXT NOT NULL,
     tahun_pelajaran TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -473,6 +473,8 @@ CREATE TABLE IF NOT EXISTS public.nilai_akademik (
     siswa_id UUID REFERENCES public.siswa(id) ON DELETE CASCADE NOT NULL,
     nilai_sts INTEGER DEFAULT 0,
     nilai_sas INTEGER DEFAULT 0,
+    nilai_saj INTEGER DEFAULT 0,
+    nilai_sat INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tahun_pelajaran, semester, mapel_id, kelas_id, siswa_id)
@@ -857,7 +859,7 @@ CREATE TABLE IF NOT EXISTS public.asesmen (
     judul TEXT NOT NULL,
     mata_pelajaran TEXT NOT NULL,
     kelas TEXT NOT NULL,
-    tipe_ujian TEXT NOT NULL DEFAULT 'STS' CHECK (tipe_ujian IN ('STS', 'SAS')),
+    tipe_ujian TEXT NOT NULL DEFAULT 'STS' CHECK (tipe_ujian IN ('STS', 'SAS', 'SAJ', 'SAT')),
     status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'terbit')),
     waktu_menit INTEGER,
     tanggal_pelaksanaan DATE,
@@ -887,6 +889,7 @@ CREATE TABLE IF NOT EXISTS public.asesmen_soal (
     opsi_c TEXT,
     opsi_d TEXT,
     kunci_jawaban TEXT,
+    gambar_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -905,4 +908,45 @@ CREATE POLICY "asesmen_soal_select" ON public.asesmen_soal FOR SELECT USING (tru
 DROP POLICY IF EXISTS "asesmen_soal_all_admin" ON public.asesmen_soal;
 CREATE POLICY "asesmen_soal_all_admin" ON public.asesmen_soal FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+);
+
+-- ========================================================================================
+-- GALERI: Manajemen Foto dan Momen Sekolah
+-- ========================================================================================
+
+CREATE TABLE IF NOT EXISTS public.galeri (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    album_nama TEXT NOT NULL,
+    keterangan TEXT,
+    tanggal DATE NOT NULL,
+    gambar_url TEXT NOT NULL,
+    ukuran_file BIGINT, -- dalam bytes
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+ALTER TABLE public.galeri ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "galeri_select_all" ON public.galeri;
+CREATE POLICY "galeri_select_all" ON public.galeri FOR SELECT USING (true); -- Bisa dibaca semua orang (siswa & admin)
+
+DROP POLICY IF EXISTS "galeri_all_admin" ON public.galeri;
+CREATE POLICY "galeri_all_admin" ON public.galeri FOR ALL USING (
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah', 'kepala_sekolah', 'staf_tu'))
+);
+
+-- Buat bucket untuk gambar galeri
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('galeri-images', 'galeri-images', true) 
+ON CONFLICT (id) DO NOTHING;
+
+-- Policy Storage: Buka akses baca publik
+CREATE POLICY "galeri_images_public_read" ON storage.objects FOR SELECT USING (bucket_id = 'galeri-images');
+
+-- Policy Storage: Upload dan Delete khusus staf login
+CREATE POLICY "galeri_images_auth_upload" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'galeri-images' AND auth.role() = 'authenticated'
+);
+CREATE POLICY "galeri_images_auth_delete" ON storage.objects FOR DELETE USING (
+  bucket_id = 'galeri-images' AND auth.role() = 'authenticated'
 );
