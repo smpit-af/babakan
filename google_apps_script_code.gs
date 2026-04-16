@@ -12,7 +12,23 @@
 // 7. Who has access: Anyone
 // 8. Klik Deploy > Salin URL Web App
 // 9. Masukkan URL tersebut ke dashboard (menu Buat Soal Asesmen > Konfigurasi)
+// 9. Masukkan URL tersebut ke dashboard (menu Buat Soal Asesmen > Konfigurasi)
+//
+// PENTING UNTUK FITUR GAMBAR:
+// Sebelum deploy, jalankan fungsi `setupAuth` dari tombol *Run* (Jalankan) di menu atas 
+// editor. Ini akan memunculkan popup "Review Permissions", untuk mengizinkan script mengambil 
+// gambar soal dari Supabase ke Google Form.
 // ============================================================
+
+/**
+ * Fungsi pancingan khusus untuk memunculkan izin (Authorization) 
+ * pengambilan data gambar dari luar (UrlFetchApp).
+ * Jalankan fungsi ini 1x secara manual lewat editor script.google.com!
+ */
+function setupAuth() {
+  UrlFetchApp.fetch("https://www.google.com");
+  Logger.log("Izin URL Fetch berhasil diberikan!");
+}
 
 /**
  * doPost — Endpoint utama yang menerima data soal dari dashboard
@@ -29,6 +45,10 @@ function doPost(e) {
     if (data.action === 'close') {
       return handleClose(data);
     }
+
+    if (data.action === 'archive_galeri') {
+      return handleArchiveGaleri(data);
+    }
     
     return handleCreate(data);
 
@@ -36,6 +56,59 @@ function doPost(e) {
     return ContentService.createTextOutput(JSON.stringify({
       status: 'error',
       message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle Archive Galeri (Memindahkan foto dari Supabase URLs ke Google Drive)
+ */
+function handleArchiveGaleri(data) {
+  try {
+    var folderName = 'Arsip Galeri - ' + (data.album_nama || 'Umum');
+    
+    // Cari atau buat folder "Arsip Galeri" di root
+    var rootFolders = DriveApp.getFoldersByName('Arsip Galeri SMPIT');
+    var rootFolder;
+    if (rootFolders.hasNext()) {
+      rootFolder = rootFolders.next();
+    } else {
+      rootFolder = DriveApp.createFolder('Arsip Galeri SMPIT');
+    }
+    
+    // Cari atau buat subfolder album
+    var albumFolders = rootFolder.getFoldersByName(folderName);
+    var albumFolder;
+    if (albumFolders.hasNext()) {
+      albumFolder = albumFolders.next();
+    } else {
+      albumFolder = rootFolder.createFolder(folderName);
+    }
+    
+    // Fetch image from URL
+    var response = UrlFetchApp.fetch(data.url, {
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+    
+    if (response.getResponseCode() === 200) {
+      var blob = response.getBlob();
+      var filename = data.filename || ('galeri_' + Date.now() + '.jpg');
+      blob.setName(filename);
+      var file = albumFolder.createFile(blob);
+      
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'success',
+        message: 'Berhasil mengarsipkan gambar ke Google Drive',
+        drive_url: file.getUrl()
+      })).setMimeType(ContentService.MimeType.JSON);
+    } else {
+      throw new Error('HTTP ' + response.getResponseCode());
+    }
+  } catch(e) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: e.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }
@@ -109,7 +182,9 @@ function deleteTriggerForForm(formId) {
  */
 function handleCreate(data) {
   // 1. Buat Google Form (mode Quiz)
-  var form = createQuizForm(data);
+  var formResult = createQuizForm(data);
+  var form = formResult.form;
+  var imageErrors = formResult.imageErrors;
   var formUrl = form.getPublishedUrl();
   var editUrl = form.getEditUrl();
   
@@ -123,12 +198,17 @@ function handleCreate(data) {
   // 4. Set trigger untuk auto-grading
   setupFormSubmitTrigger(form, sheet, data);
 
+  var msg = 'Google Form berhasil dibuat!';
+  if (imageErrors && imageErrors.length > 0) {
+    msg += '\n\nPERINGATAN: Beberapa gambar gagal ditambahkan ke Google Form:\n' + imageErrors.join('\n');
+  }
+
   return ContentService.createTextOutput(JSON.stringify({
     status: 'success',
     formUrl: formUrl,
     editUrl: editUrl,
     sheetUrl: sheetUrl,
-    message: 'Google Form berhasil dibuat!'
+    message: msg
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -136,7 +216,11 @@ function handleCreate(data) {
  * Buat Google Form dengan mode Quiz
  */
 function createQuizForm(data) {
-  var tipeFull = data.tipe === 'SAS' ? 'SUMATIF AKHIR SEMESTER (SAS)' : (data.tipe === 'STS' ? 'SUMATIF TENGAH SEMESTER (STS)' : (data.tipe || 'ASESMEN'));
+  var tipeFull = data.tipe === 'SAS' ? 'SUMATIF AKHIR SEMESTER (SAS)' :
+                 data.tipe === 'STS' ? 'SUMATIF TENGAH SEMESTER (STS)' :
+                 data.tipe === 'SAJ' ? 'SUMATIF AKHIR JENJANG (SAJ)' :
+                 data.tipe === 'SAT' ? 'SUMATIF AKHIR TAHUN (SAT)' :
+                 (data.tipe || 'ASESMEN');
   var formTitle = tipeFull + ' - SMP IT AL FATHONAH BABAKAN';
   
   var form = FormApp.create(formTitle);
@@ -171,11 +255,41 @@ function createQuizForm(data) {
     .setTitle('Kelas')
     .setRequired(true);
   
+  // Simpan error gambar di array untuk dikembalikan ke frontend
+  var imageErrors = [];
+
   // Tambah soal satu per satu
   var soalList = data.soal || [];
   for (var i = 0; i < soalList.length; i++) {
     var s = soalList[i];
     var naskah = 'Soal ' + s.nomor + '. ' + (s.naskah || '');
+    
+    // Insert image if gambar_url is provided
+    if (s.gambar_url && s.gambar_url.trim() !== '') {
+      try {
+        var imgResponse = UrlFetchApp.fetch(s.gambar_url, {
+          muteHttpExceptions: true,
+          followRedirects: true
+        });
+        if (imgResponse.getResponseCode() === 200) {
+          var imgBlob = imgResponse.getBlob();
+          if (!imgBlob.getContentType() || imgBlob.getContentType().indexOf('image') === -1) {
+            imgBlob.setContentType('image/png');
+          }
+          imgBlob.setName('soal_' + s.nomor + '.png');
+          
+          var imgItem = form.addImageItem();
+          imgItem.setImage(imgBlob);
+          imgItem.setTitle('Gambar Soal ' + s.nomor);
+        } else {
+          imageErrors.push('Soal ' + s.nomor + ': HTTP ' + imgResponse.getResponseCode());
+          Logger.log('HTTP ' + imgResponse.getResponseCode() + ' saat fetch gambar soal ' + s.nomor);
+        }
+      } catch(imgErr) {
+        imageErrors.push('Soal ' + s.nomor + ': ' + imgErr.message);
+        Logger.log('Error gambar soal ' + s.nomor + ': ' + imgErr.message);
+      }
+    }
     
     if (s.tipe === 'pg') {
       // Pilihan Ganda
@@ -200,7 +314,7 @@ function createQuizForm(data) {
     }
   }
   
-  return form;
+  return { form: form, imageErrors: imageErrors };
 }
 
 /**
@@ -293,6 +407,7 @@ function setupFormSubmitTrigger(form, ss, data) {
     'judul_' + form.getId(),
     data.judul || ''
   );
+  PropertiesService.getScriptProperties().setProperty('tipe_ujian_' + form.getId(), data.tipe || 'STS');
   PropertiesService.getScriptProperties().setProperty('bobot_pg_' + form.getId(), data.bobotPG || 2);
   PropertiesService.getScriptProperties().setProperty('bobot_essay_' + form.getId(), data.bobotEssay || 0);
   PropertiesService.getScriptProperties().setProperty('jml_essay_' + form.getId(), data.jmlEssay || 0);
@@ -354,19 +469,27 @@ function onFormSubmitGrading(e) {
     var tahunPelajaran = PropertiesService.getScriptProperties().getProperty('tahun_' + formId) || '';
     var semesterVal = PropertiesService.getScriptProperties().getProperty('semester_' + formId) || '';
     var mapelVal = PropertiesService.getScriptProperties().getProperty('mapel_' + formId) || '';
+    var tipeUjianVal = PropertiesService.getScriptProperties().getProperty('tipe_ujian_' + formId) || '';
     
     // Cari atau buat sheet "Hasil Koreksi"
     var hasilSheet = ss.getSheetByName('Hasil Koreksi');
     if (!hasilSheet) {
       hasilSheet = ss.insertSheet('Hasil Koreksi');
       // Header
-      var headers = ['Timestamp', 'Email', 'Nama', 'Kelas', 'Mata Pelajaran', 'Tahun Pelajaran', 'Semester'];
+      var headers = ['Timestamp', 'Email', 'Nama', 'Kelas', 'Tipe Ujian', 'Mata Pelajaran', 'Tahun Pelajaran', 'Semester'];
       
       // Tambah header per soal
       var soalCount = Object.keys(kunci).length + jmlEssay; // PG + Essay
+      var pgIdx = 1;
+      var essayIdx = 1;
       for (var n = 1; n <= soalCount; n++) {
-        headers.push('Soal ' + n);
-        headers.push('Status ' + n);
+        if (kunci['soal_' + n]) {
+            headers.push('PG ' + pgIdx);
+            pgIdx++;
+        } else {
+            headers.push('Essay ' + essayIdx);
+            essayIdx++;
+        }
       }
       headers.push('Benar PG', 'Salah PG', 'TOTAL POIN PG');
       
@@ -414,7 +537,7 @@ function onFormSubmitGrading(e) {
             if (title === 'Kelas') kelasName = ir.getResponse();
         }
         
-        var row = [formatDate(new Date()), email, nama, kelasName, mapelVal, tahunPelajaran, semesterVal];
+        var row = [formatDate(new Date()), email, nama, kelasName, tipeUjianVal, mapelVal, tahunPelajaran, semesterVal];
         rowForDebug = row; // Fallback untuk debug error
         
         var benar = 0;
@@ -445,8 +568,8 @@ function onFormSubmitGrading(e) {
                     isCorrect = (answerLetter === kunci[kunjiKey]);
                 }
                 
-                row.push(jawaban);
-                row.push(isCorrect ? '✅ BENAR' : '❌ SALAH');
+                var shortJawaban = jawaban ? jawaban.charAt(0).toUpperCase() : '';
+                row.push(shortJawaban);
                 statusCells.push({ col: row.length, correct: isCorrect });
                 
                 if (isCorrect) benar++; else salah++;
@@ -503,13 +626,11 @@ function onFormSubmitGrading(e) {
                 }
                 
                 row.push(jawaban);
-                row.push(statusStr);
                 statusCells.push({ col: row.length, correct: colorFlag });
                 essayScoresOutput.push(isNaN(skor) ? 0 : Math.round(skor));
                 
             } else {
                 row.push(jawaban);
-                row.push('📝 Perlu Koreksi');
                 statusCells.push({ col: row.length, correct: null });
                 if (!kunci[kunjiKey]) essayScoresOutput.push(''); 
             }
