@@ -699,8 +699,8 @@ function applyRoleVisibility() {
         el.style.display = isAdminKurikulum ? '' : 'none';
     });
 
-    // Akademik
-    var isAkademik = ['admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah'].includes(role);
+    // Akademik & Asesmen
+    var isAkademik = role !== 'siswa';
     document.querySelectorAll('.role-akademik').forEach(function (el) {
         el.style.display = isAkademik ? '' : 'none';
     });
