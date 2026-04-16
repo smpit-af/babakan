@@ -61,6 +61,17 @@ function doPost(e) {
 }
 
 /**
+ * FUNGSI SETUP KHUSUS UNTUK MEMICU PERIZINAN GOOGLE DRIVE
+ * Silakan pilih fungsi "setup" lalu klik "Jalankan (Run)" untuk mengizinkan aplikasi.
+ */
+function setup() {
+  var dummy = DriveApp.createFolder('dummy_auth_test_123');
+  dummy.setTrashed(true); // Langsung hapus
+  UrlFetchApp.fetch('https://www.google.com', {muteHttpExceptions: true});
+  console.log("SUKSES: Izin Penuh TULIS / BACA ke Google Drive telah diberikan!");
+}
+
+/**
  * Handle Archive Galeri (Memindahkan foto dari Supabase URLs ke Google Drive)
  */
 function handleArchiveGaleri(data) {
