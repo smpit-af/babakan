@@ -2355,7 +2355,7 @@
 
   <!-- ========== BANK SOAL MODAL ========== -->
   <div class="modal-overlay" id="bankSoalModal">
-    <div class="modal" style="max-width:400px;position:relative;">
+    <div class="modal" style="max-width:460px;position:relative;">
       <button class="modal-close" onclick="closeBankSoalModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
       <div class="modal-header"><h3 id="bankSoalModalTitle">Tambah Bank Soal</h3></div>
       <div class="modal-body">
@@ -2365,7 +2365,28 @@
         <div class="form-group"><label class="form-label">Kelas *</label><select id="formBankKelas" class="form-input"><option value="">Pilih Kelas</option></select></div>
         <div class="form-group"><label class="form-label">Tipe Ujian *</label><select id="formBankTipe" class="form-input"><option value="STS">Sumatif Tengah Semester (STS)</option><option value="SAS">Sumatif Akhir Semester (SAS)</option><option value="SAJ">Sumatif Akhir Jenjang (SAJ)</option><option value="SAT">Sumatif Akhir Tahun (SAT)</option></select></div>
         <div class="form-group"><label class="form-label">Semester *</label><select id="formBankSemester" class="form-input"><option value="Ganjil">Ganjil</option><option value="Genap">Genap</option></select></div>
-        <div class="form-group"><label class="form-label">Link Soal *</label><input type="url" id="formBankLink" class="form-input" placeholder="https://..." /></div>
+
+        <!-- Sumber Soal: Link atau Upload -->
+        <div class="form-group">
+          <label class="form-label">Sumber Soal *</label>
+          <div style="display:flex;gap:1rem;margin-bottom:0.75rem;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;">
+              <input type="radio" name="bankSoalSource" value="link" checked onchange="toggleBankSoalSource('link')" /> 
+              <i data-lucide="link" style="width:14px;height:14px;"></i> Link URL
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.88rem;">
+              <input type="radio" name="bankSoalSource" value="upload" onchange="toggleBankSoalSource('upload')" />
+              <i data-lucide="upload" style="width:14px;height:14px;"></i> Upload File
+            </label>
+          </div>
+          <div id="bankSoalLinkArea">
+            <input type="url" id="formBankLink" class="form-input" placeholder="https://drive.google.com/..." />
+          </div>
+          <div id="bankSoalUploadArea" style="display:none;">
+            <input type="file" id="formBankFile" class="form-input" accept=".doc,.docx,.pdf,.xls,.xlsx,.ppt,.pptx" style="padding:8px;" />
+            <p style="margin:6px 0 0;font-size:0.78rem;color:var(--text-light);">Format: Word, PDF, Excel, PowerPoint (maks. 10MB)</p>
+          </div>
+        </div>
       </div>
       <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline" onclick="closeBankSoalModal()">Batal</button> <button class="btn btn-primary" onclick="saveBankSoal()">Simpan</button></div>
     </div>
