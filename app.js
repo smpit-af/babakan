@@ -3249,14 +3249,36 @@ function renderFilteredBankSoal() {
 
     tbody.innerHTML = filtered.map(function(b, i) {
         var kelasNama = b.master_kelas ? b.master_kelas.nama_kelas + ' (Tingkat ' + b.master_kelas.tingkat + ')' : '-';
-        var linkBadge = '<a href="' + b.link_soal + '" target="_blank" class="btn btn-sm btn-primary" style="padding:4px 8px;font-size:0.75rem;"><i data-lucide="external-link" style="width:12px;height:12px;margin-right:4px;"></i>Buka Link</a>';
+        
+        // Detect file type from link
+        var isUploadedFile = b.link_soal && b.link_soal.indexOf('bank-soal-files') !== -1;
+        var fileExt = '';
+        if (isUploadedFile) {
+            var parts = b.link_soal.split('.');
+            fileExt = parts[parts.length - 1].toLowerCase().split('?')[0];
+        }
+        var fileIcon = 'external-link';
+        var fileLabel = 'Buka Link';
+        if (fileExt === 'pdf') { fileIcon = 'file-text'; fileLabel = 'PDF'; }
+        else if (fileExt === 'doc' || fileExt === 'docx') { fileIcon = 'file-text'; fileLabel = 'Word'; }
+        else if (fileExt === 'xls' || fileExt === 'xlsx') { fileIcon = 'file-spreadsheet'; fileLabel = 'Excel'; }
+        else if (fileExt === 'ppt' || fileExt === 'pptx') { fileIcon = 'file-text'; fileLabel = 'PPT'; }
+
+        var linkBadge = '<a href="' + b.link_soal + '" target="_blank" class="btn btn-sm btn-primary" style="padding:4px 8px;font-size:0.75rem;"><i data-lucide="' + fileIcon + '" style="width:12px;height:12px;margin-right:4px;"></i>' + fileLabel + '</a>';
+
+        // Download filename
+        var dlName = b.mapel.replace(/\s/g,'_') + '_' + (b.semester || '') + '.' + (fileExt || 'pdf');
+        var safeUrl = b.link_soal.replace(/'/g, "\\'");
+
         var tipeBadge = b.tipe_ujian === 'STS' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">STS</span>' : 
                         b.tipe_ujian === 'SAS' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">SAS</span>' :
                         b.tipe_ujian === 'SAJ' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SAJ</span>' :
                         '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">SAT</span>';
         var semesterBadge = b.semester === 'Genap' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Genap</span>' : '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">Ganjil</span>';
         return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
-            '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
+            '<td style="text-align:center;white-space:nowrap;">' +
+            '<button class="btn btn-sm" style="background:#10b981;color:#fff;padding:4px 6px;" onclick="downloadBankSoalFile(\'' + safeUrl + '\',\'' + dlName.replace(/'/g, "\\'") + '\')" title="Download"><i data-lucide="download" style="width:14px;height:14px;"></i></button> ' +
+            '<button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
             '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
     }).join('');
     if (window.lucide) lucide.createIcons();
@@ -3271,6 +3293,11 @@ function resetBankSoalFilters() {
     renderFilteredBankSoal();
 }
 
+function toggleBankSoalSource(mode) {
+    document.getElementById('bankSoalLinkArea').style.display = mode === 'link' ? 'block' : 'none';
+    document.getElementById('bankSoalUploadArea').style.display = mode === 'upload' ? 'block' : 'none';
+}
+
 function openBankSoalModal() {
     document.getElementById('formBankId').value = '';
     var lblYear = document.getElementById('lblActiveYear');
@@ -3283,9 +3310,17 @@ function openBankSoalModal() {
     document.getElementById('formBankTipe').value = 'STS';
     document.getElementById('formBankSemester').value = 'Ganjil';
     document.getElementById('formBankLink').value = '';
+    var fileInput = document.getElementById('formBankFile');
+    if (fileInput) fileInput.value = '';
+
+    // Reset radio to link mode
+    var radios = document.querySelectorAll('input[name="bankSoalSource"]');
+    radios.forEach(function(r) { r.checked = r.value === 'link'; });
+    toggleBankSoalSource('link');
     
     document.getElementById('bankSoalModalTitle').textContent = 'Tambah Bank Soal';
     document.getElementById('bankSoalModal').classList.add('active');
+    if (window.lucide) lucide.createIcons();
 }
 
 function closeBankSoalModal() { document.getElementById('bankSoalModal').classList.remove('active'); }
@@ -3300,25 +3335,74 @@ function editBankSoal(id) {
     document.getElementById('formBankTipe').value = b.tipe_ujian || 'STS';
     document.getElementById('formBankSemester').value = b.semester || 'Ganjil';
     document.getElementById('formBankLink').value = b.link_soal || '';
+
+    // Set radio to link mode (edit always shows existing link)
+    var radios = document.querySelectorAll('input[name="bankSoalSource"]');
+    radios.forEach(function(r) { r.checked = r.value === 'link'; });
+    toggleBankSoalSource('link');
+
     document.getElementById('bankSoalModalTitle').textContent = 'Edit Bank Soal';
     document.getElementById('bankSoalModal').classList.add('active');
+    if (window.lucide) lucide.createIcons();
 }
 
 async function saveBankSoal() {
     var id = document.getElementById('formBankId').value;
+    var sourceMode = document.querySelector('input[name="bankSoalSource"]:checked');
+    var mode = sourceMode ? sourceMode.value : 'link';
+
     var obj = {
         mapel: document.getElementById('formBankMapel').value.trim(),
         kelas_id: document.getElementById('formBankKelas').value || null,
         tipe_ujian: document.getElementById('formBankTipe').value,
         semester: document.getElementById('formBankSemester').value,
-        link_soal: document.getElementById('formBankLink').value.trim(),
         tahun_pelajaran: document.getElementById('formBankTahun').value.trim()
     };
-    if (!obj.mapel || !obj.kelas_id || !obj.link_soal || !obj.tahun_pelajaran) {
-        showToast('Pastikan Tahun, Mapel, Kelas, dan Link terisi semua!', 'warning');
+
+    if (!obj.mapel || !obj.kelas_id || !obj.tahun_pelajaran) {
+        showToast('Pastikan Tahun, Mapel, dan Kelas terisi semua!', 'warning');
         return;
     }
+
     try {
+        showGlobalLoader('Menyimpan Bank Soal...');
+
+        if (mode === 'upload') {
+            // Upload file to Supabase Storage
+            var fileInput = document.getElementById('formBankFile');
+            if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+                hideGlobalLoader();
+                showToast('Pilih file yang ingin diupload!', 'warning');
+                return;
+            }
+            var file = fileInput.files[0];
+            if (file.size > 10 * 1024 * 1024) {
+                hideGlobalLoader();
+                showToast('Ukuran file melebihi 10MB!', 'warning');
+                return;
+            }
+
+            var ext = file.name.split('.').pop().toLowerCase();
+            var fileName = 'bank-soal/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+            var { data: uploadData, error: uploadError } = await supabaseClient.storage
+                .from('bank-soal-files')
+                .upload(fileName, file, { cacheControl: '3600', upsert: false });
+
+            if (uploadError) throw uploadError;
+
+            var publicUrlResult = supabaseClient.storage.from('bank-soal-files').getPublicUrl(fileName);
+            obj.link_soal = publicUrlResult.data.publicUrl;
+        } else {
+            // Link mode
+            obj.link_soal = document.getElementById('formBankLink').value.trim();
+            if (!obj.link_soal) {
+                hideGlobalLoader();
+                showToast('Link Soal wajib diisi!', 'warning');
+                return;
+            }
+        }
+
         if (id) {
             const { error } = await supabaseClient.from('bank_soal').update(obj).eq('id', id);
             if (error) throw error;
@@ -3330,11 +3414,47 @@ async function saveBankSoal() {
         closeBankSoalModal();
         loadBankSoal();
     } catch(e) { showToast('Gagal menyimpan: ' + e.message, 'error'); }
+    finally { hideGlobalLoader(); }
+}
+
+function downloadBankSoalFile(url, filename) {
+    // For Google Drive links, open in new tab (can't fetch cross-origin)
+    if (url.indexOf('drive.google.com') !== -1 || url.indexOf('docs.google.com') !== -1) {
+        window.open(url, '_blank');
+        return;
+    }
+    // For Supabase-hosted files, download directly
+    showToast('Memulai unduhan...', 'info');
+    fetch(url)
+        .then(function(r) { return r.blob(); })
+        .then(function(blob) {
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename || 'bank_soal';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(a.href);
+            showToast('File berhasil diunduh!', 'success');
+        })
+        .catch(function(e) {
+            showToast('Gagal mengunduh, membuka di tab baru...', 'warning');
+            window.open(url, '_blank');
+        });
 }
 
 function deleteBankSoal(id, mapel) {
     showCustomConfirm('Hapus Bank Soal', 'Apakah Anda yakin ingin menghapus soal ujian untuk mapel <strong>"' + mapel + '"</strong>?', 'Ya, Hapus', async function() {
         try {
+            // Find the item to check if it has a Supabase storage file
+            var item = bankSoalList.find(function(x) { return x.id === id; });
+            if (item && item.link_soal && item.link_soal.indexOf('bank-soal-files') !== -1) {
+                // Delete from storage too
+                var fileName = item.link_soal.split('/bank-soal-files/').pop();
+                if (fileName) {
+                    await supabaseClient.storage.from('bank-soal-files').remove([decodeURIComponent(fileName)]);
+                }
+            }
             const { error } = await supabaseClient.from('bank_soal').delete().eq('id', id);
             if (error) throw error;
             showToast('Bank Soal dihapus!', 'success');
