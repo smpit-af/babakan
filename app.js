@@ -5248,6 +5248,7 @@ async function saveDraftAsesmen(autoCloseBuilder) {
         if (autoCloseBuilder !== false) {
             closeAsesmenBuilder();
         }
+        resetAsesmenForms();
         loadAsesmenList();
     } catch(e) { showToast('Gagal menyimpan draft: ' + e.message, 'error'); } 
     finally { hideGlobalLoader(); }
@@ -5336,6 +5337,30 @@ async function openAutoGenerateForm() {
 
 function closeAutoGenerateArea() {
     document.getElementById('asesmenAutoGenerateArea').style.display = 'none';
+}
+
+function resetAsesmenForms() {
+    // 1. Bersihkan area builder manual
+    var builderIds = ['builderAsesmenId', 'builderJudul', 'builderMapel', 'builderKelas', 'builderWaktu', 'builderTanggal', 'builderBobotPG', 'builderBobotEssay'];
+    builderIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    var bTipe = document.getElementById('builderTipe');
+    if (bTipe) bTipe.value = 'STS';
+    asesmenBuilderSoalList = [];
+    if(typeof renderSoalCards === 'function') renderSoalCards();
+
+    // 2. Bersihkan area auto generate
+    var autoIds = ['autoJudul', 'autoMapel', 'autoKelas', 'autoWaktu', 'autoTanggal', 'autoTextarea'];
+    autoIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    var aTipe = document.getElementById('autoTipe'); if(aTipe) aTipe.value = 'PH';
+    var aPG = document.getElementById('autoBobotPG'); if(aPG) aPG.value = '2';
+    var aEssay = document.getElementById('autoBobotEssay'); if(aEssay) aEssay.value = '0';
+    var aStatus = document.getElementById('autoStatusLabel'); if(aStatus) aStatus.innerHTML = '';
 }
 
 function parseTextToSoalList(text) {
@@ -5623,6 +5648,7 @@ async function publishToGoogleForm() {
                 'success');
 
             closeAsesmenBuilder();
+            resetAsesmenForms();
             loadAsesmenList();
         } else {
             throw new Error(result.message || result.error || 'Gagal membuat Google Form');
