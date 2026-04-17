@@ -693,14 +693,13 @@ async function initDashboard() {
 function applyRoleVisibility() {
     var role = currentRole || 'siswa'; // Default to siswa mapping
 
-    // Default admin-kurikulum-only (Kelola Konten, Administrasi)
     var isAdminKurikulum = ['admin', 'kurikulum'].includes(role);
     document.querySelectorAll('.admin-kurikulum-only').forEach(function (el) {
         el.style.display = isAdminKurikulum ? '' : 'none';
     });
 
     // Akademik & Asesmen
-    var isAkademik = role !== 'siswa';
+    var isAkademik = ['admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah'].includes(role);
     document.querySelectorAll('.role-akademik').forEach(function (el) {
         el.style.display = isAkademik ? '' : 'none';
     });
@@ -5303,6 +5302,176 @@ async function deleteAsesmen(id) {
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
     });
+}
+
+// ============================================================
+// AUTO GENERATE ASESMEN VIA TEKS (SMART PARSER)
+// ============================================================
+
+async function openAutoGenerateForm() {
+    var area = document.getElementById('asesmenAutoGenerateArea');
+    if (area.style.display === 'block') { closeAutoGenerateArea(); return; }
+    area.style.display = 'block';
+    
+    await loadMasterMapel();
+    await loadMasterKelas();
+
+    // Populate dropdowns auto mapel
+    populateMapelNameDropdown('autoMapel', '');
+    populateKelasNameDropdown('autoKelas', '');
+
+    // Auto-fill Tahun Pelajaran dari master data (readonly)
+    var lblYear = document.getElementById('lblActiveYear');
+    var autoTahun = document.getElementById('autoTahun');
+    if (lblYear && autoTahun) {
+        var yearVal = lblYear.textContent;
+        autoTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
+    }
+    
+    document.getElementById('autoStatusLabel').innerHTML = '';
+    document.getElementById('autoJudul').focus();
+    // Tutup builder manual jika terbuka
+    document.getElementById('asesmenBuilderArea').style.display = 'none';
+}
+
+function closeAutoGenerateArea() {
+    document.getElementById('asesmenAutoGenerateArea').style.display = 'none';
+}
+
+function parseTextToSoalList(text) {
+    if (!text || text.trim() === '') return [];
+    
+    var lines = text.split('\n');
+    var parsedSoal = [];
+    var currentSoal = null;
+    
+    // Pola pengecekan PG inline (kasus horizontal "a. Toni    c. Dedi" dlm 1 baris)
+    var opsiRegex = /(?:^|\s)([A-Ea-e])[.)]\s+((?:(?!\s[A-Ea-e][.)]\s).)*)/g;
+    var kunciRegex = /kunci(?:\s*jawaban)?\s*:\s*([A-Ea-e]?)(.*)/i;
+    // HANYA terima titik sebagai pemisah nomor utama (misal: "1. ") untuk menghindari 1) terbaca form baru.
+    var nomorRegex = /^\s*(\d+)\s*\.\s+(.*)/;
+
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line === '') continue;
+
+        // Cek baris nomor soal baru
+        var noMatch = line.match(nomorRegex);
+        if (noMatch) {
+            if (currentSoal) { parsedSoal.push(currentSoal); }
+            currentSoal = {
+                tipe: 'essay', 
+                naskah: noMatch[2],
+                opsi_a: '', opsi_b: '', opsi_c: '', opsi_d: '', kunci: ''
+            };
+            continue;
+        }
+        
+        if (!currentSoal) continue; // Skip jika belum dalam konteks soal
+        
+        // Cek Kunci Jawaban
+        var keyMatch = line.match(kunciRegex);
+        if (keyMatch) {
+            var valList = (keyMatch[1] + keyMatch[2]).trim();
+            if (currentSoal.tipe === 'pg') {
+                 var firstCharMatch = valList.match(/[a-eA-E]/);
+                 currentSoal.kunci = firstCharMatch ? firstCharMatch[0].toUpperCase() : '';
+            } else {
+                 if (currentSoal.kunci !== '') currentSoal.kunci += ', ';
+                 currentSoal.kunci += valList; 
+            }
+            continue;
+        }
+        
+        // Cek Opsi Pilihan Ganda (Bisa multi match per line kalau horizontal)
+        var foundOpsiInline = false;
+        var match;
+        opsiRegex.lastIndex = 0;
+        
+        while ((match = opsiRegex.exec(line)) !== null) {
+            foundOpsiInline = true;
+            currentSoal.tipe = 'pg'; // Ubah tipe jadi PG karena ketemu pola opsi
+            var huruf = match[1].toLowerCase();
+            var isiOps = match[2].trim();
+            
+            if (huruf === 'a') currentSoal.opsi_a = isiOps;
+            if (huruf === 'b') currentSoal.opsi_b = isiOps;
+            if (huruf === 'c') currentSoal.opsi_c = isiOps;
+            if (huruf === 'd') currentSoal.opsi_d = isiOps;
+        }
+        
+        if (foundOpsiInline) continue; // opsi di baris ini sudah diekstrak
+        
+        // Asumsikan sebagai lajutan teks soal multiline
+        currentSoal.naskah += '\n' + line;
+    }
+    
+    // Soal Terakhir
+    if (currentSoal) parsedSoal.push(currentSoal);
+    
+    return parsedSoal;
+}
+
+function previewAutoGenerate() {
+    var text = document.getElementById('autoTextarea').value;
+    var rawList = parseTextToSoalList(text);
+    
+    if (rawList.length === 0) {
+        document.getElementById('autoStatusLabel').innerHTML = '<span style="color:var(--danger)">Gagal membaca soal. Pastikan naskah diawali format angka, misal: 1. Naskah...</span>';
+        return false;
+    }
+    
+    var countPG = rawList.filter(s => s.tipe === 'pg').length;
+    var countEssay = rawList.filter(s => s.tipe === 'essay').length;
+    
+    document.getElementById('autoStatusLabel').innerHTML = 
+        '<span style="color:var(--success)">✅ Membaca ' + rawList.length + ' soal (' + countPG + ' PG, ' + countEssay + ' Essay)</span>';
+        
+    asesmenBuilderSoalList = rawList;
+    renderSoalCards();
+    
+    // Tampilkan manual builder untuk preview
+    document.getElementById('asesmenBuilderArea').style.display = 'block';
+
+    // Populate dropdowns for builder before setting values
+    populateMapelNameDropdown('builderMapel', '');
+    populateKelasNameDropdown('builderKelas', '');
+
+    document.getElementById('builderJudul').value = document.getElementById('autoJudul').value;
+    document.getElementById('builderTipe').value = document.getElementById('autoTipe').value;
+    document.getElementById('builderMapel').value = document.getElementById('autoMapel').value;
+    document.getElementById('builderKelas').value = document.getElementById('autoKelas').value;
+    
+    var autoThn = document.getElementById('autoTahun');
+    if (autoThn) document.getElementById('builderTahun').value = autoThn.value;
+    
+    document.getElementById('builderBobotPG').value = document.getElementById('autoBobotPG').value;
+    document.getElementById('builderBobotEssay').value = document.getElementById('autoBobotEssay').value;
+    document.getElementById('builderWaktu').value = document.getElementById('autoWaktu').value;
+    document.getElementById('builderTanggal').value = document.getElementById('autoTanggal').value;
+    
+    document.getElementById('builderAsesmenId').value = ''; // pastikan id kosong sbg rancangan baru
+    return true;
+}
+
+function submitAutoGenerate() {
+    var stat = previewAutoGenerate(); 
+    if (stat) {
+        // Cek mapel dkk
+        var jdl = document.getElementById('autoJudul').value;
+        if (!jdl.trim()) { showToast('Isi judul asesmen!', 'warning'); return; }
+        
+        showCustomConfirm(
+            '[AUTO GENERATE] Terbitkan Langsung?',
+            'Anda sudah melihat pratinjaunya di form bawah.' +
+            '<br>Sistem akan otomatis menge-save data ini dan menerbitkannya ke Google Form.<br>Lanjutkan?',
+            'Ya, Terbitkan & Tutup Auto-Area',
+            function() {
+                closeAutoGenerateArea();
+                confirmPublishAsesmen();
+            }
+        );
+    }
 }
 
 // --- Publish to Google Form ---
