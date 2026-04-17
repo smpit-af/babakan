@@ -3157,26 +3157,118 @@ async function loadBankSoal() {
         const { data, error } = await supabaseClient.from('bank_soal').select('*, master_kelas(nama_kelas, tingkat)').order('created_at', { ascending: false });
         if (error) throw error;
         bankSoalList = data || [];
-        var tbody = document.getElementById('bankSoalTableBody');
-        if (!tbody) return;
-        if (bankSoalList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data bank soal.</td></tr>';
-            return;
-        }
-        tbody.innerHTML = bankSoalList.map(function(b, i) {
-            var kelasNama = b.master_kelas ? b.master_kelas.nama_kelas + ' (Tingkat ' + b.master_kelas.tingkat + ')' : '-';
-            var linkBadge = '<a href="' + b.link_soal + '" target="_blank" class="btn btn-sm btn-primary" style="padding:4px 8px;font-size:0.75rem;"><i data-lucide="external-link" style="width:12px;height:12px;margin-right:4px;"></i>Buka Link</a>';
-            var tipeBadge = b.tipe_ujian === 'STS' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">STS</span>' : 
-                            b.tipe_ujian === 'SAS' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">SAS</span>' :
-                            b.tipe_ujian === 'SAJ' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SAJ</span>' :
-                            '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">SAT</span>';
-            var semesterBadge = b.semester === 'Genap' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Genap</span>' : '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">Ganjil</span>';
-            return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
-                '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
-                '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
-        }).join('');
-        if (window.lucide) lucide.createIcons();
+
+        // Populate filter dropdowns from data
+        populateBankSoalFilters();
+
+        // Render with current filters
+        renderFilteredBankSoal();
     } catch(e) { showToast('Gagal muat bank soal: ' + e.message, 'error'); }
+}
+
+function populateBankSoalFilters() {
+    // Populate Mapel filter
+    var mapelSet = {};
+    var kelasSet = {};
+    bankSoalList.forEach(function(b) {
+        if (b.mapel) mapelSet[b.mapel] = true;
+        if (b.master_kelas && b.master_kelas.nama_kelas) {
+            kelasSet[b.master_kelas.nama_kelas] = true;
+        }
+    });
+
+    var mapelSel = document.getElementById('filterBankMapel');
+    if (mapelSel) {
+        var currentMapel = mapelSel.value;
+        var opts = '<option value="">Semua Mapel</option>';
+        // Also use masterMapelList if available for complete list
+        if (typeof masterMapelList !== 'undefined' && masterMapelList.length > 0) {
+            masterMapelList.forEach(function(m) { opts += '<option value="' + m.nama_mapel + '">' + m.nama_mapel + '</option>'; });
+        } else {
+            Object.keys(mapelSet).sort().forEach(function(m) { opts += '<option value="' + m + '">' + m + '</option>'; });
+        }
+        mapelSel.innerHTML = opts;
+        mapelSel.value = currentMapel;
+    }
+
+    var kelasSel = document.getElementById('filterBankKelas');
+    if (kelasSel) {
+        var currentKelas = kelasSel.value;
+        var opts = '<option value="">Semua Kelas</option>';
+        if (typeof masterKelasList !== 'undefined' && masterKelasList.length > 0) {
+            masterKelasList.forEach(function(k) { opts += '<option value="' + k.nama_kelas + '">' + k.nama_kelas + ' (Tingkat ' + k.tingkat + ')</option>'; });
+        } else {
+            Object.keys(kelasSet).sort().forEach(function(k) { opts += '<option value="' + k + '">' + k + '</option>'; });
+        }
+        kelasSel.innerHTML = opts;
+        kelasSel.value = currentKelas;
+    }
+}
+
+function renderFilteredBankSoal() {
+    var filterMapel = (document.getElementById('filterBankMapel') || {}).value || '';
+    var filterKelas = (document.getElementById('filterBankKelas') || {}).value || '';
+    var filterSemester = (document.getElementById('filterBankSemester') || {}).value || '';
+    var searchQuery = ((document.getElementById('searchBankSoal') || {}).value || '').toLowerCase().trim();
+
+    var filtered = bankSoalList.filter(function(b) {
+        // Filter by Mapel
+        if (filterMapel && b.mapel !== filterMapel) return false;
+        // Filter by Kelas
+        if (filterKelas && (!b.master_kelas || b.master_kelas.nama_kelas !== filterKelas)) return false;
+        // Filter by Semester
+        if (filterSemester && b.semester !== filterSemester) return false;
+        // Search query
+        if (searchQuery) {
+            var haystack = [
+                b.mapel || '',
+                b.master_kelas ? b.master_kelas.nama_kelas : '',
+                b.semester || '',
+                b.tipe_ujian || '',
+                b.tahun_pelajaran || '',
+                b.link_soal || ''
+            ].join(' ').toLowerCase();
+            if (haystack.indexOf(searchQuery) === -1) return false;
+        }
+        return true;
+    });
+
+    var tbody = document.getElementById('bankSoalTableBody');
+    if (!tbody) return;
+
+    // Update counter
+    var countEl = document.getElementById('bankSoalCount');
+    if (countEl) countEl.textContent = filtered.length + ' soal ditemukan';
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">' +
+            (bankSoalList.length === 0 ? 'Belum ada data bank soal.' : 'Tidak ada soal yang cocok dengan filter.') + '</td></tr>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(function(b, i) {
+        var kelasNama = b.master_kelas ? b.master_kelas.nama_kelas + ' (Tingkat ' + b.master_kelas.tingkat + ')' : '-';
+        var linkBadge = '<a href="' + b.link_soal + '" target="_blank" class="btn btn-sm btn-primary" style="padding:4px 8px;font-size:0.75rem;"><i data-lucide="external-link" style="width:12px;height:12px;margin-right:4px;"></i>Buka Link</a>';
+        var tipeBadge = b.tipe_ujian === 'STS' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">STS</span>' : 
+                        b.tipe_ujian === 'SAS' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">SAS</span>' :
+                        b.tipe_ujian === 'SAJ' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SAJ</span>' :
+                        '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">SAT</span>';
+        var semesterBadge = b.semester === 'Genap' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Genap</span>' : '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">Ganjil</span>';
+        return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
+            '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+}
+
+function resetBankSoalFilters() {
+    var ids = ['filterBankMapel', 'filterBankKelas', 'filterBankSemester', 'searchBankSoal'];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    renderFilteredBankSoal();
 }
 
 function openBankSoalModal() {
