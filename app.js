@@ -3418,9 +3418,26 @@ async function saveBankSoal() {
 }
 
 function downloadBankSoalFile(url, filename) {
-    // For Google Drive links, open in new tab (can't fetch cross-origin)
+    // For Google Drive links, convert to direct download URL
     if (url.indexOf('drive.google.com') !== -1 || url.indexOf('docs.google.com') !== -1) {
-        window.open(url, '_blank');
+        var fileId = '';
+        // Extract file ID from various Google Drive URL formats
+        var match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (match) {
+            fileId = match[1];
+        } else {
+            var match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            if (match2) fileId = match2[1];
+        }
+        if (fileId) {
+            // Direct download URL
+            window.location.href = 'https://drive.google.com/uc?export=download&id=' + fileId;
+            showToast('Memulai unduhan dari Google Drive...', 'info');
+        } else {
+            // Fallback: open in new tab
+            window.open(url, '_blank');
+            showToast('Link tidak dikenali, membuka di tab baru...', 'warning');
+        }
         return;
     }
     // For Supabase-hosted files, download directly
