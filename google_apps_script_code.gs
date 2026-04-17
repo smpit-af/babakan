@@ -337,6 +337,13 @@ function createAnswerSheet(data, form) {
   // Link form responses ke sheet ini
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
   
+  // Otomatis buka akses: Siapa saja yang punya link bisa melihat
+  var ssFile = DriveApp.getFileById(ss.getId());
+  ssFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  
+  var formFile = DriveApp.getFileById(form.getId());
+  formFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  
   return ss;
 }
 
