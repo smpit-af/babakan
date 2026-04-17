@@ -193,12 +193,12 @@ CREATE POLICY "Semua orang bisa baca pengaturan" ON public.system_settings FOR S
 
 DROP POLICY IF EXISTS "Hanya Admin yang bisa ubah pengaturan" ON public.system_settings;
 CREATE POLICY "Hanya Admin yang bisa ubah pengaturan" ON public.system_settings FOR UPDATE USING (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
     );
 
 DROP POLICY IF EXISTS "Hanya Admin yang bisa tambah pengaturan" ON public.system_settings;
 CREATE POLICY "Hanya Admin yang bisa tambah pengaturan" ON public.system_settings FOR INSERT WITH CHECK (
-        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+        EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
     );
 
 -- Insert default value jika belum ada
@@ -265,21 +265,21 @@ DROP POLICY IF EXISTS "kelas_select" ON public.master_kelas;
 CREATE POLICY "kelas_select" ON public.master_kelas FOR SELECT USING (true);
 DROP POLICY IF EXISTS "kelas_all_admin" ON public.master_kelas;
 CREATE POLICY "kelas_all_admin" ON public.master_kelas FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 DROP POLICY IF EXISTS "guru_select" ON public.guru_staff;
 CREATE POLICY "guru_select" ON public.guru_staff FOR SELECT USING (true);
 DROP POLICY IF EXISTS "guru_all_admin" ON public.guru_staff;
 CREATE POLICY "guru_all_admin" ON public.guru_staff FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 DROP POLICY IF EXISTS "siswa_select" ON public.siswa;
 CREATE POLICY "siswa_select" ON public.siswa FOR SELECT USING (true);
 DROP POLICY IF EXISTS "siswa_all_admin" ON public.siswa;
 CREATE POLICY "siswa_all_admin" ON public.siswa FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -341,7 +341,7 @@ DROP POLICY IF EXISTS "bank_soal_select" ON public.bank_soal;
 CREATE POLICY "bank_soal_select" ON public.bank_soal FOR SELECT USING (true);
 DROP POLICY IF EXISTS "bank_soal_all_admin" ON public.bank_soal;
 CREATE POLICY "bank_soal_all_admin" ON public.bank_soal FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -360,7 +360,7 @@ DROP POLICY IF EXISTS "master_mapel_select" ON public.master_mapel;
 CREATE POLICY "master_mapel_select" ON public.master_mapel FOR SELECT USING (true);
 DROP POLICY IF EXISTS "master_mapel_all_admin" ON public.master_mapel;
 CREATE POLICY "master_mapel_all_admin" ON public.master_mapel FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -380,11 +380,11 @@ DROP POLICY IF EXISTS "kritik_saran_insert" ON public.kritik_saran;
 CREATE POLICY "kritik_saran_insert" ON public.kritik_saran FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "kritik_saran_select_admin" ON public.kritik_saran;
 CREATE POLICY "kritik_saran_select_admin" ON public.kritik_saran FOR SELECT USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 DROP POLICY IF EXISTS "kritik_saran_delete_admin" ON public.kritik_saran;
 CREATE POLICY "kritik_saran_delete_admin" ON public.kritik_saran FOR DELETE USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -408,7 +408,7 @@ ALTER TABLE public.jurnal_mengajar ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "jurnal_mengajar_all_admin" ON public.jurnal_mengajar;
 CREATE POLICY "jurnal_mengajar_all_admin" ON public.jurnal_mengajar FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 DROP POLICY IF EXISTS "jurnal_mengajar_select_all" ON public.jurnal_mengajar;
 CREATE POLICY "jurnal_mengajar_select_all" ON public.jurnal_mengajar FOR SELECT USING (true);
@@ -432,7 +432,7 @@ ALTER TABLE public.jurnal_mengajar_progress ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "jurnal_progress_all_admin" ON public.jurnal_mengajar_progress;
 CREATE POLICY "jurnal_progress_all_admin" ON public.jurnal_mengajar_progress FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 DROP POLICY IF EXISTS "jurnal_progress_select_all" ON public.jurnal_mengajar_progress;
 CREATE POLICY "jurnal_progress_select_all" ON public.jurnal_mengajar_progress FOR SELECT USING (true);
@@ -457,7 +457,7 @@ ALTER TABLE public.kkm_mapel ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "kkm_all_admin" ON public.kkm_mapel;
 CREATE POLICY "kkm_all_admin" ON public.kkm_mapel FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 DROP POLICY IF EXISTS "kkm_select_all" ON public.kkm_mapel;
@@ -484,7 +484,7 @@ ALTER TABLE public.nilai_akademik ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "nilai_all_admin" ON public.nilai_akademik;
 CREATE POLICY "nilai_all_admin" ON public.nilai_akademik FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'guru_mapel', 'wali_kelas'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 DROP POLICY IF EXISTS "nilai_select_all" ON public.nilai_akademik;
@@ -525,7 +525,7 @@ CREATE POLICY "mutasi_siswa_select" ON public.mutasi_siswa FOR SELECT USING (tru
 
 DROP POLICY IF EXISTS "mutasi_siswa_all_admin" ON public.mutasi_siswa;
 CREATE POLICY "mutasi_siswa_all_admin" ON public.mutasi_siswa FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -549,7 +549,7 @@ CREATE POLICY "pengumuman_select" ON public.pengumuman FOR SELECT TO authenticat
 
 DROP POLICY IF EXISTS "pengumuman_all_admin" ON public.pengumuman;
 CREATE POLICY "pengumuman_all_admin" ON public.pengumuman FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -578,7 +578,7 @@ DROP POLICY IF EXISTS "rapat_select" ON public.rapat_pertemuan;
 CREATE POLICY "rapat_select" ON public.rapat_pertemuan FOR SELECT USING (true);
 DROP POLICY IF EXISTS "rapat_all_admin" ON public.rapat_pertemuan;
 CREATE POLICY "rapat_all_admin" ON public.rapat_pertemuan FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- Tabel Perjalanan Dinas
@@ -602,7 +602,7 @@ DROP POLICY IF EXISTS "perjadin_select" ON public.perjalanan_dinas;
 CREATE POLICY "perjadin_select" ON public.perjalanan_dinas FOR SELECT USING (true);
 DROP POLICY IF EXISTS "perjadin_all_admin" ON public.perjalanan_dinas;
 CREATE POLICY "perjadin_all_admin" ON public.perjalanan_dinas FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -630,7 +630,7 @@ DROP POLICY IF EXISTS "inventaris_select" ON public.inventaris_sekolah;
 CREATE POLICY "inventaris_select" ON public.inventaris_sekolah FOR SELECT USING (true);
 DROP POLICY IF EXISTS "inventaris_all_admin" ON public.inventaris_sekolah;
 CREATE POLICY "inventaris_all_admin" ON public.inventaris_sekolah FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -654,7 +654,7 @@ DROP POLICY IF EXISTS "surat_select" ON public.surat_masuk_keluar;
 CREATE POLICY "surat_select" ON public.surat_masuk_keluar FOR SELECT USING (true);
 DROP POLICY IF EXISTS "surat_all_admin" ON public.surat_masuk_keluar;
 CREATE POLICY "surat_all_admin" ON public.surat_masuk_keluar FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -676,7 +676,7 @@ DROP POLICY IF EXISTS "notulensi_select" ON public.notulensi_dokumen;
 CREATE POLICY "notulensi_select" ON public.notulensi_dokumen FOR SELECT USING (true);
 DROP POLICY IF EXISTS "notulensi_all_admin" ON public.notulensi_dokumen;
 CREATE POLICY "notulensi_all_admin" ON public.notulensi_dokumen FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -697,7 +697,7 @@ DROP POLICY IF EXISTS "tata_tertib_select" ON public.tata_tertib;
 CREATE POLICY "tata_tertib_select" ON public.tata_tertib FOR SELECT USING (true);
 DROP POLICY IF EXISTS "tata_tertib_all_admin" ON public.tata_tertib;
 CREATE POLICY "tata_tertib_all_admin" ON public.tata_tertib FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -721,7 +721,7 @@ DROP POLICY IF EXISTS "pelanggaran_select" ON public.pelanggaran_siswa;
 CREATE POLICY "pelanggaran_select" ON public.pelanggaran_siswa FOR SELECT USING (true);
 DROP POLICY IF EXISTS "pelanggaran_all_admin" ON public.pelanggaran_siswa;
 CREATE POLICY "pelanggaran_all_admin" ON public.pelanggaran_siswa FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -749,7 +749,7 @@ DROP POLICY IF EXISTS "osis_select" ON public.kegiatan_osis;
 CREATE POLICY "osis_select" ON public.kegiatan_osis FOR SELECT USING (true);
 DROP POLICY IF EXISTS "osis_all_admin" ON public.kegiatan_osis;
 CREATE POLICY "osis_all_admin" ON public.kegiatan_osis FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -773,7 +773,7 @@ DROP POLICY IF EXISTS "ekskul_select" ON public.ekstrakurikuler;
 CREATE POLICY "ekskul_select" ON public.ekstrakurikuler FOR SELECT USING (true);
 DROP POLICY IF EXISTS "ekskul_all_admin" ON public.ekstrakurikuler;
 CREATE POLICY "ekskul_all_admin" ON public.ekstrakurikuler FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -798,7 +798,7 @@ DROP POLICY IF EXISTS "prestasi_select" ON public.prestasi_siswa;
 CREATE POLICY "prestasi_select" ON public.prestasi_siswa FOR SELECT USING (true);
 DROP POLICY IF EXISTS "prestasi_all_admin" ON public.prestasi_siswa;
 CREATE POLICY "prestasi_all_admin" ON public.prestasi_siswa FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -823,7 +823,7 @@ DROP POLICY IF EXISTS "bk_select" ON public.bimbingan_konseling;
 CREATE POLICY "bk_select" ON public.bimbingan_konseling FOR SELECT USING (true);
 DROP POLICY IF EXISTS "bk_all_admin" ON public.bimbingan_konseling;
 CREATE POLICY "bk_all_admin" ON public.bimbingan_konseling FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -846,7 +846,7 @@ DROP POLICY IF EXISTS "kesehatan_select" ON public.kesehatan_siswa;
 CREATE POLICY "kesehatan_select" ON public.kesehatan_siswa FOR SELECT USING (true);
 DROP POLICY IF EXISTS "kesehatan_all_admin" ON public.kesehatan_siswa;
 CREATE POLICY "kesehatan_all_admin" ON public.kesehatan_siswa FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ============================================================
@@ -900,14 +900,15 @@ DROP POLICY IF EXISTS "asesmen_select" ON public.asesmen;
 CREATE POLICY "asesmen_select" ON public.asesmen FOR SELECT USING (true);
 DROP POLICY IF EXISTS "asesmen_all_admin" ON public.asesmen;
 CREATE POLICY "asesmen_all_admin" ON public.asesmen FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'guru_mapel', 'wali_kelas'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 DROP POLICY IF EXISTS "asesmen_soal_select" ON public.asesmen_soal;
 CREATE POLICY "asesmen_soal_select" ON public.asesmen_soal FOR SELECT USING (true);
+
 DROP POLICY IF EXISTS "asesmen_soal_all_admin" ON public.asesmen_soal;
 CREATE POLICY "asesmen_soal_all_admin" ON public.asesmen_soal FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'guru_mapel', 'wali_kelas'))
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- ========================================================================================
@@ -932,7 +933,7 @@ CREATE POLICY "galeri_select_all" ON public.galeri FOR SELECT USING (true); -- B
 
 DROP POLICY IF EXISTS "galeri_all_admin" ON public.galeri;
 CREATE POLICY "galeri_all_admin" ON public.galeri FOR ALL USING (
-  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah', 'kepala_sekolah', 'staf_tu'))
+  EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
 -- Buat bucket untuk gambar galeri
