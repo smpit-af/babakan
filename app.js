@@ -790,6 +790,12 @@ window.showSection = function (sectionId, linkEl) {
         if (['admin', 'kurikulum'].includes(currentRole)) { loadDashSiswa(); }
     }
     if (sectionId === 'sectionTahunKelas') { loadActiveYear(); loadMasterKelas(); loadMasterMapel(); }
+    if (sectionId === 'sectionProfilGuru') { 
+        (async function() {
+            await loadMasterMapel();
+            loadProfilGuru();
+        })();
+    }
     if (sectionId === 'sectionGuru') { loadMasterMapel(); loadGuruData(); }
     if (sectionId === 'sectionSiswa') { loadMasterKelas(); loadSiswaData(); }
     if (sectionId === 'sectionAlumni') loadAlumniData();
@@ -842,14 +848,33 @@ window.showSection = function (sectionId, linkEl) {
 };
 
 // ============================================================
-// LOGOUT
+// LOGOUT & NAVIGATION PREVENTION
 // ============================================================
-async function handleLogout() {
-    if (!supabaseClient) { window.location.href = 'index.html'; return; }
-    try {
-        await supabaseClient.auth.signOut();
-    } catch (e) { console.warn(e); }
-    window.location.href = 'index.html';
+// Mencegah navigasi kembali (back button) ke halaman sebelumnya
+window.history.pushState(null, null, window.location.href);
+window.onpopstate = function () {
+    window.history.pushState(null, null, window.location.href);
+};
+
+function handleLogout() {
+    if (typeof showCustomConfirm === 'function') {
+        showCustomConfirm('Konfirmasi Keluar', 'Apakah Anda yakin ingin keluar dari sistem?', 'Ya, Keluar', async function() {
+            if (!supabaseClient) { window.location.replace('index.html'); return; }
+            try {
+                await supabaseClient.auth.signOut();
+            } catch (e) { console.warn(e); }
+            window.location.replace('index.html');
+        });
+    } else {
+        if (confirm('Apakah Anda yakin ingin keluar dari sistem?')) {
+            if (!supabaseClient) { window.location.replace('index.html'); return; }
+            supabaseClient.auth.signOut().then(() => {
+                window.location.replace('index.html');
+            }).catch(() => {
+                window.location.replace('index.html');
+            });
+        }
+    }
 }
 
 // ============================================================
@@ -2099,6 +2124,166 @@ function populateMapelDropdown(selectId, selectedValue) {
 // ============================================================
 var guruList = [];
 
+// ============================================================
+// PROFIL GURU — Self-service data pribadi
+// ============================================================
+
+function previewProfilGuruFoto(input) {
+    var preview = document.getElementById('profilGuruFotoPreview');
+    if (!preview) return;
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+async function loadProfilGuru() {
+    if (!currentUser) return;
+    // Populate mapel dropdown
+    populateMapelDropdown('profilGuruMapel', '');
+
+    var statusEl = document.getElementById('profilGuruStatus');
+
+    try {
+        // Check if user already has data linked
+        var { data, error } = await supabaseClient
+            .from('guru_staff')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+        if (!data && currentUser.email) {
+            // Hubungkan dengan data Admin jika ada email yang cocok
+            var { data: emailData } = await supabaseClient
+                .from('guru_staff')
+                .select('*')
+                .eq('email', currentUser.email)
+                .maybeSingle();
+            
+            if (emailData) {
+                // Link account
+                await supabaseClient.from('guru_staff').update({ user_id: currentUser.id }).eq('id', emailData.id);
+                data = emailData;
+            }
+        }
+
+        if (data) {
+            // Pre-fill form
+            document.getElementById('profilGuruNama').value = data.nama_lengkap || '';
+            document.getElementById('profilGuruJK').value = data.jenis_kelamin || '';
+            document.getElementById('profilGuruJabatan').value = data.jabatan || '';
+            document.getElementById('profilGuruJabatanTambahan').value = data.jabatan_tambahan || '';
+            document.getElementById('profilGuruNIK').value = data.nik || '';
+            document.getElementById('profilGuruHP').value = data.nomor_hp || '';
+            document.getElementById('profilGuruEmail').value = data.email || '';
+            populateMapelDropdown('profilGuruMapel', data.mata_pelajaran || '');
+            document.getElementById('profilGuruSertifikasi').value = data.sertifikasi || '';
+            document.getElementById('profilGuruAlamat').value = data.alamat || '';
+
+            // Show photo if exists
+            if (data.foto_url) {
+                var preview = document.getElementById('profilGuruFotoPreview');
+                if (preview) preview.innerHTML = '<img src="' + data.foto_url + '" style="width:100%;height:100%;object-fit:cover;">';
+            }
+
+            if (statusEl) statusEl.innerHTML = '<div style="padding:10px 14px;background:rgba(16,185,129,0.1);color:#10b981;border-radius:8px;font-size:0.88rem;"><strong>✓ Data sudah terisi.</strong> Anda dapat memperbarui kapan saja.</div>';
+        } else {
+            // Pre-fill email from auth
+            var emailEl = document.getElementById('profilGuruEmail');
+            if (emailEl && currentUser.email) emailEl.value = currentUser.email;
+            // Pre-fill name from profile
+            var nameEl = document.getElementById('profilGuruNama');
+            var userName = document.getElementById('userName');
+            if (nameEl && userName && userName.textContent !== 'Loading...') nameEl.value = userName.textContent;
+
+            if (statusEl) statusEl.innerHTML = '<div style="padding:10px 14px;background:rgba(245,158,11,0.1);color:#f59e0b;border-radius:8px;font-size:0.88rem;"><strong>⚠ Data belum diisi.</strong> Silakan lengkapi formulir di bawah.</div>';
+        }
+    } catch(e) {
+        if (statusEl) statusEl.innerHTML = '<div style="padding:10px 14px;background:rgba(239,68,68,0.1);color:#ef4444;border-radius:8px;font-size:0.88rem;">Gagal memuat data: ' + e.message + '</div>';
+    }
+}
+
+async function saveProfilGuru() {
+    if (!currentUser) { showToast('Silakan login terlebih dahulu!', 'warning'); return; }
+
+    var nama = document.getElementById('profilGuruNama').value.trim();
+    if (!nama) { showToast('Nama Lengkap wajib diisi!', 'warning'); return; }
+
+    showGlobalLoader('Menyimpan data pribadi...');
+
+    try {
+        var obj = {
+            user_id: currentUser.id,
+            nama_lengkap: nama,
+            jenis_kelamin: document.getElementById('profilGuruJK').value || null,
+            jabatan: document.getElementById('profilGuruJabatan').value.trim() || null,
+            jabatan_tambahan: document.getElementById('profilGuruJabatanTambahan').value.trim() || null,
+            nik: document.getElementById('profilGuruNIK').value.trim() || null,
+            nomor_hp: document.getElementById('profilGuruHP').value.trim() || null,
+            email: document.getElementById('profilGuruEmail').value.trim() || null,
+            mata_pelajaran: document.getElementById('profilGuruMapel').value || null,
+            sertifikasi: document.getElementById('profilGuruSertifikasi').value || null,
+            alamat: document.getElementById('profilGuruAlamat').value.trim() || null,
+            status: 'Aktif'
+        };
+
+        // Handle photo upload
+        var fileInput = document.getElementById('profilGuruFoto');
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            var file = fileInput.files[0];
+            if (file.size > 2 * 1024 * 1024) {
+                hideGlobalLoader();
+                showToast('Ukuran foto melebihi 2MB!', 'warning');
+                return;
+            }
+            var fileName = 'guru-foto/' + currentUser.id + '_' + Date.now() + '.' + file.name.split('.').pop();
+            var { error: uploadError } = await supabaseClient.storage
+                .from('guru-foto')
+                .upload(fileName, file, { cacheControl: '3600', upsert: true });
+            if (uploadError) throw uploadError;
+            var publicUrlResult = supabaseClient.storage.from('guru-foto').getPublicUrl(fileName);
+            obj.foto_url = publicUrlResult.data.publicUrl;
+        }
+
+        // Check if existing record
+        var { data: existing } = await supabaseClient
+            .from('guru_staff')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+        if (!existing && obj.email) {
+            var { data: existingByEmail } = await supabaseClient
+                .from('guru_staff')
+                .select('id')
+                .eq('email', obj.email)
+                .maybeSingle();
+            if (existingByEmail) existing = existingByEmail;
+        }
+
+        if (existing) {
+            var { error } = await supabaseClient.from('guru_staff').update(obj).eq('id', existing.id);
+            if (error) throw error;
+        } else {
+            var { error } = await supabaseClient.from('guru_staff').insert([obj]);
+            if (error) throw error;
+        }
+
+        showToast('Data pribadi berhasil disimpan!', 'success');
+        loadProfilGuru();
+    } catch(e) {
+        showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+// ============================================================
+// DATA INDUK GURU & STAFF
+// ============================================================
 async function loadGuruData() {
     try {
         const { data, error } = await supabaseClient.from('guru_staff').select('*').order('nama_lengkap');
@@ -2112,8 +2297,9 @@ async function loadGuruData() {
         }
         tbody.innerHTML = guruList.map(function(g, i) {
             var statusBadge = g.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Aktif</span>' : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">Nonaktif</span>';
-            var sertifikasiBadge = g.status_sertifikasi === 'SERDIK' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SERDIK</span>' : (g.status_sertifikasi === 'Belum SERDIK' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Belum SERDIK</span>' : '-');
-            return '<tr><td>' + (i+1) + '</td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.jabatan_tambahan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (g.mata_pelajaran||'-') + '</td><td>' + sertifikasiBadge + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+            var sertifikasiBadge = g.sertifikasi === 'SERDIK' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SERDIK</span>' : (g.sertifikasi === 'Belum SERDIK' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Belum SERDIK</span>' : '-');
+            var fotoHtml = g.foto_url ? '<img src="' + g.foto_url + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:bold;">' + (g.nama_lengkap ? g.nama_lengkap.charAt(0).toUpperCase() : '?') + '</div>';
+            return '<tr><td>' + (i+1) + '</td><td><div style="display:flex;justify-content:center;">' + fotoHtml + '</div></td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.jabatan_tambahan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (g.mata_pelajaran||'-') + '</td><td>' + sertifikasiBadge + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editGuru(\'' + g.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteGuru(\'' + g.id + '\',\'' + (g.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
@@ -2151,7 +2337,7 @@ function editGuru(id) {
     document.getElementById('formGuruHP').value = g.nomor_hp || '';
     document.getElementById('formGuruEmail').value = g.email || '';
     populateMapelDropdown('formGuruMapel', g.mata_pelajaran || '');
-    document.getElementById('formGuruSertifikasi').value = g.status_sertifikasi || '';
+    document.getElementById('formGuruSertifikasi').value = g.sertifikasi || '';
     document.getElementById('formGuruAlamat').value = g.alamat || '';
     document.getElementById('formGuruStatus').value = g.status || 'Aktif';
     document.getElementById('guruModalTitle').textContent = 'Edit Guru';
@@ -2169,7 +2355,7 @@ async function saveGuru() {
         nomor_hp: document.getElementById('formGuruHP').value.trim() || null,
         email: document.getElementById('formGuruEmail').value.trim() || null,
         mata_pelajaran: document.getElementById('formGuruMapel').value.trim() || null,
-        status_sertifikasi: document.getElementById('formGuruSertifikasi').value || null,
+        sertifikasi: document.getElementById('formGuruSertifikasi').value || null,
         alamat: document.getElementById('formGuruAlamat').value.trim() || null,
         status: document.getElementById('formGuruStatus').value
     };
@@ -6124,6 +6310,7 @@ tableObserver.observe(document.body, { childList: true, subtree: true });
 // GALERI & MOMEN SEKOLAH
 // =========================================================
 
+
 // Global cache for galeri data
 var galeriDataAll = [];
 
@@ -6132,11 +6319,20 @@ function openGaleriLightbox(imgUrl, captionEncoded) {
     var lb = document.getElementById('galeriLightbox');
     var img = document.getElementById('galeriLightboxImg');
     var cap = document.getElementById('galeriLightboxCaption');
-    if (!lb || !img) return;
+    if (!lb || !img) { console.error('Lightbox elements not found'); return; }
     
     img.src = imgUrl;
-    cap.innerText = captionEncoded ? decodeURIComponent(captionEncoded) : '';
-    lb.classList.add('active');
+    if (cap) cap.innerText = captionEncoded ? decodeURIComponent(captionEncoded) : '';
+    lb.style.display = 'flex';
+}
+
+function closeGaleriLightbox() {
+    var lb = document.getElementById('galeriLightbox');
+    if (lb) {
+        lb.style.display = 'none';
+        var img = document.getElementById('galeriLightboxImg');
+        if (img) img.src = '';
+    }
 }
 
 async function loadGaleriBeranda() {
@@ -6241,47 +6437,72 @@ function renderGaleri() {
     }
     
     var html = '';
-    filtered.forEach(function(g) {
+    filtered.forEach(function(g, idx) {
         var dateStr = '-';
         try { if(g.tanggal) { var d = new Date(g.tanggal); dateStr = d.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'}); } }catch(e){}
         
-        var captions = g.keterangan || g.album_nama || '';
-        
-        html += `
-        <div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
-            <div style="height:180px; position:relative; background:#eee; cursor:pointer;" onclick="openGaleriLightbox('${g.gambar_url}', '${encodeURIComponent(captions)}')">
-                <img src="${g.gambar_url}" style="width:100%; height:100%; object-fit:cover;">
-                <div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">
-                    ${dateStr}
-                </div>
-            </div>
-            <div style="padding:1rem; flex:1; display:flex; flex-direction:column;">
-                <h4 style="margin:0 0 0.5rem 0; font-size:1rem; color:var(--text-dark);">${g.album_nama}</h4>
-                <p style="margin:0; font-size:0.85rem; color:var(--text-light); flex:1;">${g.keterangan || '-'}</p>
-                <div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:0.5rem;">
-                    <div style="display:flex; gap:0.5rem;">
-                      <button class="btn btn-outline" style="padding:6px; height:auto; color:var(--text-light)" onclick="openGaleriLightbox('${g.gambar_url}', '${encodeURIComponent(captions)}')" title="Lihat">
-                          <i data-lucide="maximize-2" style="width:16px;height:16px;margin:0;"></i>
-                      </button>
-                      <button class="btn btn-outline" style="padding:6px; height:auto; color:var(--primary)" onclick="downloadGaleriImage('${g.gambar_url}', 'galeri_${g.id}.jpg')" title="Download">
-                          <i data-lucide="download" style="width:16px;height:16px;margin:0;"></i>
-                      </button>
-                    </div>
-                    <div style="display:flex; gap:0.5rem;">
-                      <button class="btn btn-outline" style="padding:6px; height:auto; color:#10b981;" onclick="archiveGaleriToDrive('${g.id}', '${g.gambar_url}', '${encodeURIComponent(g.album_nama)}')" title="Arsipkan ke Google Drive (Pindah)">
-                          <i data-lucide="hard-drive" style="width:16px;height:16px;margin:0;"></i>
-                      </button>
-                      <button class="btn btn-danger" style="padding:6px; height:auto;" onclick="deleteGaleri('${g.id}', '${g.gambar_url}')" title="Hapus Permanen">
-                          <i data-lucide="trash-2" style="width:16px;height:16px;margin:0;"></i>
-                      </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
+        html += '<div class="card" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">' +
+            '<div style="height:180px; position:relative; background:#eee; cursor:pointer;" data-action="lightbox" data-idx="' + idx + '">' +
+                '<img src="' + g.gambar_url + '" style="width:100%; height:100%; object-fit:cover;">' +
+                '<div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:4px; font-size:0.75rem;">' + dateStr + '</div>' +
+            '</div>' +
+            '<div style="padding:1rem; flex:1; display:flex; flex-direction:column;">' +
+                '<h4 style="margin:0 0 0.5rem 0; font-size:1rem; color:var(--text-dark);">' + g.album_nama + '</h4>' +
+                '<p style="margin:0; font-size:0.85rem; color:var(--text-light); flex:1;">' + (g.keterangan || '-') + '</p>' +
+                '<div style="display:flex; justify-content:space-between; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border-color); flex-wrap:wrap; gap:0.5rem;">' +
+                    '<div style="display:flex; gap:0.5rem;">' +
+                        '<button class="btn btn-outline" style="padding:6px; height:auto; color:var(--text-light)" data-action="lightbox" data-idx="' + idx + '" title="Lihat">' +
+                            '<i data-lucide="maximize-2" style="width:16px;height:16px;margin:0;"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-outline" style="padding:6px; height:auto; color:var(--primary)" data-action="download" data-idx="' + idx + '" title="Download">' +
+                            '<i data-lucide="download" style="width:16px;height:16px;margin:0;"></i>' +
+                        '</button>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:0.5rem;">' +
+                        '<button class="btn btn-outline" style="padding:6px; height:auto; color:#10b981;" data-action="archive" data-idx="' + idx + '" title="Arsipkan ke Google Drive (Pindah)">' +
+                            '<i data-lucide="hard-drive" style="width:16px;height:16px;margin:0;"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-danger" style="padding:6px; height:auto;" data-action="delete" data-idx="' + idx + '" title="Hapus Permanen">' +
+                            '<i data-lucide="trash-2" style="width:16px;height:16px;margin:0;"></i>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
     });
     
     gridArea.innerHTML = html;
     if (window.lucide) lucide.createIcons();
+
+    // Event delegation for galeri actions
+    gridArea.onclick = function(e) {
+        var target = e.target.closest('[data-action]');
+        if (!target) return;
+        var action = target.getAttribute('data-action');
+        var idx = parseInt(target.getAttribute('data-idx'));
+        
+        // Use filtered list (same as what was rendered)
+        var currentFiltered = galeriDataAll;
+        var fEl = document.getElementById('galeriFilterAlbum');
+        var fVal = fEl ? fEl.value : 'Semua';
+        if (fVal !== 'Semua') {
+            currentFiltered = galeriDataAll.filter(function(g) { return g.album_nama === fVal; });
+        }
+        var g = currentFiltered[idx];
+        if (!g) return;
+
+        var captions = g.keterangan || g.album_nama || '';
+
+        if (action === 'lightbox') {
+            openGaleriLightbox(g.gambar_url, encodeURIComponent(captions));
+        } else if (action === 'download') {
+            downloadGaleriImage(g.gambar_url, 'galeri_' + g.id + '.jpg');
+        } else if (action === 'archive') {
+            archiveGaleriToDrive(g.id, g.gambar_url, encodeURIComponent(g.album_nama));
+        } else if (action === 'delete') {
+            deleteGaleri(g.id, g.gambar_url);
+        }
+    };
 }
 
 async function handleUploadGaleri() {
