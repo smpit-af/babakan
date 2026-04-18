@@ -1469,6 +1469,7 @@ button {
   padding: .7rem 1rem;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .dash-table tbody tr:hover {
@@ -4020,7 +4021,7 @@ body.dark-mode .toast-info {
     margin: 2rem auto !important;
   }
   
-  .modal-overlay {
+  .modal-overlay:not(#galeriLightbox) {
     overflow: auto !important;
     -webkit-overflow-scrolling: touch !important;
     align-items: flex-start !important; /* Allow top margin to work */
