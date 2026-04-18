@@ -4327,10 +4327,10 @@ async function loadPenilaianTable() {
         penilaianState.currentKkm = kkm;
         
         // 2. Dapatkan Daftar Siswa di Kelas Ini
-        const { data: siswaData, error: errSiswa } = await supabaseClient.from('siswa').select('id, nama_lengkap').eq('kelas_id', filterKelas).order('nama_lengkap');
+        const { data: siswaData, error: errSiswa } = await supabaseClient.from('siswa').select('id, nama_lengkap, status').eq('kelas_id', filterKelas).not('status', 'in', '("Pindah","Lulus")').order('nama_lengkap');
         if (errSiswa) throw errSiswa;
         if (!siswaData || siswaData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa di kelas ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa aktif di kelas ini.</td></tr>';
             return;
         }
         
@@ -4358,9 +4358,12 @@ async function loadPenilaianTable() {
             var nsaj = nilaiDict[s.id] && nilaiDict[s.id].nilai_saj !== null ? nilaiDict[s.id].nilai_saj : '';
             var nsat = nilaiDict[s.id] && nilaiDict[s.id].nilai_sat !== null ? nilaiDict[s.id].nilai_sat : '';
             
-            return '<tr class="tr-penilaian" data-siswa="' + s.id + '">' +
+            var statusBadge = s.status === 'Tidak Aktif' ? '<span style="color:var(--danger);font-size:0.7rem;margin-left:6px;background:rgba(239,68,68,.1);padding:2px 4px;border-radius:4px;">Tidak Aktif</span>' : '';
+            var trStyle = s.status === 'Tidak Aktif' ? 'background-color: rgba(239,68,68,0.06);' : '';
+            
+            return '<tr class="tr-penilaian" data-siswa="' + s.id + '" style="' + trStyle + '">' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
-                '<td style="font-weight:600;">' + s.nama_lengkap + '</td>' +
+                '<td style="font-weight:600;">' + s.nama_lengkap + statusBadge + '</td>' +
                 '<td style="color:var(--text-light);font-size:0.85rem;">' + kelasNama + '</td>' +
                 '<td style="text-align:center;font-weight:bold;">' + kkmBadge + '</td>' +
                 '<td style="text-align:center;"><input type="number" class="form-input val-sts" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsts + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
