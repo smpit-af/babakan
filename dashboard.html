@@ -78,7 +78,7 @@
         </a>
       </div>
 
-      <div class="sidebar-nav-group admin-kurikulum-only">
+      <div class="sidebar-nav-group role-konten">
         <span class="sidebar-nav-label">Kelola Konten</span>
         <a href="#" class="sidebar-link" onclick="showSection('sectionPengumuman',this)">
           <i data-lucide="megaphone" style="width:18px;height:18px"></i>
@@ -362,14 +362,15 @@
           <table class="dash-table" style="font-size:.9rem;">
             <thead><tr>
               <th style="width:40px">No</th>
+              <th>NISN</th>
               <th>Nama</th>
               <th>JK</th>
               <th>Kelas</th>
-              <th>NISN</th>
+              <th>Mondok</th>
               <th>Status</th>
             </tr></thead>
             <tbody id="dashSiswaTableBody">
-              <tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text-light)">Memuat...</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Memuat...</td></tr>
             </tbody>
           </table>
         </div>
@@ -748,7 +749,7 @@
             <div id="profilGuruStatus" style="margin-bottom:2rem; text-align:center;"></div>
 
             <!-- Grid Form Data Pribadi -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+            <div class="grid-responsive" style="gap:20px;">
               <div class="form-group">
                 <label class="form-label" style="font-weight:600; color:#475569;">Nama Lengkap beserta Gelar *</label>
                 <div style="position:relative;">
@@ -847,9 +848,35 @@
         <h2>Data Induk Siswa</h2>
         <button class="btn btn-primary" onclick="openSiswaModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Siswa</button>
       </div>
+      <!-- Filter Toolbar -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
+            <label class="form-label">Pencarian</label>
+            <input type="text" id="filterSiswaSearch" class="form-input" placeholder="Cari nama atau NISN..." oninput="filterSiswaTable()">
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:150px;">
+            <label class="form-label">Kelas</label>
+            <select id="filterSiswaKelas" class="form-input" onchange="filterSiswaTable()">
+              <option value="">Semua Kelas</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;min-width:150px;">
+            <label class="form-label">Status</label>
+            <select id="filterSiswaStatus" class="form-input" onchange="filterSiswaTable()">
+              <option value="">Semua Status</option>
+              <option value="Aktif">Aktif</option>
+              <option value="Tidak Aktif">Tidak Aktif</option>
+              <option value="Lulus">Lulus</option>
+              <option value="Pindah">Pindah</option>
+              <option value="Pindahan">Pindahan</option>
+            </select>
+          </div>
+        </div>
+      </div>
       <div class="card"><div style="overflow-x:auto;">
-        <table class="dash-table"><thead><tr><th>No</th><th>Asal Sekolah</th><th>Nama</th><th>JK</th><th>Kelas</th><th>NISN</th><th>Wali Murid</th><th>JK WM</th><th>NIK Wali</th><th>No HP</th><th>Email</th><th>Alamat</th><th>Status</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
-          <tbody id="siswaTableBody"><tr><td colspan="14" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
+        <table class="dash-table"><thead><tr><th>No</th><th>Asal Sekolah</th><th>NISN</th><th>Nama</th><th>JK</th><th>Kelas</th><th>Mondok</th><th>Nama Ayah</th><th>NIK Ayah</th><th>Nama Ibu</th><th>NIK Ibu</th><th>No HP</th><th>Email</th><th>Alamat</th><th>Status</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
+          <tbody id="siswaTableBody"><tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
         </table>
       </div></div>
     </section>
@@ -858,8 +885,8 @@
     <section id="sectionAlumni" class="dash-section">
       <div class="dash-header"><h2>Daftar Alumni</h2></div>
       <div class="card"><div style="overflow-x:auto;">
-        <table class="dash-table"><thead><tr><th>No</th><th>Asal Sekolah</th><th>Nama</th><th>JK</th><th>NISN</th><th>Wali Murid</th><th>No HP</th><th>Alamat</th><th>Sekolah Tujuan</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
-          <tbody id="alumniTableBody"><tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
+        <table class="dash-table"><thead><tr><th>No</th><th>Asal Sekolah</th><th>Nama</th><th>JK</th><th>NISN</th><th>Nama Ayah</th><th>Nama Ibu</th><th>No HP</th><th>Alamat</th><th>Sekolah Tujuan</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
+          <tbody id="alumniTableBody"><tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
         </table>
       </div></div>
     </section>
@@ -1007,14 +1034,17 @@
         </div>
       </div>
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <div class="flex-responsive-header" style="margin-bottom:1rem;">
           <h3>Daftar Nilai Siswa</h3>
-          <button class="btn btn-success" id="btnSimpanNilaiSemua" onclick="saveSemuaNilai()" style="display:none;"><i data-lucide="save" style="width:16px;height:16px;"></i> Simpan Semua Nilai</button>
+          <div class="modal-footer-responsive">
+            <button class="btn btn-outline" id="btnResetNilaiSemua" onclick="resetSemuaNilai()" style="display:none;color:var(--danger);border-color:var(--danger);"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Reset Semua Nilai</button>
+            <button class="btn btn-success" id="btnSimpanNilaiSemua" onclick="saveSemuaNilai()" style="display:none;"><i data-lucide="save" style="width:16px;height:16px;"></i> Simpan Semua Nilai</button>
+          </div>
         </div>
         <div style="overflow-x:auto;">
-          <table class="dash-table" id="tableInputPenilaian" style="display:none;">
+          <table class="dash-table" id="tableInputPenilaian">
             <thead><tr><th style="width:40px;">No</th><th>Nama Siswa</th><th>Kelas</th><th style="width:90px;text-align:center;">KKM</th><th style="width:90px;text-align:center;">Nilai STS</th><th style="width:90px;text-align:center;">Nilai SAS</th><th style="width:90px;text-align:center;">Nilai SAJ</th><th style="width:90px;text-align:center;">Nilai SAT</th><th style="width:80px;text-align:center;">Rata-Rata</th><th style="width:100px;text-align:center;">Keterangan</th><th style="width:70px;text-align:center;">Riwayat</th></tr></thead>
-            <tbody id="penilaianTableBody"><tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Silakan pilih Kelas terlebih dahulu lalu klik Tampilkan Siswa.</td></tr></tbody>
+            <tbody id="penilaianTableBody"><tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Silakan pilih Kelas terlebih dahulu lalu klik Tampilkan Siswa.</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1146,20 +1176,28 @@
             <thead>
               <tr>
                 <th style="width:40px">No</th>
-                <th>Nama Siswa</th>
+                <th>Tipe</th>
+                <th>Asal Sekolah</th>
+                <th>Sekolah Tujuan</th>
+                <th>NISN</th>
+                <th>Nama</th>
                 <th>JK</th>
                 <th>Kelas</th>
-                <th>NISN</th>
-                <th style="width:90px">Tipe</th>
-                <th>Sekolah Asal</th>
-                <th>Sekolah Tujuan</th>
+                <th>Mondok</th>
+                <th>Nama Ayah</th>
+                <th>NIK Ayah</th>
+                <th>Nama Ibu</th>
+                <th>NIK Ibu</th>
+                <th>No HP</th>
+                <th>Email</th>
+                <th>Alamat</th>
                 <th style="width:110px">Tgl Mutasi</th>
                 <th>Keterangan</th>
                 <th style="width:80px;text-align:center;">Aksi</th>
               </tr>
             </thead>
             <tbody id="mutasiTableBody">
-              <tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>
+              <tr><td colspan="19" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1926,15 +1964,15 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formEkskulId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Ekstrakurikuler *</label><input type="text" id="formEkskulNama" class="form-input" placeholder="Contoh: Pramuka" /></div>
           <div class="form-group"><label class="form-label">Pembina</label><input type="text" id="formEkskulPembina" class="form-input" placeholder="Nama Pembina" /></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Jadwal Hari</label><input type="text" id="formEkskulHari" class="form-input" placeholder="Contoh: Jumat" /></div>
           <div class="form-group"><label class="form-label">Waktu</label><input type="text" id="formEkskulWaktu" class="form-input" placeholder="Contoh: 15:00 - 17:00" /></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Tempat</label><input type="text" id="formEkskulTempat" class="form-input" placeholder="Contoh: Lapangan Utama" /></div>
           <div class="form-group"><label class="form-label">Status</label>
             <select id="formEkskulStatus" class="form-input">
@@ -1960,7 +1998,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formPrestasiId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Pilih Siswa *</label><select id="formPrestasiSiswa" class="form-input"><option value="">Pilih Siswa...</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formPrestasiTanggal" class="form-input" /></div>
         </div>
@@ -2002,11 +2040,11 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formBkId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Pilih Siswa *</label><select id="formBkSiswa" class="form-input"><option value="">Pilih Siswa...</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formBkTanggal" class="form-input" /></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Jenis Layanan</label>
             <select id="formBkLayanan" class="form-input">
               <option value="Konseling Individu">Konseling Individu</option>
@@ -2027,7 +2065,7 @@
         </div>
         <div class="form-group"><label class="form-label">Permasalahan / Topik *</label><textarea id="formBkPermasalahan" class="form-input" rows="2" placeholder="Rincian permasalahan..."></textarea></div>
         <div class="form-group"><label class="form-label">Penyelesaian / Tindak Lanjut</label><textarea id="formBkPenyelesaian" class="form-input" rows="2" placeholder="Solusi atau tindak lanjut..."></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Konselor (Guru BK)</label><input type="text" id="formBkKonselor" class="form-input" placeholder="Nama Guru BK" /></div>
           <div class="form-group"><label class="form-label">Catatan Rahasia</label><input type="text" id="formBkCatatan" class="form-input" placeholder="Hanya dilihat konselor" /></div>
         </div>
@@ -2047,13 +2085,13 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formKesehatanId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Pilih Siswa *</label><select id="formKesehatanSiswa" class="form-input"><option value="">Pilih Siswa...</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formKesehatanTanggal" class="form-input" /></div>
         </div>
         <div class="form-group"><label class="form-label">Keluhan / Penyakit *</label><textarea id="formKesehatanKeluhan" class="form-input" rows="2" placeholder="Rincian keluhan..."></textarea></div>
         <div class="form-group"><label class="form-label">Tindakan / Obat</label><textarea id="formKesehatanTindakan" class="form-input" rows="2" placeholder="Tindakan yang diberikan..."></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Petugas UKS</label><input type="text" id="formKesehatanPetugas" class="form-input" placeholder="Nama petugas medis" /></div>
           <div class="form-group"><label class="form-label">Keterangan Lain</label><input type="text" id="formKesehatanKeterangan" class="form-input" placeholder="Catatan opsional" /></div>
         </div>
@@ -2081,7 +2119,7 @@
           </select>
         </div>
         <div class="form-group"><label class="form-label">Deskripsi Pelanggaran *</label><textarea id="formTataTertibDeskripsi" class="form-input" rows="2" placeholder="Contoh: Terlambat masuk sekolah"></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Poin *</label><input type="number" id="formTataTertibPoin" class="form-input" value="5" min="1" max="100" /></div>
           <div class="form-group"><label class="form-label">Sanksi</label><input type="text" id="formTataTertibSanksi" class="form-input" placeholder="Teguran lisan, dll" /></div>
         </div>
@@ -2101,13 +2139,13 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formPelanggaranId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Pilih Siswa *</label><select id="formPelanggaranSiswa" class="form-input"><option value="">Pilih Siswa...</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formPelanggaranTanggal" class="form-input" /></div>
         </div>
         <div class="form-group"><label class="form-label">Jenis Pelanggaran *</label><select id="formPelanggaranTataTertib" class="form-input"><option value="">Pilih Aturan Tata Tertib...</option></select></div>
         <div class="form-group"><label class="form-label">Keterangan Tambahan</label><textarea id="formPelanggaranKeterangan" class="form-input" rows="2" placeholder="Detail kejadian..."></textarea></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Tindak Lanjut</label><input type="text" id="formPelanggaranTindakLanjut" class="form-input" placeholder="Pemanggilan ortu, dll" /></div>
           <div class="form-group"><label class="form-label">Status</label>
             <select id="formPelanggaranStatus" class="form-input">
@@ -2135,7 +2173,7 @@
       <div class="modal-body">
         <input type="hidden" id="formOsisId" />
         <div class="form-group"><label class="form-label">Nama Kegiatan *</label><input type="text" id="formOsisNama" class="form-input" placeholder="Contoh: Peringatan Maulid Nabi" /></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Jenis Kegiatan</label>
             <select id="formOsisJenis" class="form-input">
               <option value="Kegiatan Rutin">Kegiatan Rutin</option>
@@ -2180,7 +2218,7 @@
       <div class="modal-body">
         <input type="hidden" id="formRapatId" />
         <div class="form-group"><label class="form-label">Judul Rapat *</label><input type="text" id="formRapatJudul" class="form-input" placeholder="Contoh: Rapat Koordinasi Semester" /></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Tempat</label><input type="text" id="formRapatTempat" class="form-input" placeholder="Lokasi rapat" /></div>
           <div class="form-group"><label class="form-label">Penyelenggara</label><input type="text" id="formRapatPenyelenggara" class="form-input" placeholder="Misal: Dinas Pendidikan" /></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formRapatTanggal" class="form-input" /></div>
@@ -2213,7 +2251,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formPerjadinId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Tujuan *</label><input type="text" id="formPerjadinTujuan" class="form-input" placeholder="Kota/Kabupaten tujuan" /></div>
           <div class="form-group"><label class="form-label">Instansi Tujuan</label><input type="text" id="formPerjadinInstansi" class="form-input" placeholder="Misal: Dinas Pendidikan Kab. Cirebon" /></div>
           <div class="form-group"><label class="form-label">Tanggal Berangkat</label><input type="date" id="formPerjadinBerangkat" class="form-input" /></div>
@@ -2247,7 +2285,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formInvId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Barang *</label><input type="text" id="formInvNama" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Kode Barang</label><input type="text" id="formInvKode" class="form-input" placeholder="Opsional" /></div>
           <div class="form-group"><label class="form-label">Kategori</label><select id="formInvKategori" class="form-input"><option value="Elektronik">Elektronik</option><option value="Mebel">Mebel</option><option value="Alat Tulis">Alat Tulis</option><option value="Olahraga">Olahraga</option><option value="Laboratorium">Laboratorium</option><option value="Bangunan">Bangunan</option><option value="Lainnya" selected>Lainnya</option></select></div>
@@ -2276,7 +2314,7 @@
       <div class="modal-body">
         <input type="hidden" id="formSuratId" />
         <input type="hidden" id="formSuratJenis" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nomor Surat</label><input type="text" id="formSuratNomor" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Tanggal Surat</label><input type="date" id="formSuratTanggal" class="form-input" /></div>
           <div class="form-group" id="grpSuratPengirim"><label class="form-label">Pengirim</label><input type="text" id="formSuratPengirim" class="form-input" /></div>
@@ -2301,7 +2339,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="formNotulId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Judul *</label><input type="text" id="formNotulJudul" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Jenis Dokumen</label><select id="formNotulJenis" class="form-input"><option value="Notulensi">Notulensi</option><option value="SK">SK</option><option value="Surat Keputusan">Surat Keputusan</option><option value="Laporan">Laporan</option><option value="Dokumen Lain">Dokumen Lain</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal</label><input type="date" id="formNotulTanggal" class="form-input" /></div>
@@ -2563,7 +2601,7 @@
       <div class="modal-header"><h3 id="guruModalTitle">Tambah Guru</h3></div>
       <div class="modal-body">
         <input type="hidden" id="formGuruId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formGuruNama" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formGuruJK" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
           <div class="form-group"><label class="form-label">Jabatan</label><input type="text" id="formGuruJabatan" class="form-input" /></div>
@@ -2590,17 +2628,20 @@
       <div class="modal-header"><h3 id="siswaModalTitle">Tambah Siswa</h3></div>
       <div class="modal-body">
         <input type="hidden" id="formSiswaId" />
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formSiswaNama" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formSiswaJK" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
           <div class="form-group"><label class="form-label">Kelas</label><select id="formSiswaKelas" class="form-input"><option value="">Pilih Kelas</option></select></div>
           <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formSiswaNISN" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Asal Sekolah</label><input type="text" id="formSiswaAsal" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Wali Murid</label><input type="text" id="formSiswaWali" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">JK Wali Murid</label><select id="formSiswaJKWM" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
-          <div class="form-group"><label class="form-label">NIK Wali</label><input type="text" id="formSiswaNIKWali" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formSiswaMondok" class="form-input"><option value="Tidak">Tidak</option><option value="Iya">Iya</option></select></div>
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formSiswaAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formSiswaNIKAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formSiswaIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formSiswaNIKIbu" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formSiswaHP" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Email</label><input type="email" id="formSiswaEmail" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Status</label><select id="formSiswaStatus" class="form-input"><option value="Aktif">Aktif</option><option value="Tidak Aktif">Tidak Aktif</option></select></div>
         </div>
         <div class="form-group"><label class="form-label">Alamat</label><textarea id="formSiswaAlamat" class="form-input" rows="2"></textarea></div>
       </div>
@@ -2629,11 +2670,11 @@
       <div class="modal-body">
         <input type="hidden" id="formJurnalId" />
         <div class="form-group"><label class="form-label">Tahun Pelajaran</label><input type="text" id="formJurnalTahun" class="form-input" readonly style="background:#f1f5f9;cursor:not-allowed;" /></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Mata Pelajaran *</label><select id="formJurnalMapel" class="form-input"><option value="">Pilih Mapel</option></select></div>
           <div class="form-group"><label class="form-label">Kelas *</label><select id="formJurnalKelas" class="form-input"><option value="">Pilih Kelas</option></select></div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Semester *</label><select id="formJurnalSemester" class="form-input"><option value="Ganjil">Ganjil</option><option value="Genap">Genap</option></select></div>
           <div class="form-group"><label class="form-label">Total Bab *</label><input type="number" id="formJurnalTotalBab" class="form-input" min="1" value="1" /></div>
         </div>
@@ -2652,7 +2693,7 @@
         <input type="hidden" id="formProgressJurnalId" />
         <input type="hidden" id="formProgressId" />
         <div class="form-group"><label class="form-label">Info Jurnal</label><p id="progressJurnalInfo" style="font-size:0.9rem;color:var(--text-light);margin:0;"></p></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Bulan *</label><select id="formProgressBulan" class="form-input">
             <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option><option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
             <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option><option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
@@ -2660,7 +2701,7 @@
           <div class="form-group"><label class="form-label">Tahun *</label><input type="number" id="formProgressTahun" class="form-input" /></div>
         </div>
         <div class="form-group"><label class="form-label">Bab Tercapai *</label><select id="formProgressBab" class="form-input"><option value="0">Pilih Bab</option></select></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Judul Bab / Materi</label><input type="text" id="formProgressJudul" class="form-input" placeholder="Mis: Struktur Atom" /></div>
           <div class="form-group"><label class="form-label">Update Halaman</label><input type="text" id="formProgressHalaman" class="form-input" placeholder="Mis: Hal 12-25" /></div>
         </div>
@@ -2680,16 +2721,18 @@
         <p>Data siswa dari sekolah lain yang pindah ke SMP IT Al-Fathonah.</p>
       </div>
       <div class="modal-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+        <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formMutasiMasukNama" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formMutasiMasukJK" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
           <div class="form-group"><label class="form-label">Kelas Tujuan *</label><select id="formMutasiMasukKelas" class="form-input"><option value="">Pilih Kelas</option></select></div>
           <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formMutasiMasukNISN" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Sekolah Asal *</label><input type="text" id="formMutasiMasukSekolahAsal" class="form-input" placeholder="Nama sekolah asal" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formMutasiMasukMondok" class="form-input"><option value="Tidak">Tidak</option><option value="Iya">Iya</option></select></div>
           <div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date" id="formMutasiMasukTanggal" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Wali Murid</label><input type="text" id="formMutasiMasukWali" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">JK Wali Murid</label><select id="formMutasiMasukJKWM" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
-          <div class="form-group"><label class="form-label">NIK Wali</label><input type="text" id="formMutasiMasukNIKWali" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formMutasiMasukAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formMutasiMasukNIKAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formMutasiMasukIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formMutasiMasukNIKIbu" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formMutasiMasukHP" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Email</label><input type="email" id="formMutasiMasukEmail" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="formMutasiMasukKeterangan" class="form-input" placeholder="Alasan pindah, dll" /></div>
@@ -2718,6 +2761,57 @@
       <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline" onclick="closeMutasiKeluarModal()">Batal</button> <button class="btn btn-danger" onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
     </div>
   </div>
+  <!-- ========== KENAIKAN KELAS MODAL ========== -->
+  <div class="modal-overlay" id="kenaikanKelasModal">
+    <div class="modal modal-wide" style="position:relative;">
+      <button class="modal-close" onclick="closeKenaikanKelasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header" style="border-bottom:1px solid var(--border-color);padding-bottom:1rem;margin-bottom:1rem;">
+        <div class="modal-logo" style="background:rgba(245,158,11,.12);color:#f59e0b;"><i data-lucide="refresh-cw" style="width:26px;height:26px"></i></div>
+        <h3>Kenaikan Kelas Otomatis</h3>
+        <p>Proses kenaikan kelas ini akan mengeksekusi perpindahan kelas secara otomatis bagi seluruh siswa aktif ke tingkat kelas di atasnya sesuai kesamaan abjad rombongan belajar. Siswa Tingkat 9 akan dinyatakan Lulus. Proses ini <strong>TIDAK DAPAT DIBATALKAN</strong>.</p>
+      </div>
+      <div class="modal-body">
+        <div style="background:rgba(245,158,11,.1);border:1px solid #f59e0b;padding:1rem;border-radius:8px;margin-bottom:1.5rem;display:flex;align-items:flex-start;gap:10px;">
+          <i data-lucide="alert-triangle" style="width:20px;height:20px;flex-shrink:0;color:#f59e0b;margin-top:2px;"></i>
+          <span style="font-size:0.9rem;color:#b45309;line-height:1.4;">Pastikan Anda telah mengeksekusi tombol "Tetapkan Tahun Akademik Baru" terlebih dahulu sebelum menjalankan fungsi kenaikan kelas.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-weight:600;font-size:1rem;margin-bottom:8px;">Pengecualian: Siswa Tinggal Kelas / Tidak Naik</label>
+          <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.75rem;">Siswa yang Anda masukkan di daftar bawah ini <strong>TIDAK AKAN NAIK/LULUS</strong> (tetap di kelasnya yang sekarang).</p>
+          
+          <div class="grid-responsive" style="margin-bottom:1rem;">
+             <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.85rem;color:var(--text-dark);">1. Filter Kelas</label>
+                <select id="formKenaikanPilihKelas" class="form-input" onchange="filterKenaikanSiswaByKelas()">
+                   <option value="">Semua Kelas</option>
+                </select>
+             </div>
+             <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label" style="font-size:0.85rem;color:var(--text-dark);">2. Pilih Siswa Tinggal Kelas</label>
+                <div class="dropdown-btn-group" style="margin-bottom:0;">
+                  <select id="formKenaikanPilihSiswa" class="form-input" style="flex:1;">
+                    <option value="">-- Pilih Siswa --</option>
+                  </select>
+                  <button class="btn btn-outline" type="button" onclick="addTinggalKelas()" style="border-color:var(--border-color);"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah</button>
+                </div>
+             </div>
+          </div>
+          
+          <div style="border:1px solid var(--border-color);border-radius:8px;padding:1rem;background:var(--bg-lighter);min-height:100px;">
+            <h4 style="font-size:0.9rem;margin:0 0 10px 0;color:var(--text-dark);">Daftar Pengecualian Siswa:</h4>
+            <div id="listTinggalKelas" style="display:flex;flex-direction:column;gap:5px;">
+              <span id="noTinggalKelasLabel" style="font-size:0.85rem;color:var(--text-light);font-style:italic;">Belum ada siswa yang dikecualikan. Semua akan otomatis naik secara algoritmik.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer modal-footer-responsive" style="border-top:1px solid var(--border-color);padding-top:1rem;margin-top:1rem;">
+        <button class="btn btn-outline" onclick="closeKenaikanKelasModal()">Kembali</button> 
+        <button class="btn btn-warning" onclick="executeKenaikanKelas()" style="font-weight:600;"><i data-lucide="play-circle" style="width:16px;height:16px;"></i> Eksekusi Kenaikan Kelas & Kelulusan Sekarang</button>
+      </div>
+    </div>
+  </div>
+  
   <!-- ========== GALERI LIGHTBOX (STANDALONE) ========== -->
   <div id="galeriLightbox" onclick="if(event.target===this)closeGaleriLightbox()" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.92);display:none;flex-direction:column;justify-content:center;align-items:center;padding:1rem;">
     <button style="position:absolute;top:16px;right:16px;background:none;border:none;color:white;cursor:pointer;z-index:10;padding:8px;" onclick="closeGaleriLightbox()">
