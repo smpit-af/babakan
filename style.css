@@ -4030,3 +4030,60 @@ body.dark-mode .toast-info {
   }
 }
 
+/* RESPONSIVE HELPER UTILITIES */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.flex-responsive-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap; /* Allows wrapping on smaller screens */
+}
+.modal-footer-responsive {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+  .flex-responsive-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .modal-footer-responsive {
+    flex-direction: column !important;
+  }
+  .modal-footer-responsive .btn {
+    width: 100% !important;
+    text-align: center;
+    white-space: normal !important;
+    height: auto !important;
+    padding: 12px !important;
+  }
+  .dropdown-btn-group {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .dropdown-btn-group .btn {
+    width: 100% !important;
+    white-space: normal !important;
+    height: auto !important;
+    padding: 12px !important;
+  }
+}
+
+.dropdown-btn-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+  align-items: stretch;
+}
