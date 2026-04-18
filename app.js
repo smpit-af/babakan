@@ -667,6 +667,7 @@ async function initDashboard() {
         loadDashboardPengumuman();
         loadGaleriBeranda();
         if (['admin', 'kurikulum'].includes(currentRole)) {
+            loadDashGuru();
             loadDashSiswa();
         }
 
@@ -787,7 +788,7 @@ window.showSection = function (sectionId, linkEl) {
     }
     if (sectionId === 'sectionDashboard') {
         loadDashboardPengumuman();
-        if (['admin', 'kurikulum'].includes(currentRole)) { loadDashSiswa(); }
+        if (['admin', 'kurikulum'].includes(currentRole)) { loadDashGuru(); loadDashSiswa(); }
     }
     if (sectionId === 'sectionTahunKelas') { loadActiveYear(); loadMasterKelas(); loadMasterMapel(); }
     if (sectionId === 'sectionProfilGuru') { 
@@ -1403,6 +1404,36 @@ function deleteSarpras(id, nama) {
             loadSarprasAdmin();
         } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
     });
+}
+
+// Display guru & staff list on dashboard
+async function loadDashGuru() {
+    var tbody = document.getElementById('dashGuruTableBody');
+    var countEl = document.getElementById('dashGuruCount');
+    if (!tbody || !supabaseClient) return;
+    try {
+        const { data, error } = await supabaseClient.from('guru_staff').select('*').eq('status', 'Aktif').order('nama_lengkap');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data guru.</td></tr>';
+            if (countEl) countEl.textContent = '0 guru/staff';
+            return;
+        }
+        if (countEl) countEl.textContent = data.length + ' guru/staff';
+        tbody.innerHTML = data.map(function(g, i) {
+            var fotoHtml = g.foto_url ? '<img src="' + g.foto_url + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:bold;">' + (g.nama_lengkap ? g.nama_lengkap.charAt(0).toUpperCase() : '?') + '</div>';
+            var allMapel = [g.mata_pelajaran, g.mata_pelajaran_2, g.mata_pelajaran_3].filter(Boolean).join(', ');
+            return '<tr>' +
+                '<td style="text-align:center;">' + (i+1) + '</td>' +
+                '<td><div style="display:flex;justify-content:center;">' + fotoHtml + '</div></td>' +
+                '<td style="font-weight:500;">' + (g.nama_lengkap||'-') + '</td>' +
+                '<td>' + (g.jenis_kelamin||'-') + '</td>' +
+                '<td>' + (g.jabatan||'-') + '</td>' +
+                '<td>' + (g.jabatan_tambahan||'-') + '</td>' +
+                '<td>' + (allMapel||'-') + '</td>' +
+                '</tr>';
+        }).join('');
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>'; }
 }
 
 // Display student list on dashboard
@@ -2180,6 +2211,8 @@ async function loadProfilGuru() {
             document.getElementById('profilGuruHP').value = data.nomor_hp || '';
             document.getElementById('profilGuruEmail').value = data.email || '';
             populateMapelDropdown('profilGuruMapel', data.mata_pelajaran || '');
+            populateMapelDropdown('profilGuruMapel2', data.mata_pelajaran_2 || '');
+            populateMapelDropdown('profilGuruMapel3', data.mata_pelajaran_3 || '');
             document.getElementById('profilGuruSertifikasi').value = data.sertifikasi || '';
             document.getElementById('profilGuruAlamat').value = data.alamat || '';
 
@@ -2225,6 +2258,8 @@ async function saveProfilGuru() {
             nomor_hp: document.getElementById('profilGuruHP').value.trim() || null,
             email: document.getElementById('profilGuruEmail').value.trim() || null,
             mata_pelajaran: document.getElementById('profilGuruMapel').value || null,
+            mata_pelajaran_2: document.getElementById('profilGuruMapel2').value || null,
+            mata_pelajaran_3: document.getElementById('profilGuruMapel3').value || null,
             sertifikasi: document.getElementById('profilGuruSertifikasi').value || null,
             alamat: document.getElementById('profilGuruAlamat').value.trim() || null,
             status: 'Aktif'
@@ -2299,7 +2334,8 @@ async function loadGuruData() {
             var statusBadge = g.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Aktif</span>' : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">Nonaktif</span>';
             var sertifikasiBadge = g.sertifikasi === 'SERDIK' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SERDIK</span>' : (g.sertifikasi === 'Belum SERDIK' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Belum SERDIK</span>' : '-');
             var fotoHtml = g.foto_url ? '<img src="' + g.foto_url + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:bold;">' + (g.nama_lengkap ? g.nama_lengkap.charAt(0).toUpperCase() : '?') + '</div>';
-            return '<tr><td>' + (i+1) + '</td><td><div style="display:flex;justify-content:center;">' + fotoHtml + '</div></td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.jabatan_tambahan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (g.mata_pelajaran||'-') + '</td><td>' + sertifikasiBadge + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+            var allMapel = [g.mata_pelajaran, g.mata_pelajaran_2, g.mata_pelajaran_3].filter(Boolean).join(', ');
+            return '<tr><td>' + (i+1) + '</td><td><div style="display:flex;justify-content:center;">' + fotoHtml + '</div></td><td>' + (g.nama_lengkap||'-') + '</td><td>' + (g.jenis_kelamin||'-') + '</td><td>' + (g.jabatan||'-') + '</td><td>' + (g.jabatan_tambahan||'-') + '</td><td>' + (g.nik||'-') + '</td><td>' + (g.nomor_hp||'-') + '</td><td>' + (g.email||'-') + '</td><td>' + (allMapel||'-') + '</td><td>' + sertifikasiBadge + '</td><td>' + (g.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editGuru(\'' + g.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteGuru(\'' + g.id + '\',\'' + (g.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
@@ -2317,6 +2353,8 @@ function openGuruModal() {
     document.getElementById('formGuruHP').value = '';
     document.getElementById('formGuruEmail').value = '';
     populateMapelDropdown('formGuruMapel', '');
+    populateMapelDropdown('formGuruMapel2', '');
+    populateMapelDropdown('formGuruMapel3', '');
     document.getElementById('formGuruSertifikasi').value = '';
     document.getElementById('formGuruAlamat').value = '';
     document.getElementById('formGuruStatus').value = 'Aktif';
@@ -2337,6 +2375,8 @@ function editGuru(id) {
     document.getElementById('formGuruHP').value = g.nomor_hp || '';
     document.getElementById('formGuruEmail').value = g.email || '';
     populateMapelDropdown('formGuruMapel', g.mata_pelajaran || '');
+    populateMapelDropdown('formGuruMapel2', g.mata_pelajaran_2 || '');
+    populateMapelDropdown('formGuruMapel3', g.mata_pelajaran_3 || '');
     document.getElementById('formGuruSertifikasi').value = g.sertifikasi || '';
     document.getElementById('formGuruAlamat').value = g.alamat || '';
     document.getElementById('formGuruStatus').value = g.status || 'Aktif';
@@ -2355,6 +2395,8 @@ async function saveGuru() {
         nomor_hp: document.getElementById('formGuruHP').value.trim() || null,
         email: document.getElementById('formGuruEmail').value.trim() || null,
         mata_pelajaran: document.getElementById('formGuruMapel').value.trim() || null,
+        mata_pelajaran_2: document.getElementById('formGuruMapel2').value.trim() || null,
+        mata_pelajaran_3: document.getElementById('formGuruMapel3').value.trim() || null,
         sertifikasi: document.getElementById('formGuruSertifikasi').value || null,
         alamat: document.getElementById('formGuruAlamat').value.trim() || null,
         status: document.getElementById('formGuruStatus').value
