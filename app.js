@@ -2173,8 +2173,10 @@ function previewProfilGuruFoto(input) {
 
 async function loadProfilGuru() {
     if (!currentUser) return;
-    // Populate mapel dropdown
+    // Populate mapel dropdowns
     populateMapelDropdown('profilGuruMapel', '');
+    populateMapelDropdown('profilGuruMapel2', '');
+    populateMapelDropdown('profilGuruMapel3', '');
 
     var statusEl = document.getElementById('profilGuruStatus');
 
