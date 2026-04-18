@@ -17,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260416a" />
+  <link rel="stylesheet" href="style.css?v=20260417f" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -171,6 +171,7 @@
         </a>
       </div>
 
+
       <div class="sidebar-nav-group role-datainduk">
         <span class="sidebar-nav-label">Data Induk</span>
         <a href="#" class="sidebar-link role-datainduk" onclick="showSection('sectionGuru', this)">
@@ -242,9 +243,13 @@
       
       <div class="sidebar-nav-group">
         <span class="sidebar-nav-label">Lainnya</span>
+        <a href="#" class="sidebar-link role-non-siswa" onclick="showSection('sectionProfilGuru', this)">
+          <i data-lucide="user-check" style="width:18px;height:18px"></i>
+          <span>Profil Saya</span>
+        </a>
         <a href="#" class="sidebar-link role-non-siswa" onclick="showSection('sectionGaleri', this)">
           <i data-lucide="image" style="width:18px;height:18px"></i>
-          <span>Kelola Galeri</span>
+          <span>Galeri</span>
         </a>
         <a href="#" class="sidebar-link" onclick="showSection('sectionKritikSaran', this)">
           <i data-lucide="message-square" style="width:18px;height:18px"></i>
@@ -322,17 +327,7 @@
         </div>
       </div>
 
-      <!-- Widget Galeri / Momen Beranda -->
-      <div id="dashboardGaleriArea" style="margin-top: 1.5rem; margin-bottom: 1.5rem; display:none;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--text-dark);">
-            <i data-lucide="image" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;color:var(--primary);"></i>Momen Terbaru
-          </h3>
-        </div>
-        <div id="dashboardGaleriGrid" style="display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 0.5rem; scroll-snap-type: x mandatory;">
-          <!-- Kartu galeri beranda akan di-render di sini -->
-        </div>
-      </div>
+
 
       <!-- Daftar Siswa di Dashboard -->
       <div class="card" style="margin-top:1.5rem;">
@@ -695,6 +690,113 @@
       </div>
     </section>
 
+    <!-- SECTION PROFIL GURU (ISI DATA PRIBADI) -->
+    <section id="sectionProfilGuru" class="dash-section">
+      <div class="dash-header">
+        <div>
+          <h2 class="dash-title">Profil Saya</h2>
+          <p class="dash-subtitle" style="margin-top:0.25rem;">Lengkapi data diri Anda. Data ini terintegrasi langsung dengan Data Induk Sekolah.</p>
+        </div>
+      </div>
+
+      <div class="card" style="max-width:900px; padding:0; overflow:hidden; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.06);">
+        <!-- Cover Art Custom -->
+        <div style="height:140px; background:linear-gradient(135deg, var(--primary) 0%, #1e1b4b 100%); position:relative;">
+          <svg style="position:absolute; bottom:0; width:100%; height:40px;" preserveAspectRatio="none" viewBox="0 0 1440 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 74L1440 74V0C1440 0 1140 74 720 74C300 74 0 0 0 0V74Z" fill="white"/>
+          </svg>
+        </div>
+        
+        <div style="padding:0 2.5rem 3rem 2.5rem;">
+          
+          <form id="formProfilGuru" onsubmit="return false;">
+            <!-- Area Foto -->
+            <div style="display:flex; flex-direction:column; align-items:center; margin-top:-70px; margin-bottom:1.5rem; position:relative; z-index:20;">
+              <div id="profilGuruFotoPreview" style="width:140px; height:140px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; border:5px solid #fff; box-shadow:0 4px 14px rgba(0,0,0,0.1); margin-bottom:1rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <label class="btn btn-primary" style="cursor:pointer; border-radius:30px; box-shadow:0 4px 12px rgba(37,99,235,0.2);">
+                <i data-lucide="camera" style="width:16px;height:16px;"></i> Ubah Foto Profil
+                <input type="file" id="profilGuruFoto" accept="image/*" style="display:none;" onchange="previewProfilGuruFoto(this)" />
+              </label>
+              <p style="margin:8px 0 0; font-size:0.8rem; color:var(--text-light);">Format disarankan: 1:1 (Persegi), Maks. 2MB</p>
+            </div>
+            
+            <div id="profilGuruStatus" style="margin-bottom:2rem; text-align:center;"></div>
+
+            <!-- Grid Form Data Pribadi -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Nama Lengkap beserta Gelar *</label>
+                <div style="position:relative;">
+                  <i data-lucide="user" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; color:#cbd5e1;"></i>
+                  <input type="text" id="profilGuruNama" class="form-input" style="padding-left:42px;" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">NIK (Nomor Induk Kependudukan)</label>
+                <div style="position:relative;">
+                  <i data-lucide="credit-card" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; color:#cbd5e1;"></i>
+                  <input type="text" id="profilGuruNIK" class="form-input" style="padding-left:42px;" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Jenis Kelamin</label>
+                <select id="profilGuruJK" class="form-input"><option value="">Pilih Jenis Kelamin</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Nomor WhatsApp / HP</label>
+                <div style="position:relative;">
+                  <i data-lucide="phone" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; color:#cbd5e1;"></i>
+                  <input type="text" id="profilGuruHP" class="form-input" style="padding-left:42px;" />
+                </div>
+              </div>
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label" style="font-weight:600; color:#475569;">Email Aktif</label>
+                <div style="position:relative;">
+                  <i data-lucide="mail" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:18px; color:#cbd5e1;"></i>
+                  <input type="email" id="profilGuruEmail" class="form-input" style="padding-left:42px; background:#f8fafc;" readonly title="Email diambil otomatis dari akun anda" />
+                </div>
+              </div>
+              
+              <!-- Separator Kepegawaian -->
+              <div style="grid-column:1/-1; margin:1rem 0 0.5rem; padding-bottom:0.5rem; border-bottom:1px solid var(--border-color);">
+                <h4 style="margin:0; font-size:1.05rem; color:#1e293b;">Data Kepegawaian</h4>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Jabatan Utama</label>
+                <input type="text" id="profilGuruJabatan" class="form-input" placeholder="Contoh: Guru, Staff TU" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Jabatan Tambahan</label>
+                <input type="text" id="profilGuruJabatanTambahan" class="form-input" placeholder="Contoh: Wali Kelas 7A, Wakasek Bid. Kurikulum" />
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Mata Pelajaran (Yang Diampu)</label>
+                <select id="profilGuruMapel" class="form-input"><option value="">Pilih Mata Pelajaran (Kosongkan jika bukan guru)</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Status Sertifikasi</label>
+                <select id="profilGuruSertifikasi" class="form-input"><option value="">Pilih Status</option><option value="SERDIK">Sudah Sertifikasi (SERDIK)</option><option value="Belum SERDIK">Belum Sertifikasi</option></select>
+              </div>
+
+              <div class="form-group" style="grid-column:1/-1;">
+                <label class="form-label" style="font-weight:600; color:#475569;">Alamat Lengkap Domisili</label>
+                <textarea id="profilGuruAlamat" class="form-input" rows="3" placeholder="Masukkan detail alamat tempat tinggal saat ini"></textarea>
+              </div>
+            </div>
+
+            <div style="text-align:right; margin-top:2rem; padding-top:1.5rem; border-top:1px solid var(--border-color);">
+              <button type="button" class="btn btn-primary" onclick="saveProfilGuru()" style="min-width:200px; font-weight:600; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                <i data-lucide="save" style="width:18px;height:18px;"></i> Simpan Perubahan Detail
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- SECTION DATA INDUK GURU -->
     <section id="sectionGuru" class="dash-section">
       <div class="dash-header" style="display:flex;justify-content:space-between;align-items:center;">
@@ -702,8 +804,8 @@
         <button class="btn btn-primary" onclick="openGuruModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Guru</button>
       </div>
       <div class="card"><div style="overflow-x:auto;">
-        <table class="dash-table"><thead><tr><th>No</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>Jabatan Tambahan</th><th>NIK</th><th>No HP</th><th>Email</th><th>Mata Pelajaran</th><th>Sertifikasi</th><th>Alamat</th><th>Status</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
-          <tbody id="guruTableBody"><tr><td colspan="13" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
+        <table class="dash-table"><thead><tr><th>No</th><th style="width:50px;">Foto</th><th>Nama</th><th>JK</th><th>Jabatan</th><th>Jabatan Tambahan</th><th>NIK</th><th>No HP</th><th>Email</th><th>Mata Pelajaran</th><th>Sertifikasi</th><th>Alamat</th><th>Status</th><th style="width:120px;text-align:center;">Aksi</th></tr></thead>
+          <tbody id="guruTableBody"><tr><td colspan="14" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr></tbody>
         </table>
       </div></div>
     </section>
@@ -2583,16 +2685,16 @@
       <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline" onclick="closeMutasiKeluarModal()">Batal</button> <button class="btn btn-danger" onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
     </div>
   </div>
-  <!-- ========== GALERI LIGHTBOX MODAL ========== -->
-  <div class="modal-overlay" id="galeriLightbox" style="z-index:100000; background:rgba(0,0,0,0.9); flex-direction:column; justify-content:center; align-items:center;">
-    <button class="modal-close" style="color:white; top:20px; right:20px; position:absolute;" onclick="document.getElementById('galeriLightbox').classList.remove('active')">
-      <i data-lucide="x" style="width:32px;height:32px;"></i>
+  <!-- ========== GALERI LIGHTBOX (STANDALONE) ========== -->
+  <div id="galeriLightbox" onclick="if(event.target===this)closeGaleriLightbox()" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.92);display:none;flex-direction:column;justify-content:center;align-items:center;padding:1rem;">
+    <button style="position:absolute;top:16px;right:16px;background:none;border:none;color:white;cursor:pointer;z-index:10;padding:8px;" onclick="closeGaleriLightbox()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
     </button>
-    <img id="galeriLightboxImg" src="" style="max-width:90vw; max-height:80vh; object-fit:contain; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.5);" />
-    <div id="galeriLightboxCaption" style="color:white; margin-top:1rem; font-size:1.1rem; text-align:center; max-width:80vw; line-height:1.5;"></div>
+    <img id="galeriLightboxImg" src="" style="max-width:92vw;max-height:80vh;object-fit:contain;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,0.6);" />
+    <div id="galeriLightboxCaption" style="color:white;margin-top:1rem;font-size:1.05rem;text-align:center;max-width:80vw;line-height:1.5;"></div>
   </div>
 
-  <script src="app.js?v=20260416m"></script>
+  <script src="app.js?v=20260417g"></script>
 
   <!-- Dashboard Init -->
   <script>
