@@ -723,6 +723,12 @@ function applyRoleVisibility() {
         el.style.display = isMonitoring ? '' : 'none';
     });
 
+    // Kelola Konten
+    var isKonten = ['admin', 'kurikulum', 'operator_sekolah'].includes(role);
+    document.querySelectorAll('.role-konten').forEach(function (el) {
+        el.style.display = isKonten ? '' : 'none';
+    });
+
     // Non Siswa
     var isNonSiswa = role !== 'siswa';
     document.querySelectorAll('.role-non-siswa').forEach(function (el) {
@@ -1445,26 +1451,29 @@ async function loadDashSiswa() {
         const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas)').not('status', 'in', '("Lulus","Pindah")').order('nama_lengkap');
         if (error) throw error;
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
             if (countEl) countEl.textContent = '0 siswa';
             return;
         }
         if (countEl) countEl.textContent = data.length + ' siswa';
         tbody.innerHTML = data.map(function(s, i) {
             var kelas = s.master_kelas ? s.master_kelas.nama_kelas : '-';
+            var mondokBadge = s.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;font-size:.75rem;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">Tidak</span>';
             var statusBadge = s.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;font-size:.75rem;">Aktif</span>' :
+                s.status === 'Tidak Aktif' ? '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;font-size:.75rem;">Tidak Aktif</span>' :
                 s.status === 'Pindahan' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;font-size:.75rem;">Pindahan</span>' :
-                '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;font-size:.75rem;">' + (s.status||'-') + '</span>';
+                '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">' + (s.status||'-') + '</span>';
             return '<tr>' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
+                '<td>' + (s.nisn||'-') + '</td>' +
                 '<td style="font-weight:500;">' + (s.nama_lengkap||'-') + '</td>' +
                 '<td>' + (s.jenis_kelamin||'-') + '</td>' +
                 '<td>' + kelas + '</td>' +
-                '<td>' + (s.nisn||'-') + '</td>' +
+                '<td>' + mondokBadge + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '</tr>';
         }).join('');
-    } catch(e) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>'; }
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>'; }
 }
 
 // ============================================================
@@ -1979,15 +1988,116 @@ async function saveTahunAkademik() {
     } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
 }
 
+var pengecualianSiswaTinggalKelas = [];
+
+var tempKenaikanSiswaList = [];
+
 async function gantiTahunDanNaikKelas() {
-    showCustomConfirm('Kenaikan Kelas Otomatis?', '<strong>PERINGATAN!</strong> Proses ini akan:<br>1. Siswa Kelas 9 → Status diubah menjadi <strong>Lulus</strong> (masuk Alumni)<br>2. Siswa Kelas 7 & 8 → Naik 1 tingkat (7A→8A, 8B→9B)<br><br>Proses ini <strong>tidak dapat dibatalkan</strong>. Pastikan Anda telah memperbarui Tahun Pelajaran terlebih dahulu.', 'Ya, Proses Sekarang', async function() {
+    pengecualianSiswaTinggalKelas = [];
+    renderTinggalKelasList();
+    
+    var selKelas = document.getElementById('formKenaikanPilihKelas');
+    selKelas.innerHTML = '<option value="">Semua Kelas</option>';
+    if (typeof masterKelasList !== 'undefined') {
+        masterKelasList.forEach(k => {
+            var opt = document.createElement('option');
+            opt.value = k.id;
+            opt.textContent = k.nama_kelas;
+            selKelas.appendChild(opt);
+        });
+    }
+    
+    try {
+        const { data, error } = await supabaseClient.from('siswa').select('id, kelas_id, nama_lengkap, master_kelas(nama_kelas)').in('status', ['Aktif', 'Pindahan']).order('nama_lengkap');
+        if (data) {
+            tempKenaikanSiswaList = data;
+        }
+    } catch(e) {}
+    
+    filterKenaikanSiswaByKelas();
+    
+    document.getElementById('kenaikanKelasModal').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+}
+
+function filterKenaikanSiswaByKelas() {
+    var selSiswa = document.getElementById('formKenaikanPilihSiswa');
+    var kelasId = document.getElementById('formKenaikanPilihKelas').value;
+    
+    selSiswa.innerHTML = '<option value="">-- Pilih Siswa --</option>';
+    
+    var filtered = tempKenaikanSiswaList;
+    if (kelasId) {
+        filtered = tempKenaikanSiswaList.filter(s => s.kelas_id === kelasId);
+    }
+    
+    filtered.forEach(s => {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        var kelasText = kelasId ? '' : (' (' + (s.master_kelas ? s.master_kelas.nama_kelas : '-') + ')');
+        opt.textContent = s.nama_lengkap + kelasText;
+        selSiswa.appendChild(opt);
+    });
+}
+
+function closeKenaikanKelasModal() {
+    document.getElementById('kenaikanKelasModal').classList.remove('active');
+}
+
+function addTinggalKelas() {
+    var sel = document.getElementById('formKenaikanPilihSiswa');
+    var val = sel.value;
+    if (!val) { showToast('Pilih siswa terlebih dahulu!', 'warning'); return; }
+    
+    if (pengecualianSiswaTinggalKelas.find(x => x.id === val)) {
+        showToast('Siswa tersebut sudah ada di daftar pengecualian.', 'warning'); return;
+    }
+    
+    var text = sel.options[sel.selectedIndex].text;
+    pengecualianSiswaTinggalKelas.push({ id: val, nama: text });
+    renderTinggalKelasList();
+    
+    sel.value = '';
+}
+
+function removeTinggalKelas(id) {
+    pengecualianSiswaTinggalKelas = pengecualianSiswaTinggalKelas.filter(x => x.id !== id);
+    renderTinggalKelasList();
+}
+
+function renderTinggalKelasList() {
+    var container = document.getElementById('listTinggalKelas');
+    container.innerHTML = '';
+    
+    if (pengecualianSiswaTinggalKelas.length === 0) {
+        container.innerHTML = '<span id="noTinggalKelasLabel" style="font-size:0.85rem;color:var(--text-light);font-style:italic;">Belum ada siswa yang dikecualikan. Semua akan otomatis naik secara algoritmik.</span>';
+        return;
+    }
+    
+    pengecualianSiswaTinggalKelas.forEach(function(item) {
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;justify-content:space-between;align-items:center;background:white;padding:8px 12px;border:1px solid var(--border-color);border-radius:6px;';
+        div.innerHTML = '<span style="font-weight:500;font-size:0.9rem;">' + item.nama + ' <span class="badge badge-red" style="margin-left:8px;font-size:0.7rem;">Tinggal Kelas</span></span>' +
+                        '<button type="button" onclick="removeTinggalKelas(\'' + item.id + '\')" style="background:none;border:none;color:var(--danger);cursor:pointer;" title="Hapus"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>';
+        container.appendChild(div);
+    });
+}
+
+function executeKenaikanKelas() {
+    var idArray = pengecualianSiswaTinggalKelas.map(x => x.id);
+    var excMsg = idArray.length > 0 ? ('<br><br><span style="color:#ef4444;font-weight:bold;">Pengecualian Aktif:</span> Ada ' + idArray.length + ' siswa terdaftar yang <strong>TIDAK NAIK/LULUS</strong>.') : '';
+    
+    showCustomConfirm('Yakin Proses Kenaikan?', 'Apakah Anda 100% yakin ingin mempromosikan seluruh formasi siswa secara massal sekarang?' + excMsg, 'Proses Massal!', async function() {
+        showGlobalLoader('Memproses pemindahan ribuan data siswa secara algoritmik...');
         try {
-            const { error } = await supabaseClient.rpc('promote_students_next_year');
+            const { error } = await supabaseClient.rpc('promote_students_next_year', { excluded_siswa_ids: idArray });
+            hideGlobalLoader();
             if (error) throw error;
-            showToast('Kenaikan kelas berhasil diproses!', 'success');
-            loadSiswaData();
-            loadAlumniData();
-        } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+            showToast('Kenaikan kelas & pencatatan kelulusan berhasil diproses!', 'success');
+            closeKenaikanKelasModal();
+            if(typeof loadSiswaData==='function') loadSiswaData();
+            if(typeof loadAlumniData==='function') loadAlumniData();
+        } catch(e) { hideGlobalLoader(); showToast('Gagal memproses: ' + e.message, 'error'); }
     });
 }
 
@@ -2445,24 +2555,55 @@ function populateKelasDropdown(selectId, selectedVal) {
 
 async function loadSiswaData() {
     try {
-        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas, tingkat)').not('status', 'in', '("Lulus","Pindah")').order('nama_lengkap');
+        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas, tingkat)').order('nama_lengkap');
         if (error) throw error;
         siswaList = data || [];
-        var tbody = document.getElementById('siswaTableBody');
-        if (!tbody) return;
-        if (siswaList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
-            return;
+        // Populate filter kelas dropdown
+        var filterKelasEl = document.getElementById('filterSiswaKelas');
+        if (filterKelasEl) {
+            var currentVal = filterKelasEl.value;
+            filterKelasEl.innerHTML = '<option value="">Semua Kelas</option>';
+            masterKelasList.forEach(function(k) {
+                filterKelasEl.innerHTML += '<option value="' + k.id + '"' + (k.id === currentVal ? ' selected' : '') + '>' + k.nama_kelas + '</option>';
+            });
         }
-        tbody.innerHTML = siswaList.map(function(s, i) {
-            var kelasNama = s.master_kelas ? s.master_kelas.nama_kelas : '-';
-            var statusBadge = s.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Aktif</span>' : s.status === 'Pindahan' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Pindahan</span>' : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">' + (s.status||'-') + '</span>';
-            return '<tr><td>' + (i+1) + '</td><td>' + (s.asal_sekolah||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + kelasNama + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_wali_murid||'-') + '</td><td>' + (s.jenis_kelamin_wm||'-') + '</td><td>' + (s.nik_wali||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+        filterSiswaTable();
+    } catch(e) { showToast('Gagal muat siswa: ' + e.message, 'error'); }
+}
+
+function filterSiswaTable() {
+    var search = (document.getElementById('filterSiswaSearch') ? document.getElementById('filterSiswaSearch').value : '').toLowerCase();
+    var filterKelas = document.getElementById('filterSiswaKelas') ? document.getElementById('filterSiswaKelas').value : '';
+    var filterStatus = document.getElementById('filterSiswaStatus') ? document.getElementById('filterSiswaStatus').value : '';
+
+    var filtered = siswaList.filter(function(s) {
+        var matchSearch = !search || (s.nama_lengkap || '').toLowerCase().indexOf(search) !== -1 || (s.nisn || '').toLowerCase().indexOf(search) !== -1;
+        var matchKelas = !filterKelas || s.kelas_id === filterKelas;
+        var matchStatus = !filterStatus || s.status === filterStatus;
+        return matchSearch && matchKelas && matchStatus;
+    });
+
+    var tbody = document.getElementById('siswaTableBody');
+    if (!tbody) return;
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada data siswa yang cocok.</td></tr>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+    tbody.innerHTML = filtered.map(function(s, i) {
+        var kelasNama = s.master_kelas ? s.master_kelas.nama_kelas : '-';
+        var mondokBadge = s.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">Tidak</span>';
+        var statusBadge = s.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">Aktif</span>' :
+            s.status === 'Tidak Aktif' ? '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">Tidak Aktif</span>' :
+            s.status === 'Pindahan' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Pindahan</span>' :
+            s.status === 'Pindah' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Pindah</span>' :
+            s.status === 'Lulus' ? '<span class="role-badge" style="background:rgba(124,58,237,.1);color:#7c3aed;">Lulus</span>' :
+            '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">' + (s.status||'-') + '</span>';
+        return '<tr><td>' + (i+1) + '</td><td>' + (s.asal_sekolah||'-') + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah||'-') + '</td><td>' + (s.nik_ayah||'-') + '</td><td>' + (s.nama_ibu||'-') + '</td><td>' + (s.nik_ibu||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
-        }).join('');
-        if (window.lucide) lucide.createIcons();
-    } catch(e) { showToast('Gagal muat siswa: ' + e.message, 'error'); }
+    }).join('');
+    if (window.lucide) lucide.createIcons();
 }
 
 function openSiswaModal() {
@@ -2471,12 +2612,15 @@ function openSiswaModal() {
     document.getElementById('formSiswaJK').value = '';
     document.getElementById('formSiswaNISN').value = '';
     document.getElementById('formSiswaAsal').value = '';
-    document.getElementById('formSiswaWali').value = '';
-    document.getElementById('formSiswaJKWM').value = '';
-    document.getElementById('formSiswaNIKWali').value = '';
+    document.getElementById('formSiswaMondok').value = 'Tidak';
+    document.getElementById('formSiswaAyah').value = '';
+    document.getElementById('formSiswaNIKAyah').value = '';
+    document.getElementById('formSiswaIbu').value = '';
+    document.getElementById('formSiswaNIKIbu').value = '';
     document.getElementById('formSiswaHP').value = '';
     document.getElementById('formSiswaEmail').value = '';
     document.getElementById('formSiswaAlamat').value = '';
+    document.getElementById('formSiswaStatus').value = 'Aktif';
     populateKelasDropdown('formSiswaKelas', '');
     document.getElementById('siswaModalTitle').textContent = 'Tambah Siswa';
     document.getElementById('siswaModal').classList.add('active');
@@ -2491,12 +2635,15 @@ function editSiswa(id) {
     document.getElementById('formSiswaJK').value = s.jenis_kelamin || '';
     document.getElementById('formSiswaNISN').value = s.nisn || '';
     document.getElementById('formSiswaAsal').value = s.asal_sekolah || '';
-    document.getElementById('formSiswaWali').value = s.nama_wali_murid || '';
-    document.getElementById('formSiswaJKWM').value = s.jenis_kelamin_wm || '';
-    document.getElementById('formSiswaNIKWali').value = s.nik_wali || '';
+    document.getElementById('formSiswaMondok').value = s.mondok || 'Tidak';
+    document.getElementById('formSiswaAyah').value = s.nama_ayah || '';
+    document.getElementById('formSiswaNIKAyah').value = s.nik_ayah || '';
+    document.getElementById('formSiswaIbu').value = s.nama_ibu || '';
+    document.getElementById('formSiswaNIKIbu').value = s.nik_ibu || '';
     document.getElementById('formSiswaHP').value = s.nomor_hp || '';
     document.getElementById('formSiswaEmail').value = s.email || '';
     document.getElementById('formSiswaAlamat').value = s.alamat || '';
+    document.getElementById('formSiswaStatus').value = s.status || 'Aktif';
     populateKelasDropdown('formSiswaKelas', s.kelas_id || '');
     document.getElementById('siswaModalTitle').textContent = 'Edit Siswa';
     document.getElementById('siswaModal').classList.add('active');
@@ -2510,9 +2657,11 @@ async function saveSiswa() {
         kelas_id: document.getElementById('formSiswaKelas').value || null,
         nisn: document.getElementById('formSiswaNISN').value.trim() || null,
         asal_sekolah: document.getElementById('formSiswaAsal').value.trim() || null,
-        nama_wali_murid: document.getElementById('formSiswaWali').value.trim() || null,
-        jenis_kelamin_wm: document.getElementById('formSiswaJKWM').value || null,
-        nik_wali: document.getElementById('formSiswaNIKWali').value.trim() || null,
+        mondok: document.getElementById('formSiswaMondok').value || 'Tidak',
+        nama_ayah: document.getElementById('formSiswaAyah').value.trim() || null,
+        nik_ayah: document.getElementById('formSiswaNIKAyah').value.trim() || null,
+        nama_ibu: document.getElementById('formSiswaIbu').value.trim() || null,
+        nik_ibu: document.getElementById('formSiswaNIKIbu').value.trim() || null,
         nomor_hp: document.getElementById('formSiswaHP').value.trim() || null,
         email: document.getElementById('formSiswaEmail').value.trim() || null,
         alamat: document.getElementById('formSiswaAlamat').value.trim() || null
@@ -2520,10 +2669,11 @@ async function saveSiswa() {
     if (!obj.nama_lengkap) { showToast('Nama siswa wajib diisi!', 'warning'); return; }
     try {
         if (id) {
+            obj.status = document.getElementById('formSiswaStatus').value || 'Aktif';
             const { error } = await supabaseClient.from('siswa').update(obj).eq('id', id);
             if (error) throw error;
         } else {
-            obj.status = 'Aktif';
+            obj.status = document.getElementById('formSiswaStatus').value || 'Aktif';
             const { error } = await supabaseClient.from('siswa').insert([obj]);
             if (error) throw error;
         }
@@ -2557,12 +2707,12 @@ async function loadAlumniData() {
         var tbody = document.getElementById('alumniTableBody');
         if (!tbody) return;
         if (alumniList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data alumni.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data alumni.</td></tr>';
             return;
         }
         tbody.innerHTML = alumniList.map(function(a, i) {
             var sekolahTujuan = a.sekolah_tujuan || '<em style="color:var(--text-light)">Belum diisi</em>';
-            return '<tr><td>' + (i+1) + '</td><td>' + (a.asal_sekolah||'-') + '</td><td>' + (a.nama_lengkap||'-') + '</td><td>' + (a.jenis_kelamin||'-') + '</td><td>' + (a.nisn||'-') + '</td><td>' + (a.nama_wali_murid||'-') + '</td><td>' + (a.nomor_hp||'-') + '</td><td>' + (a.alamat||'-') + '</td><td>' + sekolahTujuan + '</td>' +
+            return '<tr><td>' + (i+1) + '</td><td>' + (a.asal_sekolah||'-') + '</td><td>' + (a.nama_lengkap||'-') + '</td><td>' + (a.jenis_kelamin||'-') + '</td><td>' + (a.nisn||'-') + '</td><td>' + (a.nama_ayah||'-') + '</td><td>' + (a.nama_ibu||'-') + '</td><td>' + (a.nomor_hp||'-') + '</td><td>' + (a.alamat||'-') + '</td><td>' + sekolahTujuan + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editAlumni(\'' + a.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
         if (window.lucide) lucide.createIcons();
@@ -2610,7 +2760,7 @@ async function loadMutasiData() {
         var tbody = document.getElementById('mutasiTableBody');
         if (!tbody) return;
         if (mutasiList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data mutasi siswa.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data mutasi siswa.</td></tr>';
             return;
         }
         tbody.innerHTML = mutasiList.map(function(m, i) {
@@ -2619,18 +2769,28 @@ async function loadMutasiData() {
             var tipeBadge = m.tipe_mutasi === 'Masuk'
                 ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">▼ Masuk</span>'
                 : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">▲ Keluar</span>';
+            var mondokBadge = m.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">Tidak</span>';
+
             return '<tr>' +
                 '<td>' + (i+1) + '</td>' +
-                '<td style="font-weight:600;">' + (m.nama_lengkap||'-') + '</td>' +
-                '<td>' + (m.jenis_kelamin||'-') + '</td>' +
-                '<td>' + kelasNama + '</td>' +
-                '<td>' + (m.nisn||'-') + '</td>' +
                 '<td>' + tipeBadge + '</td>' +
                 '<td>' + (m.sekolah_asal||'-') + '</td>' +
                 '<td>' + (m.sekolah_tujuan||'-') + '</td>' +
+                '<td>' + (m.nisn||'-') + '</td>' +
+                '<td style="font-weight:600;">' + (m.nama_lengkap||'-') + '</td>' +
+                '<td>' + (m.jenis_kelamin||'-') + '</td>' +
+                '<td>' + kelasNama + '</td>' +
+                '<td>' + mondokBadge + '</td>' +
+                '<td>' + (m.nama_ayah||'-') + '</td>' +
+                '<td>' + (m.nik_ayah||'-') + '</td>' +
+                '<td>' + (m.nama_ibu||'-') + '</td>' +
+                '<td>' + (m.nik_ibu||'-') + '</td>' +
+                '<td>' + (m.nomor_hp||'-') + '</td>' +
+                '<td>' + (m.email||'-') + '</td>' +
+                '<td>' + (m.alamat||'-') + '</td>' +
                 '<td>' + tglMutasi + '</td>' +
                 '<td style="font-size:.85rem;color:var(--text-light);">' + (m.keterangan||'-') + '</td>' +
-                '<td style="text-align:center;"><button class="btn-icon btn-icon-red" onclick="deleteMutasi(\'' + m.id + '\',\'' + (m.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td>' +
+                '<td style="text-align:center;"><button class="btn-icon btn-icon-warning" onclick="editMutasi(\'' + m.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> <button class="btn-icon btn-icon-red" onclick="deleteMutasi(\'' + m.id + '\',\'' + (m.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td>' +
                 '</tr>';
         }).join('');
         if (window.lucide) lucide.createIcons();
@@ -2643,9 +2803,11 @@ function openMutasiMasukModal() {
     document.getElementById('formMutasiMasukNISN').value = '';
     document.getElementById('formMutasiMasukSekolahAsal').value = '';
     document.getElementById('formMutasiMasukTanggal').value = new Date().toISOString().split('T')[0];
-    document.getElementById('formMutasiMasukWali').value = '';
-    document.getElementById('formMutasiMasukJKWM').value = '';
-    document.getElementById('formMutasiMasukNIKWali').value = '';
+    document.getElementById('formMutasiMasukMondok').value = 'Tidak';
+    document.getElementById('formMutasiMasukAyah').value = '';
+    document.getElementById('formMutasiMasukNIKAyah').value = '';
+    document.getElementById('formMutasiMasukIbu').value = '';
+    document.getElementById('formMutasiMasukNIKIbu').value = '';
     document.getElementById('formMutasiMasukHP').value = '';
     document.getElementById('formMutasiMasukEmail').value = '';
     document.getElementById('formMutasiMasukKeterangan').value = '';
@@ -2666,9 +2828,11 @@ async function saveMutasiMasuk() {
     var nisn = document.getElementById('formMutasiMasukNISN').value.trim() || null;
     var sekolahAsal = document.getElementById('formMutasiMasukSekolahAsal').value.trim();
     var tanggal = document.getElementById('formMutasiMasukTanggal').value || new Date().toISOString().split('T')[0];
-    var wali = document.getElementById('formMutasiMasukWali').value.trim() || null;
-    var jkWm = document.getElementById('formMutasiMasukJKWM').value || null;
-    var nikWali = document.getElementById('formMutasiMasukNIKWali').value.trim() || null;
+    var mondok = document.getElementById('formMutasiMasukMondok').value || 'Tidak';
+    var ayah = document.getElementById('formMutasiMasukAyah').value.trim() || null;
+    var nikAyah = document.getElementById('formMutasiMasukNIKAyah').value.trim() || null;
+    var ibu = document.getElementById('formMutasiMasukIbu').value.trim() || null;
+    var nikIbu = document.getElementById('formMutasiMasukNIKIbu').value.trim() || null;
     var hp = document.getElementById('formMutasiMasukHP').value.trim() || null;
     var email = document.getElementById('formMutasiMasukEmail').value.trim() || null;
     var keterangan = document.getElementById('formMutasiMasukKeterangan').value.trim() || null;
@@ -2686,12 +2850,14 @@ async function saveMutasiMasuk() {
             kelas_id: kelasId,
             nisn: nisn,
             asal_sekolah: sekolahAsal,
-            nama_wali_murid: wali,
-            jenis_kelamin_wm: jkWm,
-            nik_wali: nikWali,
+            nama_ayah: ayah,
+            nik_ayah: nikAyah,
+            nama_ibu: ibu,
+            nik_ibu: nikIbu,
             nomor_hp: hp,
             email: email,
             alamat: alamat,
+            mondok: mondok,
             status: 'Pindahan'
         };
         const { data: newSiswa, error: errSiswa } = await supabaseClient.from('siswa').insert([siswaObj]).select().single();
@@ -2708,9 +2874,14 @@ async function saveMutasiMasuk() {
             sekolah_asal: sekolahAsal,
             tanggal_mutasi: tanggal,
             keterangan: keterangan,
-            nama_wali_murid: wali,
+            nama_ayah: ayah,
+            nik_ayah: nikAyah,
+            nama_ibu: ibu,
+            nik_ibu: nikIbu,
             nomor_hp: hp,
-            alamat: alamat
+            email: email,
+            alamat: alamat,
+            mondok: mondok
         };
         const { error: errMutasi } = await supabaseClient.from('mutasi_siswa').insert([mutasiObj]);
         if (errMutasi) throw errMutasi;
@@ -2779,9 +2950,14 @@ async function saveMutasiKeluar() {
                 sekolah_tujuan: sekolahTujuan,
                 tanggal_mutasi: tanggal,
                 keterangan: keterangan,
-                nama_wali_murid: siswa.nama_wali_murid,
+                nama_ayah: siswa.nama_ayah,
+                nik_ayah: siswa.nik_ayah,
+                nama_ibu: siswa.nama_ibu,
+                nik_ibu: siswa.nik_ibu,
                 nomor_hp: siswa.nomor_hp,
-                alamat: siswa.alamat
+                email: siswa.email,
+                alamat: siswa.alamat,
+                mondok: siswa.mondok
             };
             const { error: errMutasi } = await supabaseClient.from('mutasi_siswa').insert([mutasiObj]);
             if (errMutasi) throw errMutasi;
@@ -2799,14 +2975,80 @@ async function saveMutasiKeluar() {
 }
 
 function deleteMutasi(id, nama) {
-    showCustomConfirm('Hapus Data Mutasi?', 'Data mutasi <strong>"' + nama + '"</strong> akan dihapus dari rekap.<br><br><em>Catatan: Data di Data Induk Siswa tidak akan terpengaruh.</em>', 'Ya, Hapus', async function() {
+    showCustomConfirm('Hapus Data Mutasi & Induk?', 'Data mutasi <strong>"' + nama + '"</strong> akan dihapus dari sistem.<br><br><span style="color:var(--danger);font-weight:bold;">Peringatan Kritis:</span> Ini juga akan <strong>menghapus data siswa yang bersangkutan dari Data Induk Siswa secara permanen</strong> di database.', 'Ya, Hapus Semua', async function() {
         try {
-            const { error } = await supabaseClient.from('mutasi_siswa').delete().eq('id', id);
-            if (error) throw error;
-            showToast('Data mutasi dihapus!', 'success');
+            const { data: mut } = await supabaseClient.from('mutasi_siswa').select('siswa_id').eq('id', id).single();
+            const { error: errMutasi } = await supabaseClient.from('mutasi_siswa').delete().eq('id', id);
+            if (errMutasi) throw errMutasi;
+            if (mut && mut.siswa_id) {
+                await supabaseClient.from('siswa').delete().eq('id', mut.siswa_id);
+            }
+            showToast('Data mutasi dan Data Induk dihapus!', 'success');
             loadMutasiData();
+            if(typeof loadSiswaData === 'function') loadSiswaData();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
+}
+
+function editMutasi(id) {
+    var m = mutasiList.find(function(x) { return x.id === id; });
+    if (!m) return;
+    var overlay = document.getElementById('notifModal');
+    var iconEl = document.getElementById('notifIcon');
+    var titleEl = document.getElementById('notifTitle');
+    var msgEl = document.getElementById('notifMessage');
+    var actionsEl = document.getElementById('notifActions');
+    
+    iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>';
+    iconEl.style.background = 'rgba(59,130,246,.1)';
+    titleEl.textContent = 'Edit Data Mutasi: ' + m.nama_lengkap;
+    titleEl.style.color = '#3b82f6';
+    
+    var as = m.sekolah_asal || '';
+    var at = m.sekolah_tujuan || '';
+    var tm = m.tanggal_mutasi || '';
+    var ket = m.keterangan || '';
+    
+    msgEl.innerHTML = '<div style="text-align:left;font-size:0.9rem;color:var(--text-dark);">' +
+        '<div class="form-group"><label class="form-label">Tipe Mutasi (Tidak bisa diubah)</label><input type="text" class="form-input" value="' + m.tipe_mutasi + '" disabled style="background:#f1f5f9;"/></div>' +
+        '<div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date" id="eMutasiTgl" class="form-input" value="' + tm + '"/></div>' +
+        '<div class="form-group"><label class="form-label">Sekolah Asal</label><input type="text" id="eMutasiAsal" class="form-input" value="' + as + '"/></div>' +
+        '<div class="form-group"><label class="form-label">Sekolah Tujuan</label><input type="text" id="eMutasiTujuan" class="form-input" value="' + at + '"/></div>' +
+        '<div class="form-group"><label class="form-label">Alasan / Keterangan</label><input type="text" id="eMutasiKet" class="form-input" value="' + ket + '"/></div>' +
+        '</div>';
+        
+    actionsEl.innerHTML = '<button class="btn btn-outline" onclick="closeNotifModal()">Batal</button><button class="btn btn-primary" onclick="saveEditMutasi(\'' + m.id + '\', \'' + m.siswa_id + '\')">Simpan Perubahan</button>';
+    overlay.classList.add('active');
+}
+
+async function saveEditMutasi(id, siswaId) {
+    var tgl = document.getElementById('eMutasiTgl').value;
+    var asal = document.getElementById('eMutasiAsal').value.trim();
+    var tujuan = document.getElementById('eMutasiTujuan').value.trim();
+    var ket = document.getElementById('eMutasiKet').value.trim();
+    
+    try {
+        const { error } = await supabaseClient.from('mutasi_siswa').update({
+            tanggal_mutasi: tgl || null,
+            sekolah_asal: asal || null,
+            sekolah_tujuan: tujuan || null,
+            keterangan: ket || null
+        }).eq('id', id);
+        if (error) throw error;
+        
+        // Update di Data Induk (Siswa) juga
+        if (siswaId && siswaId !== 'undefined' && siswaId !== 'null') {
+            await supabaseClient.from('siswa').update({
+                asal_sekolah: asal || null,
+                sekolah_tujuan: tujuan || null
+            }).eq('id', siswaId);
+        }
+        
+        showToast('Data mutasi berhasil diperbarui!', 'success');
+        closeNotifModal();
+        loadMutasiData();
+        if(typeof loadSiswaData === 'function') loadSiswaData();
+    } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
 }
 
 // ============================================================
@@ -4027,8 +4269,9 @@ async function loadPenilaianTable() {
         return;
     }
     
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Mencari data siswa...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Mencari data siswa...</td></tr>';
     btnSimpan.style.display = 'none';
+    document.getElementById('btnResetNilaiSemua').style.display = 'none';
     
     try {
         // 1. Dapatkan KKM dari master_kelas
@@ -4040,7 +4283,7 @@ async function loadPenilaianTable() {
         const { data: siswaData, error: errSiswa } = await supabaseClient.from('siswa').select('id, nama_lengkap').eq('kelas_id', filterKelas).order('nama_lengkap');
         if (errSiswa) throw errSiswa;
         if (!siswaData || siswaData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa di kelas ini.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa di kelas ini.</td></tr>';
             return;
         }
         
@@ -4087,8 +4330,9 @@ async function loadPenilaianTable() {
         tbody.querySelectorAll('.val-sts').forEach(function(el) { calcRowStatus(el); });
         
         btnSimpan.style.display = 'inline-flex';
+        document.getElementById('btnResetNilaiSemua').style.display = 'inline-flex';
         
-    } catch(e) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--danger)">Terjadi Kesalahan: ' + e.message + '</td></tr>'; }
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--danger)">Terjadi Kesalahan: ' + e.message + '</td></tr>'; }
 }
 
 function calcRowStatus(el) {
@@ -4127,6 +4371,33 @@ function calcRowStatus(el) {
         tdRata.querySelector('span').style.color = '#ef4444';
         tdKet.innerHTML = '<span class="badge badge-red" style="font-size:0.75rem;">Belum Lulus</span>';
     }
+}
+
+async function resetSemuaNilai() {
+    var filterTahun = document.getElementById('filterPenilaianTahun').value;
+    var filterSemester = document.getElementById('filterPenilaianSemester').value;
+    var filterKelas = document.getElementById('filterPenilaianKelas').value;
+    var filterMapel = document.getElementById('filterPenilaianMapel').value;
+    var kelasNama = document.getElementById('filterPenilaianKelas').options[document.getElementById('filterPenilaianKelas').selectedIndex].text;
+    var mapelNama = document.getElementById('filterPenilaianMapel').options[document.getElementById('filterPenilaianMapel').selectedIndex].text;
+    
+    if (!filterTahun || !filterSemester || !filterKelas || !filterMapel) return;
+    
+    showCustomConfirm('Reset Semua Nilai?', 'Perhatian: Tindakan ini akan <strong>MENGHAPUS SELURUH NILAI (STS, SAS, SAJ, SAT)</strong> kelas <strong>' + kelasNama + '</strong> pada mata pelajaran <strong>' + mapelNama + '</strong>. Apakah Anda yakin ingin mereset/mengosongkan form ini?', 'Ya, Kosongkan', async function() {
+        try {
+            const { error } = await supabaseClient.from('nilai_akademik')
+                .delete()
+                .eq('tahun_pelajaran', filterTahun)
+                .eq('semester', filterSemester)
+                .eq('kelas_id', filterKelas)
+                .eq('mapel_id', filterMapel);
+            
+            if (error) throw error;
+            
+            showToast('Seluruh nilai berhasil dikosongkan.', 'success');
+            loadPenilaianTable(); // reload empty inputs
+        } catch(e) { showToast('Gagal mereset: ' + e.message, 'error'); }
+    });
 }
 
 async function saveSemuaNilai() {
@@ -4206,37 +4477,61 @@ async function openRiwayatNilai(siswaId, namaSiswa) {
             return;
         }
         
-        // Kelompokkan per tahun pelajaran
-        var groups = {};
+        // Kelompokkan per Kelas (tingkat) -> Semester
+        var kelasGroups = {};
         data.forEach(function(n) {
-            var key = n.tahun_pelajaran;
-            if (!groups[key]) groups[key] = [];
-            groups[key].push(n);
+            var tingkat = n.master_kelas ? n.master_kelas.tingkat : 0;
+            var kelasNama = n.master_kelas ? n.master_kelas.nama_kelas : '-';
+            var key = tingkat + '|' + kelasNama;
+            if (!kelasGroups[key]) kelasGroups[key] = { tingkat: tingkat, kelasNama: kelasNama, semesters: {} };
+            var semKey = n.semester + ' — T.P. ' + n.tahun_pelajaran;
+            if (!kelasGroups[key].semesters[semKey]) kelasGroups[key].semesters[semKey] = [];
+            kelasGroups[key].semesters[semKey].push(n);
         });
         
-        var html = '';
-        Object.keys(groups).forEach(function(tahun) {
-            var items = groups[tahun];
-            html += '<div style="margin-bottom:1.5rem;">' +
-                '<h4 style="margin-bottom:0.5rem;color:var(--primary);">📅 T.P. ' + tahun + '</h4>' +
-                '<div style="overflow-x:auto;"><table class="dash-table" style="font-size:0.85rem;"><thead><tr>' +
-                '<th>Semester</th><th>Kelas</th><th>Mapel</th><th style="text-align:center;">STS</th><th style="text-align:center;">SAS</th><th style="text-align:center;">SAJ</th><th style="text-align:center;">SAT</th>' +
-                '</tr></thead><tbody>';
-            items.forEach(function(n) {
-                var kelasNama = n.master_kelas ? n.master_kelas.nama_kelas : '-';
-                var mapelNama = n.master_mapel ? n.master_mapel.nama_mapel : '-';
-                html += '<tr>' +
-                    '<td>' + n.semester + '</td>' +
-                    '<td>' + kelasNama + '</td>' +
-                    '<td>' + mapelNama + '</td>' +
-                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sts !== null ? n.nilai_sts : '-') + '</td>' +
-                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sas !== null ? n.nilai_sas : '-') + '</td>' +
-                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_saj !== null ? n.nilai_saj : '-') + '</td>' +
-                    '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sat !== null ? n.nilai_sat : '-') + '</td>' +
-                    '</tr>';
-            });
-            html += '</tbody></table></div></div>';
+        // Sort by tingkat
+        var sortedKeys = Object.keys(kelasGroups).sort(function(a, b) {
+            return kelasGroups[a].tingkat - kelasGroups[b].tingkat;
         });
+        
+        var html = '<div style="display:flex;flex-direction:column;gap:1.5rem;">';
+        sortedKeys.forEach(function(key) {
+            var group = kelasGroups[key];
+            html += '<div style="background:rgba(37,99,235,.03);border:1px solid rgba(37,99,235,.1);border-radius:12px;padding:1.25rem;">' +
+                '<h4 style="margin:0 0 1rem;color:var(--primary);font-size:1rem;display:flex;align-items:center;gap:.5rem;">📚 Kelas ' + group.tingkat + ' (' + group.kelasNama + ')</h4>';
+            
+            Object.keys(group.semesters).forEach(function(semLabel) {
+                var items = group.semesters[semLabel];
+                html += '<div style="margin-bottom:1rem;">' +
+                    '<p style="font-weight:600;font-size:.88rem;color:#475569;margin-bottom:.5rem;">📅 Semester ' + semLabel + '</p>' +
+                    '<div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(0,0,0,.06);">' +
+                    '<table class="dash-table" style="font-size:0.85rem;margin:0;">' +
+                    '<thead><tr>' +
+                    '<th>Mata Pelajaran</th>' +
+                    '<th style="text-align:center;width:70px;">STS</th>' +
+                    '<th style="text-align:center;width:70px;">SAS</th>' +
+                    '<th style="text-align:center;width:70px;">SAJ</th>' +
+                    '<th style="text-align:center;width:70px;">SAT</th>' +
+                    '<th style="text-align:center;width:80px;">Rata-Rata</th>' +
+                    '</tr></thead><tbody>';
+                items.forEach(function(n) {
+                    var mapelNama = n.master_mapel ? n.master_mapel.nama_mapel : '-';
+                    var vals = [n.nilai_sts, n.nilai_sas, n.nilai_saj, n.nilai_sat].filter(function(v) { return v !== null && v !== undefined; });
+                    var avg = vals.length > 0 ? Math.round(vals.reduce(function(a,b){return a+b;},0) / vals.length) : '-';
+                    html += '<tr>' +
+                        '<td style="font-weight:500;">' + mapelNama + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sts !== null ? n.nilai_sts : '-') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sas !== null ? n.nilai_sas : '-') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_saj !== null ? n.nilai_saj : '-') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sat !== null ? n.nilai_sat : '-') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;color:' + (typeof avg === 'number' && avg >= 75 ? '#22c55e' : typeof avg === 'number' ? '#ef4444' : 'inherit') + ';">' + avg + '</td>' +
+                        '</tr>';
+                });
+                html += '</tbody></table></div></div>';
+            });
+            html += '</div>';
+        });
+        html += '</div>';
         
         content.innerHTML = html;
     } catch(e) {
