@@ -328,6 +328,29 @@
       </div>
 
 
+      <!-- Daftar Guru & Staff di Dashboard -->
+      <div class="card" style="margin-top:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <h3><i data-lucide="briefcase" style="width:20px;height:20px;vertical-align:middle;margin-right:8px;"></i>Daftar Guru & Staff</h3>
+          <span style="font-size:.85rem;color:var(--text-light);" id="dashGuruCount">0 guru/staff</span>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto;">
+          <table class="dash-table" style="font-size:.9rem;">
+            <thead><tr>
+              <th style="width:40px">No</th>
+              <th style="width:50px">Foto</th>
+              <th>Nama</th>
+              <th>JK</th>
+              <th>Jabatan</th>
+              <th>Jabatan Tambahan</th>
+              <th>Mapel Diampu</th>
+            </tr></thead>
+            <tbody id="dashGuruTableBody">
+              <tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <!-- Daftar Siswa di Dashboard -->
       <div class="card" style="margin-top:1.5rem;">
@@ -773,8 +796,16 @@
                 <input type="text" id="profilGuruJabatanTambahan" class="form-input" placeholder="Contoh: Wali Kelas 7A, Wakasek Bid. Kurikulum" />
               </div>
               <div class="form-group">
-                <label class="form-label" style="font-weight:600; color:#475569;">Mata Pelajaran (Yang Diampu)</label>
-                <select id="profilGuruMapel" class="form-input"><option value="">Pilih Mata Pelajaran (Kosongkan jika bukan guru)</option></select>
+                <label class="form-label" style="font-weight:600; color:#475569;">Mata Pelajaran Utama (Mapel 1)</label>
+                <select id="profilGuruMapel" class="form-input"><option value="">Pilih Mata Pelajaran 1 (Kosongkan jika bukan guru)</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Mata Pelajaran 2</label>
+                <select id="profilGuruMapel2" class="form-input"><option value="">Pilih Mata Pelajaran 2 (Opsional)</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" style="font-weight:600; color:#475569;">Mata Pelajaran 3</label>
+                <select id="profilGuruMapel3" class="form-input"><option value="">Pilih Mata Pelajaran 3 (Opsional)</option></select>
               </div>
               <div class="form-group">
                 <label class="form-label" style="font-weight:600; color:#475569;">Status Sertifikasi</label>
@@ -2540,7 +2571,9 @@
           <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formGuruNIK" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formGuruHP" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Email</label><input type="email" id="formGuruEmail" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Mata Pelajaran</label><select id="formGuruMapel" class="form-input"><option value="">Pilih Mata Pelajaran</option></select></div>
+          <div class="form-group"><label class="form-label">Mata Pelajaran Utama</label><select id="formGuruMapel" class="form-input"><option value="">Pilih Mata Pelajaran 1</option></select></div>
+          <div class="form-group"><label class="form-label">Mapel 2 (Opsional)</label><select id="formGuruMapel2" class="form-input"><option value="">Pilih Mata Pelajaran 2</option></select></div>
+          <div class="form-group"><label class="form-label">Mapel 3 (Opsional)</label><select id="formGuruMapel3" class="form-input"><option value="">Pilih Mata Pelajaran 3</option></select></div>
           <div class="form-group"><label class="form-label">Status Sertifikasi</label><select id="formGuruSertifikasi" class="form-input"><option value="">Pilih</option><option value="SERDIK">SERDIK</option><option value="Belum SERDIK">Belum SERDIK</option></select></div>
           <div class="form-group"><label class="form-label">Status</label><select id="formGuruStatus" class="form-input"><option value="Aktif">Aktif</option><option value="Nonaktif">Nonaktif</option></select></div>
         </div>
