@@ -251,13 +251,15 @@ CREATE TABLE IF NOT EXISTS public.siswa (
     jenis_kelamin TEXT CHECK (jenis_kelamin IN ('L', 'P')),
     kelas_id UUID REFERENCES public.master_kelas(id) ON DELETE SET NULL,
     nisn TEXT,
-    nama_wali_murid TEXT,
-    jenis_kelamin_wm TEXT CHECK (jenis_kelamin_wm IN ('L', 'P')),
-    nik_wali TEXT,
+    nama_ayah TEXT,
+    nik_ayah TEXT,
+    nama_ibu TEXT,
+    nik_ibu TEXT,
+    mondok TEXT DEFAULT 'Tidak' CHECK (mondok IN ('Iya', 'Tidak')),
     nomor_hp TEXT,
     email TEXT,
     alamat TEXT,
-    status TEXT DEFAULT 'Aktif' CHECK (status IN ('Aktif', 'Lulus', 'Pindah', 'Gugur', 'Nonaktif')),
+    status TEXT DEFAULT 'Aktif' CHECK (status IN ('Aktif', 'Tidak Aktif', 'Lulus', 'Pindah', 'Pindahan')),
     sekolah_tujuan TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -296,7 +298,7 @@ CREATE POLICY "siswa_all_admin" ON public.siswa FOR ALL USING (
 -- ============================================================
 -- RPC: KENAIKAN KELAS OTOMATIS
 -- ============================================================
-CREATE OR REPLACE FUNCTION public.promote_students_next_year()
+CREATE OR REPLACE FUNCTION public.promote_students_next_year(excluded_siswa_ids UUID[] DEFAULT '{}')
 RETURNS VOID AS $$
 DECLARE
     r RECORD;
@@ -308,8 +310,13 @@ BEGIN
         SELECT s.id, s.kelas_id, k.nama_kelas, k.tingkat 
         FROM public.siswa s 
         JOIN public.master_kelas k ON s.kelas_id = k.id 
-        WHERE s.status = 'Aktif'
+        WHERE s.status IN ('Aktif', 'Pindahan')
     LOOP
+        -- Lewati jika siswa masuk dalam pengecualian (Tinggal Kelas)
+        IF r.id = ANY(excluded_siswa_ids) THEN
+            CONTINUE;
+        END IF;
+
         IF r.tingkat = 9 THEN
             -- Lulus
             UPDATE public.siswa SET status = 'Lulus' WHERE id = r.id;
@@ -505,10 +512,10 @@ CREATE POLICY "nilai_select_all" ON public.nilai_akademik FOR SELECT USING (true
 -- OPERASIONAL SEKOLAH: DATA MUTASI SISWA
 -- ============================================================
 
--- Update constraint status siswa: tambah 'Pindahan' untuk siswa mutasi masuk
+-- Update constraint status siswa
 ALTER TABLE public.siswa DROP CONSTRAINT IF EXISTS siswa_status_check;
 ALTER TABLE public.siswa ADD CONSTRAINT siswa_status_check
-  CHECK (status IN ('Aktif', 'Lulus', 'Pindah', 'Pindahan', 'Gugur', 'Nonaktif'));
+  CHECK (status IN ('Aktif', 'Tidak Aktif', 'Lulus', 'Pindah', 'Pindahan'));
 
 -- Tabel pencatatan mutasi siswa (masuk & keluar)
 CREATE TABLE IF NOT EXISTS public.mutasi_siswa (
@@ -523,8 +530,13 @@ CREATE TABLE IF NOT EXISTS public.mutasi_siswa (
     sekolah_tujuan TEXT,
     tanggal_mutasi DATE DEFAULT CURRENT_DATE,
     keterangan TEXT,
-    nama_wali_murid TEXT,
+    mondok TEXT DEFAULT 'Tidak' CHECK (mondok IN ('Iya', 'Tidak')),
+    nama_ayah TEXT,
+    nik_ayah TEXT,
+    nama_ibu TEXT,
+    nik_ibu TEXT,
     nomor_hp TEXT,
+    email TEXT,
     alamat TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
