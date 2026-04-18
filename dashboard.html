@@ -872,6 +872,17 @@
               <option value="Pindahan">Pindahan</option>
             </select>
           </div>
+          <div class="form-group" style="margin-bottom:0;min-width:150px;">
+            <label class="form-label">Mondok</label>
+            <select id="filterSiswaMondok" class="form-input" onchange="filterSiswaTable()">
+              <option value="">Semua (Mondok/Tidak)</option>
+              <option value="Iya">Mondok</option>
+              <option value="Tidak">Tidak Mondok</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:0.75rem;display:flex;justify-content:flex-end;align-items:center;">
+          <span id="labelJumlahSiswa" style="font-size:.85rem;color:var(--text-light);font-weight:600;">0 siswa ditampilkan.</span>
         </div>
       </div>
       <div class="card"><div style="overflow-x:auto;">
