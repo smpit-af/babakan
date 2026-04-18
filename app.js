@@ -1448,15 +1448,36 @@ async function loadDashSiswa() {
     var countEl = document.getElementById('dashSiswaCount');
     if (!tbody || !supabaseClient) return;
     try {
-        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas)').not('status', 'in', '("Lulus","Pindah")').order('nama_lengkap');
+        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas, tingkat)').not('status', 'in', '("Lulus","Pindah")');
         if (error) throw error;
-        if (!data || data.length === 0) {
+        
+        var list = data || [];
+        list.sort(function(a, b) {
+            var tkA = a.master_kelas ? parseInt(a.master_kelas.tingkat) || 0 : 0;
+            var tkB = b.master_kelas ? parseInt(b.master_kelas.tingkat) || 0 : 0;
+            if (tkA !== tkB) return tkA - tkB;
+            
+            var kelasA = a.master_kelas ? (a.master_kelas.nama_kelas || '').toLowerCase() : '';
+            var kelasB = b.master_kelas ? (b.master_kelas.nama_kelas || '').toLowerCase() : '';
+            if (kelasA !== kelasB) {
+                if (kelasA < kelasB) return -1;
+                if (kelasA > kelasB) return 1;
+            }
+
+            var nameA = (a.nama_lengkap || '').toLowerCase();
+            var nameB = (b.nama_lengkap || '').toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return 0;
+        });
+
+        if (list.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
             if (countEl) countEl.textContent = '0 siswa';
             return;
         }
-        if (countEl) countEl.textContent = data.length + ' siswa';
-        tbody.innerHTML = data.map(function(s, i) {
+        if (countEl) countEl.textContent = list.length + ' siswa';
+        tbody.innerHTML = list.map(function(s, i) {
             var kelas = s.master_kelas ? s.master_kelas.nama_kelas : '-';
             var mondokBadge = s.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;font-size:.75rem;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">Tidak</span>';
             var statusBadge = s.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;font-size:.75rem;">Aktif</span>' :
@@ -2555,9 +2576,28 @@ function populateKelasDropdown(selectId, selectedVal) {
 
 async function loadSiswaData() {
     try {
-        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas, tingkat)').order('nama_lengkap');
+        const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas, tingkat)');
         if (error) throw error;
-        siswaList = data || [];
+        var list = data || [];
+        list.sort(function(a, b) {
+            var tkA = a.master_kelas ? parseInt(a.master_kelas.tingkat) || 0 : 0;
+            var tkB = b.master_kelas ? parseInt(b.master_kelas.tingkat) || 0 : 0;
+            if (tkA !== tkB) return tkA - tkB;
+            
+            var kelasA = a.master_kelas ? (a.master_kelas.nama_kelas || '').toLowerCase() : '';
+            var kelasB = b.master_kelas ? (b.master_kelas.nama_kelas || '').toLowerCase() : '';
+            if (kelasA !== kelasB) {
+                if (kelasA < kelasB) return -1;
+                if (kelasA > kelasB) return 1;
+            }
+
+            var nameA = (a.nama_lengkap || '').toLowerCase();
+            var nameB = (b.nama_lengkap || '').toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return 0;
+        });
+        siswaList = list;
         // Populate filter kelas dropdown
         var filterKelasEl = document.getElementById('filterSiswaKelas');
         if (filterKelasEl) {
@@ -2575,15 +2615,22 @@ function filterSiswaTable() {
     var search = (document.getElementById('filterSiswaSearch') ? document.getElementById('filterSiswaSearch').value : '').toLowerCase();
     var filterKelas = document.getElementById('filterSiswaKelas') ? document.getElementById('filterSiswaKelas').value : '';
     var filterStatus = document.getElementById('filterSiswaStatus') ? document.getElementById('filterSiswaStatus').value : '';
+    var filterMondok = document.getElementById('filterSiswaMondok') ? document.getElementById('filterSiswaMondok').value : '';
 
     var filtered = siswaList.filter(function(s) {
         var matchSearch = !search || (s.nama_lengkap || '').toLowerCase().indexOf(search) !== -1 || (s.nisn || '').toLowerCase().indexOf(search) !== -1;
         var matchKelas = !filterKelas || s.kelas_id === filterKelas;
         var matchStatus = !filterStatus || s.status === filterStatus;
-        return matchSearch && matchKelas && matchStatus;
+        var matchMondok = !filterMondok || s.mondok === filterMondok;
+        return matchSearch && matchKelas && matchStatus && matchMondok;
     });
 
     var tbody = document.getElementById('siswaTableBody');
+    var labelJumlah = document.getElementById('labelJumlahSiswa');
+    if (labelJumlah) {
+        labelJumlah.textContent = filtered.length + ' siswa ditampilkan.';
+    }
+
     if (!tbody) return;
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada data siswa yang cocok.</td></tr>';
