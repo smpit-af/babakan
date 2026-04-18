@@ -223,17 +223,22 @@ CREATE TABLE IF NOT EXISTS public.master_kelas (
 -- GURU & STAFF
 CREATE TABLE IF NOT EXISTS public.guru_staff (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     nama_lengkap TEXT NOT NULL,
     jenis_kelamin TEXT CHECK (jenis_kelamin IN ('L', 'P')),
     jabatan TEXT,
+    jabatan_tambahan TEXT,
     nik TEXT,
     nomor_hp TEXT,
     email TEXT,
     mata_pelajaran TEXT,
+    sertifikasi TEXT,
     alamat TEXT,
+    foto_url TEXT,
     status TEXT DEFAULT 'Aktif' CHECK (status IN ('Aktif', 'Nonaktif')),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
 );
 
 -- SISWA & ALUMNI
@@ -273,6 +278,10 @@ CREATE POLICY "guru_select" ON public.guru_staff FOR SELECT USING (true);
 DROP POLICY IF EXISTS "guru_all_admin" ON public.guru_staff;
 CREATE POLICY "guru_all_admin" ON public.guru_staff FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
+);
+DROP POLICY IF EXISTS "guru_self_service" ON public.guru_staff;
+CREATE POLICY "guru_self_service" ON public.guru_staff FOR ALL USING (
+    auth.uid() = user_id
 );
 
 DROP POLICY IF EXISTS "siswa_select" ON public.siswa;
@@ -936,6 +945,58 @@ CREATE POLICY "galeri_all_admin" ON public.galeri FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role != 'menunggu_persetujuan')
 );
 
+-- ========================================================================================
+-- DISKUSI FOTO: Like & Komentar pada Galeri
+-- ========================================================================================
+
+CREATE TABLE IF NOT EXISTS public.galeri_likes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    galeri_id UUID REFERENCES public.galeri(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(galeri_id, user_id)
+);
+
+ALTER TABLE public.galeri_likes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "galeri_likes_select" ON public.galeri_likes;
+CREATE POLICY "galeri_likes_select" ON public.galeri_likes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "galeri_likes_insert" ON public.galeri_likes;
+CREATE POLICY "galeri_likes_insert" ON public.galeri_likes FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+);
+
+DROP POLICY IF EXISTS "galeri_likes_delete" ON public.galeri_likes;
+CREATE POLICY "galeri_likes_delete" ON public.galeri_likes FOR DELETE USING (
+    auth.uid() = user_id
+);
+
+CREATE TABLE IF NOT EXISTS public.galeri_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    galeri_id UUID REFERENCES public.galeri(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    user_name TEXT NOT NULL,
+    komentar TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.galeri_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "galeri_comments_select" ON public.galeri_comments;
+CREATE POLICY "galeri_comments_select" ON public.galeri_comments FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "galeri_comments_insert" ON public.galeri_comments;
+CREATE POLICY "galeri_comments_insert" ON public.galeri_comments FOR INSERT WITH CHECK (
+    auth.uid() = user_id
+);
+
+DROP POLICY IF EXISTS "galeri_comments_delete" ON public.galeri_comments;
+CREATE POLICY "galeri_comments_delete" ON public.galeri_comments FOR DELETE USING (
+    auth.uid() = user_id OR
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+);
+
 -- Buat bucket untuk gambar galeri
 INSERT INTO storage.buckets (id, name, public) 
 VALUES ('galeri-images', 'galeri-images', true) 
@@ -950,4 +1011,58 @@ CREATE POLICY "galeri_images_auth_upload" ON storage.objects FOR INSERT WITH CHE
 );
 CREATE POLICY "galeri_images_auth_delete" ON storage.objects FOR DELETE USING (
   bucket_id = 'galeri-images' AND auth.role() = 'authenticated'
+);
+
+-- ========================================================================================
+-- STORAGE: Bucket untuk file Bank Soal (Word, PDF, Excel, PPT)
+-- ========================================================================================
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('bank-soal-files', 'bank-soal-files', true) 
+ON CONFLICT (id) DO NOTHING;
+
+-- Policy Storage: Buka akses baca publik
+DROP POLICY IF EXISTS "bank_soal_files_public_read" ON storage.objects;
+CREATE POLICY "bank_soal_files_public_read" ON storage.objects FOR SELECT USING (bucket_id = 'bank-soal-files');
+
+-- Policy Storage: Upload khusus staf login
+DROP POLICY IF EXISTS "bank_soal_files_auth_upload" ON storage.objects;
+CREATE POLICY "bank_soal_files_auth_upload" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'bank-soal-files' AND auth.role() = 'authenticated'
+);
+
+-- Policy Storage: Update khusus staf login
+DROP POLICY IF EXISTS "bank_soal_files_auth_update" ON storage.objects;
+CREATE POLICY "bank_soal_files_auth_update" ON storage.objects FOR UPDATE USING (
+  bucket_id = 'bank-soal-files' AND auth.role() = 'authenticated'
+);
+
+-- Policy Storage: Delete khusus staf login
+DROP POLICY IF EXISTS "bank_soal_files_auth_delete" ON storage.objects;
+CREATE POLICY "bank_soal_files_auth_delete" ON storage.objects FOR DELETE USING (
+  bucket_id = 'bank-soal-files' AND auth.role() = 'authenticated'
+);
+
+-- ========================================================================================
+-- STORAGE: Bucket untuk foto Guru & Staff
+-- ========================================================================================
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('guru-foto', 'guru-foto', true) 
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "guru_foto_public_read" ON storage.objects;
+CREATE POLICY "guru_foto_public_read" ON storage.objects FOR SELECT USING (bucket_id = 'guru-foto');
+
+DROP POLICY IF EXISTS "guru_foto_auth_upload" ON storage.objects;
+CREATE POLICY "guru_foto_auth_upload" ON storage.objects FOR INSERT WITH CHECK (
+  bucket_id = 'guru-foto' AND auth.role() = 'authenticated'
+);
+
+DROP POLICY IF EXISTS "guru_foto_auth_update" ON storage.objects;
+CREATE POLICY "guru_foto_auth_update" ON storage.objects FOR UPDATE USING (
+  bucket_id = 'guru-foto' AND auth.role() = 'authenticated'
+);
+
+DROP POLICY IF EXISTS "guru_foto_auth_delete" ON storage.objects;
+CREATE POLICY "guru_foto_auth_delete" ON storage.objects FOR DELETE USING (
+  bucket_id = 'guru-foto' AND auth.role() = 'authenticated'
 );
