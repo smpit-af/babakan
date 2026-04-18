@@ -232,6 +232,8 @@ CREATE TABLE IF NOT EXISTS public.guru_staff (
     nomor_hp TEXT,
     email TEXT,
     mata_pelajaran TEXT,
+    mata_pelajaran_2 TEXT,
+    mata_pelajaran_3 TEXT,
     sertifikasi TEXT,
     alamat TEXT,
     foto_url TEXT,
