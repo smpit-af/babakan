@@ -8196,7 +8196,12 @@ ATURAN KUNCI JAWABAN ESSAY (SANGAT PENTING):
 - Contoh lain: "Soekarno [OR] Ir. Soekarno, proklamasi, 17 Agustus 1945"
 - Jangan tulis kunci jawaban dalam bentuk kalimat panjang. Harus berupa kata kunci pendek yang terpisah koma.
 
-Jangan tambahkan teks pengantar apapun selain soal dan jawaban. Pastikan setiap pilihan jawaban salah (distraktor) pada Pilihan Ganda cukup mengecoh dan logis.`;
+Jangan tambahkan teks pengantar apapun selain soal dan jawaban. Pastikan setiap pilihan jawaban salah (distraktor) pada Pilihan Ganda cukup mengecoh dan logis.
+
+ATURAN BAHASA ARAB / AL-QUR'AN (JIKA DIMINTA):
+- Jika pengguna meminta soal PAI, Bahasa Arab, Tahsin, atau mencantumkan ayat Al-Qur'an/Hadits, kamu WAJIB menuliskan teks Arabnya dengan BENAR, LENGKAP dengan HARAKAT.
+- Tuliskan teks Arab dengan rapi, misalnya: بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ.
+- Pertahankan struktur arah teks agar tidak rusak saat di-parse.`;
 
     const prompt = `Buatkan soal ujian berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nPENTING: \n- Jika pengguna secara spesifik meminta jumlah soal tertentu (misal: "10 soal PG", "15 essay"), maka PATUHI JUMLAH TERSEBUT dengan presisi.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 5 soal Pilihan Ganda dan 2 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
 
