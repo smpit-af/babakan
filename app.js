@@ -525,6 +525,59 @@ async function loadBeritaPublic() {
     } catch (err) { console.warn('loadBeritaPublic error:', err.message); }
 }
 
+// Ticker Pengumuman Landing Page
+async function loadPengumumanTicker() {
+    const tickerEl = document.getElementById('newsTicker');
+    const contentEl = document.getElementById('tickerContent');
+    if (!tickerEl || !contentEl) return;
+
+    // Tunggu Supabase siap jika diperlukan
+    if (!supabaseClient) {
+        for (let i = 0; i < 15; i++) {
+            if (window.supabase && window.supabase.createClient) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                if (supabaseClient) break;
+            }
+            await new Promise(r => setTimeout(r, 200));
+        }
+    }
+
+    if (!supabaseClient) {
+        tickerEl.style.display = 'none';
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('pengumuman')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            tickerEl.style.display = 'none';
+            document.body.classList.remove('has-ticker');
+            return;
+        }
+
+        tickerEl.style.display = 'block';
+        document.body.classList.add('has-ticker');
+        
+        const tickerText = data.map(p => {
+            const icon = p.prioritas === 'Urgent' ? '🔴' : p.prioritas === 'Penting' ? '🟠' : '🔵';
+            return `<span class="ticker-icon">${icon}</span> ${p.judul || ''}: ${p.isi || ''}`;
+        }).join(' &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp; ');
+
+        contentEl.innerHTML = `${tickerText} &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp; ${tickerText} &nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp; ${tickerText}`;
+    } catch (err) {
+        console.warn('loadPengumumanTicker error:', err.message);
+        tickerEl.style.display = 'none';
+        document.body.classList.remove('has-ticker');
+    }
+}
+
 async function loadEskulPublic() {
     var section = document.getElementById('eskul');
     var container = document.getElementById('eskulContainer');
@@ -606,7 +659,7 @@ async function initDashboard() {
             banner.style.background = '#f59e0b'; banner.style.color = '#fff'; banner.style.textAlign = 'center';
             banner.style.padding = '8px 15px'; banner.style.zIndex = '999999'; banner.style.fontSize = '14px'; banner.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
             banner.innerHTML = '✨ Mode Simulasi: Tampilan sebagai <strong>' + getRoleLabel(currentRole).toUpperCase() + '</strong> ' +
-                '<button onclick="stopSimulasi()" style="margin-left:15px;padding:4px 14px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:12px;box-shadow:0 2px 4px rgba(0,0,0,0.3);">Berhenti & Kembali ke Admin</button>';
+                '<button onclick="stopSimulasi()" style="margin-left:15px;padding:4px 14px;background:#000;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,0.2);">Berhenti & Kembali ke Admin</button>';
             document.body.appendChild(banner);
             var sb = document.getElementById('sidebar');
             var tb = document.querySelector('.dash-top-bar');
@@ -807,6 +860,8 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionSiswa') { loadMasterKelas(); loadSiswaData(); }
     if (sectionId === 'sectionAlumni') loadAlumniData();
     if (sectionId === 'sectionBankSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadBankSoal(); }
+    if (sectionId === 'sectionBuatSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadAsesmenList(); }
+    if (sectionId === 'sectionArsipAsesmen') { loadArsipAsesmen(); }
     if (sectionId === 'sectionJurnalMengajar') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadJurnalMengajar(); }
     if (sectionId === 'sectionLaporanJurnal') { loadLaporanJurnal(); }
     if (sectionId === 'sectionPenilaian') { 
@@ -838,7 +893,7 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionGaleri') { loadGaleri(); }
     // ========================================== //
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
-    if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); populateArsipFilters(); loadArsipAsesmen(); }
+    if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
     if (sectionId === 'sectionLaporanNilai') {
         (async function() {
             await loadActiveYear();
@@ -1214,8 +1269,10 @@ async function loadDashboardPengumuman() {
         if (error) throw error;
         if (!data || data.length === 0) {
             container.innerHTML = '';
+            container.style.display = 'none';
             return;
         }
+        container.style.display = 'block';
         container.innerHTML = data.map(function(p) {
             var colorMap = {
                 'Urgent': { bg: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', border: '#ef4444', icon: '#ef4444', title: '#dc2626' },
@@ -3673,7 +3730,10 @@ var bankSoalList = [];
 
 async function loadBankSoal() {
     try {
-        const { data, error } = await supabaseClient.from('bank_soal').select('*, master_kelas(nama_kelas, tingkat)').order('created_at', { ascending: false });
+        var query = supabaseClient.from('bank_soal').select('*, master_kelas(nama_kelas, tingkat)').order('created_at', { ascending: false });
+
+        // Semua role bisa melihat semua bank soal (sebagai referensi)
+        const { data, error } = await query;
         if (error) throw error;
         bankSoalList = data || [];
 
@@ -3760,11 +3820,13 @@ function renderFilteredBankSoal() {
     if (countEl) countEl.textContent = filtered.length + ' soal ditemukan';
 
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">' +
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">' +
             (bankSoalList.length === 0 ? 'Belum ada data bank soal.' : 'Tidak ada soal yang cocok dengan filter.') + '</td></tr>';
         if (window.lucide) lucide.createIcons();
         return;
     }
+
+    var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
 
     tbody.innerHTML = filtered.map(function(b, i) {
         var kelasNama = b.master_kelas ? b.master_kelas.nama_kelas + ' (Tingkat ' + b.master_kelas.tingkat + ')' : '-';
@@ -3794,11 +3856,17 @@ function renderFilteredBankSoal() {
                         b.tipe_ujian === 'SAJ' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">SAJ</span>' :
                         '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">SAT</span>';
         var semesterBadge = b.semester === 'Genap' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Genap</span>' : '<span class="role-badge" style="background:rgba(168,85,247,.1);color:#a855f7;">Ganjil</span>';
-        return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td>' +
-            '<td style="text-align:center;white-space:nowrap;">' +
-            '<button class="btn btn-sm" style="background:#10b981;color:#fff;padding:4px 6px;" onclick="downloadBankSoalFile(\'' + safeUrl + '\',\'' + dlName.replace(/'/g, "\\'") + '\')" title="Download"><i data-lucide="download" style="width:14px;height:14px;"></i></button> ' +
-            '<button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
+
+        // Kolom Dibuat Oleh
+        var creatorName = b.created_by_name || '<span style="color:var(--text-light);font-style:italic;">—</span>';
+
+        // Hak aksi: Semua role bisa edit/hapus/download di Bank Soal (sebagai bank referensi bersama)
+        var aksiHtml = '<button class="btn btn-sm" style="background:#10b981;color:#fff;padding:4px 6px;" onclick="downloadBankSoalFile(\'' + safeUrl + '\',\'' + dlName.replace(/'/g, "\\'") + '\')" title="Download"><i data-lucide="download" style="width:14px;height:14px;"></i></button> ';
+        aksiHtml += '<button class="btn btn-sm btn-warning" onclick="editBankSoal(\'' + b.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ';
+        aksiHtml += '<button class="btn btn-sm btn-danger" onclick="deleteBankSoal(\'' + b.id + '\',\'' + b.mapel.replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>';
+
+        return '<tr><td>' + (i+1) + '</td><td>' + b.mapel + '</td><td>' + kelasNama + '</td><td>' + semesterBadge + '</td><td>' + tipeBadge + '</td><td>' + linkBadge + '</td><td>' + b.tahun_pelajaran + '</td><td>' + creatorName + '</td>' +
+            '<td style="text-align:center;white-space:nowrap;">' + aksiHtml + '</td></tr>';
     }).join('');
     if (window.lucide) lucide.createIcons();
 }
@@ -3926,6 +3994,9 @@ async function saveBankSoal() {
             const { error } = await supabaseClient.from('bank_soal').update(obj).eq('id', id);
             if (error) throw error;
         } else {
+            // Tambahkan identitas pembuat soal
+            obj.created_by = currentUser ? currentUser.id : null;
+            obj.created_by_name = currentUser ? currentUser.name : null;
             const { error } = await supabaseClient.from('bank_soal').insert([obj]);
             if (error) throw error;
         }
@@ -3997,7 +4068,11 @@ function deleteBankSoal(id, mapel) {
             loadBankSoal();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
-}// ============================================================
+}
+
+
+
+// ============================================================
 // LAINNYA: KRITIK & SARAN
 // ============================================================
 var kritikSaranList = [];
@@ -5553,10 +5628,14 @@ async function loadAsesmenList() {
     if (!tbody || !supabaseClient) return;
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
     try {
-        const { data, error } = await supabaseClient.from('asesmen').select('*').order('created_at', { ascending: false });
+        var query = supabaseClient.from('asesmen').select('*').order('created_at', { ascending: false });
+        const { data, error } = await query;
         if (error) throw error;
         asesmenList = (data || []).filter(function(a) { return !a.archived_at; });
         if (countEl) countEl.textContent = asesmenList.length + ' asesmen';
+        
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+        
         if (asesmenList.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada asesmen. Klik "Buat Asesmen Baru" untuk mulai.</td></tr>';
             return;
@@ -5581,13 +5660,21 @@ async function loadAsesmenList() {
             if (!a.google_form_url && !a.google_sheet_url) linkHtml += '<span style="color:var(--text-light);font-size:.82rem;">—</span>';
             linkHtml += '</div>';
             var jumlahSoal = countMap[a.id] || 0;
+            var canManage = isAdminKurikulum || (currentUser && a.created_by === currentUser.id);
             var aksiHtml = '';
-            if (a.status === 'draft') {
-                aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>' +
-                    '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+            
+            if (canManage) {
+                if (a.status === 'draft') {
+                    aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
+                        '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>' +
+                        '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+                } else {
+                    aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
+                        '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
+                        '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+                }
             } else {
-                aksiHtml = '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
-                    '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+                aksiHtml = '<span style="color:var(--text-light);font-size:0.8rem;font-style:italic;">Hanya pemilik</span>';
             }
             return '<tr>' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
@@ -5686,6 +5773,55 @@ function closeAsesmenBuilder() {
 
 async function editAsesmenDraft(id) {
     await openAsesmenBuilder(id);
+}
+
+async function previewAsesmen(id) {
+    showGlobalLoader('Memuat detail soal...');
+    try {
+        const { data: asm, error: err1 } = await supabaseClient.from('asesmen').select('*').eq('id', id).single();
+        if (err1) throw err1;
+        
+        const { data: soalList, error: err2 } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', id).order('nomor_soal', { ascending: true });
+        if (err2) throw err2;
+        
+        var contentHtml = '<div style="max-height:60vh;overflow-y:auto;text-align:left;padding-right:10px;">';
+        contentHtml += '<h4 style="margin-bottom:10px;color:var(--primary);">' + asm.judul + '</h4>';
+        contentHtml += '<p style="font-size:0.85rem;color:var(--text-light);margin-bottom:15px;">Mapel: ' + asm.mata_pelajaran + ' | Kelas: ' + asm.kelas + ' | Waktu: ' + asm.waktu_menit + ' menit</p>';
+        
+        if (!soalList || soalList.length === 0) {
+            contentHtml += '<p style="text-align:center;color:var(--text-light);margin-top:20px;">Belum ada soal pada asesmen ini.</p>';
+        } else {
+            soalList.forEach(function(s, i) {
+                contentHtml += '<div style="background:#f8fafc;padding:12px;border-radius:8px;margin-bottom:12px;border:1px solid #e2e8f0;">';
+                contentHtml += '<div style="font-weight:600;margin-bottom:6px;font-size:0.9rem;">' + (i+1) + '. ' + (s.tipe_soal === 'pg' ? '<span style="color:#3b82f6">[PG]</span>' : '<span style="color:#8b5cf6">[Essay]</span>') + ' ' + (s.naskah_soal.replace(/\n/g, '<br>')) + '</div>';
+                
+                if (s.gambar_url) {
+                    contentHtml += '<img src="' + s.gambar_url + '" style="max-width:100%;max-height:150px;border-radius:6px;margin-bottom:8px;"/>';
+                }
+                
+                if (s.tipe_soal === 'pg') {
+                    contentHtml += '<ol type="A" style="margin-left:20px;font-size:0.85rem;margin-bottom:8px;">';
+                    contentHtml += '<li>' + (s.opsi_a || '') + '</li>';
+                    contentHtml += '<li>' + (s.opsi_b || '') + '</li>';
+                    contentHtml += '<li>' + (s.opsi_c || '') + '</li>';
+                    contentHtml += '<li>' + (s.opsi_d || '') + '</li>';
+                    contentHtml += '</ol>';
+                }
+                
+                if (s.kunci_jawaban) {
+                    contentHtml += '<div style="font-size:0.85rem;color:#10b981;font-weight:600;">Kunci: ' + s.kunci_jawaban + '</div>';
+                }
+                contentHtml += '</div>';
+            });
+        }
+        contentHtml += '</div>';
+        
+        showCustomConfirm('Detail Asesmen', contentHtml, 'Tutup', function(){});
+    } catch(e) {
+        showToast('Gagal memuat detail: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
 }
 
 // --- Populate helpers (by name, not by ID) ---
@@ -6575,6 +6711,8 @@ async function loadArsipAsesmen() {
         var arsipList = data || [];
         if (countEl) countEl.textContent = arsipList.length + ' arsip';
         
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+        
         if (arsipList.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada arsip yang cocok dengan filter.</td></tr>';
             return;
@@ -6589,8 +6727,16 @@ async function loadArsipAsesmen() {
             
             var tglArsip = a.archived_at ? new Date(a.archived_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
             
-            var aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="restoreArsipAsesmen(\'' + a.id + '\')" title="Kembalikan ke Aktif"><i data-lucide="undo-2" style="width:14px;height:14px"></i></button>' +
-                '<button class="btn-icon btn-icon-red" onclick="deleteArsipAsesmen(\'' + a.id + '\')" title="Hapus Permanen"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+            var canManage = isAdminKurikulum || (currentUser && a.created_by === currentUser.id);
+            var aksiHtml = '';
+            
+            if (canManage) {
+                aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
+                    '<button class="btn-icon btn-icon-blue" onclick="restoreArsipAsesmen(\'' + a.id + '\')" title="Kembalikan ke Aktif"><i data-lucide="undo-2" style="width:14px;height:14px"></i></button>' +
+                    '<button class="btn-icon btn-icon-red" onclick="deleteArsipAsesmen(\'' + a.id + '\')" title="Hapus Permanen"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+            } else {
+                aksiHtml = '<span style="color:var(--text-light);font-size:0.8rem;font-style:italic;">Hanya pemilik</span>';
+            }
             
             return '<tr>' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
@@ -7062,3 +7208,123 @@ async function archiveGaleriToDrive(id, url, albumEncoded) {
     });
 }
 
+// ==========================================
+// LANDING PAGE ENHANCEMENTS JS
+// ==========================================
+
+// ==========================================
+// LANDING PAGE ENHANCEMENTS JS
+// ==========================================
+
+// 2. Typewriter Effect
+document.addEventListener('DOMContentLoaded', function() {
+    var textEl = document.getElementById('typewriterText');
+    if (!textEl) return;
+    
+    var prefix = "Generasi yang ";
+    var words = ["Cerdas", "Berprestasi", "Amanah", "Kreatif", "Berakhlaqul Karimah"];
+    var wordIndex = 0;
+    var charIndex = 0;
+    var isDeleting = false;
+    
+    function typeEffect() {
+        var currentWord = words[wordIndex];
+        
+        if (isDeleting) {
+            textEl.textContent = prefix + currentWord.substring(0, charIndex - 1);
+            charIndex--;
+        } else {
+            textEl.textContent = prefix + currentWord.substring(0, charIndex + 1);
+            charIndex++;
+        }
+        
+        var typingSpeed = isDeleting ? 40 : 100;
+        
+        if (!isDeleting && charIndex === currentWord.length) {
+            isDeleting = true;
+            typingSpeed = 2000; // Pause at end
+        } else if (isDeleting && charIndex === 0) {
+            isDeleting = false;
+            wordIndex = (wordIndex + 1) % words.length;
+            typingSpeed = 500; // Pause before new word
+        }
+        
+        setTimeout(typeEffect, typingSpeed);
+    }
+    
+    setTimeout(typeEffect, 1000);
+});
+
+// 3. Simple Vanilla Tilt
+document.addEventListener('mousemove', function(e) {
+    var cards = document.querySelectorAll('.tilt-element, .berita-card, .eskul-card, .sarana-card');
+    cards.forEach(function(card) {
+        var rect = card.getBoundingClientRect();
+        if(e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            var x = e.clientX - rect.left;
+            var y = e.clientY - rect.top;
+            var maxDeg = 6; // soft tilt
+            var rotateY = (x / rect.width * 2 - 1) * maxDeg;
+            var rotateX = (1 - y / rect.height * 2) * maxDeg;
+            card.style.transform = 'perspective(1000px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) scale3d(1.02, 1.02, 1.02)';
+            card.style.transition = 'none';
+        }
+    });
+});
+document.addEventListener('mouseout', function(e) {
+    var cards = document.querySelectorAll('.tilt-element, .berita-card, .eskul-card, .sarana-card');
+    cards.forEach(function(card) {
+        card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+        card.style.transition = 'transform 0.5s ease-out';
+    });
+});
+
+// 4. Testimonial Slider JS
+var currentTestimonialIndex = 0;
+var testimonialInterval;
+
+function initTestimonial() {
+    var track = document.getElementById('testimonialTrack');
+    if (!track) return;
+    showTestimonial(currentTestimonialIndex);
+    testimonialInterval = setInterval(function() { moveTestimonial(1); }, 6000);
+}
+
+function moveTestimonial(n) {
+    clearInterval(testimonialInterval);
+    var track = document.getElementById('testimonialTrack');
+    if (!track) return;
+    var slides = track.querySelectorAll('.testimonial-slide');
+    currentTestimonialIndex += n;
+    if (currentTestimonialIndex >= slides.length) currentTestimonialIndex = 0;
+    if (currentTestimonialIndex < 0) currentTestimonialIndex = slides.length - 1;
+    showTestimonial(currentTestimonialIndex);
+    testimonialInterval = setInterval(function() { moveTestimonial(1); }, 6000);
+}
+
+window.moveTestimonial = moveTestimonial; // Expose to global for onclick
+
+function setTestimonial(n) {
+    clearInterval(testimonialInterval);
+    currentTestimonialIndex = n;
+    showTestimonial(currentTestimonialIndex);
+    testimonialInterval = setInterval(function() { moveTestimonial(1); }, 6000);
+}
+window.setTestimonial = setTestimonial; // Expose to global
+
+function showTestimonial(index) {
+    var track = document.getElementById('testimonialTrack');
+    if (!track) return;
+    var dots = document.querySelectorAll('#testimonialDots .dot');
+    track.style.transform = 'translateX(-' + (index * 100) + '%)';
+    dots.forEach(function(d, i) {
+        if (i === index) {
+            d.classList.add('active');
+            d.style.background = 'var(--primary)';
+        } else {
+            d.classList.remove('active');
+            d.style.background = 'rgba(30,58,138,0.2)';
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', initTestimonial);
