@@ -719,10 +719,8 @@ async function initDashboard() {
         // Load pengumuman, galeri, + siswa for dashboard (all roles)
         loadDashboardPengumuman();
         loadGaleriBeranda();
-        if (['admin', 'kurikulum'].includes(currentRole)) {
-            loadDashGuru();
-            loadDashSiswa();
-        }
+        loadDashGuru();
+        loadDashSiswa();
 
         animateDashboardCards();
 
