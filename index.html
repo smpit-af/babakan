@@ -34,7 +34,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260416a" />
+  <link rel="stylesheet" href="style.css?v=20260422b" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -42,6 +42,18 @@
 </head>
 
 <body>
+  <!-- ========== NEWS TICKER ========== -->
+  <div id="newsTicker" class="news-ticker-bar">
+    <div class="news-ticker-inner">
+      <div class="news-ticker-label">PENGUMUMAN</div>
+      <div class="marquee-container">
+        <div class="marquee-content" id="tickerContent">
+          <!-- Isi ticker akan diisi lewat JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== NAVBAR ========== -->
   <nav class="nav-landing" id="navbar">
     <div class="container-custom">
@@ -52,12 +64,14 @@
           <span class="nav-logo-text">SMP IT AL FATHONAH</span>
         </a>
         <ul class="nav-links" id="navLinks">
-          <!-- Tombol Tutup Sidebar -->
-          <button class="mobile-only-nav mobile-nav-action" data-action="close" style="position:absolute; top:12px; left:12px; background:transparent; border:none; color:var(--text-light); padding:4px; font-size:0; line-height:0; cursor:pointer;">
-            <i data-lucide="x" style="width:20px;height:20px"></i>
-          </button>
+          <!-- Sidebar Header -->
+          <li class="mobile-close-btn-wrapper mobile-only-nav">
+            <span class="mobile-menu-title">MENU UTAMA</span>
+          </li>
+
           <!-- Navigasi Utama -->
-          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#beranda">Beranda</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#beranda"><i data-lucide="home"></i>Beranda</a></li>
+          
           <li class="nav-dropdown desktop-only-nav">
             <a class="nav-link" style="cursor:pointer; display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">Tentang Kami <svg
                 xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -65,22 +79,29 @@
                 <path d="m6 9 6 6 6-6" />
               </svg></a>
             <div class="nav-dropdown-menu">
-              <!-- Desktop use normal links -->
               <a href="#tentang" class="nav-dropdown-item">Visi & Misi</a>
               <a href="#sarana" class="nav-dropdown-item">Sarana & Prasarana</a>
               <a href="#eskul" class="nav-dropdown-item">Ekstrakurikuler</a>
             </div>
           </li>
-          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#tentang">Visi &amp; Misi</a></li>
-          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#sarana">Sarana &amp; Prasarana</a></li>
-          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#eskul">Ekstrakurikuler</a></li>
-          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#berita">Berita</a></li>
-          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#spmb">SPMB</a></li>
-          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#kontak">Kontak</a></li>
+
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#tentang"><i data-lucide="target"></i>Visi &amp; Misi</a></li>
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#sarana"><i data-lucide="layout"></i>Sarana &amp; Prasarana</a></li>
+          <li class="mobile-only-nav"><a class="nav-link mobile-nav-action" data-action="target" data-target="#eskul"><i data-lucide="star"></i>Ekstrakurikuler</a></li>
+          
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#berita"><i data-lucide="newspaper"></i>Berita</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#spmb"><i data-lucide="user-plus"></i>SPMB</a></li>
+          <li><a class="nav-link mobile-nav-action" data-action="target" data-target="#kontak"><i data-lucide="message-circle"></i>Kontak</a></li>
+          
           <li>
             <button class="btn btn-accent btn-sm mobile-nav-action" data-action="login" id="btnOpenLogin">
-              <i data-lucide="log-in" style="width:16px;height:16px"></i>
-              Login
+              <i data-lucide="log-in"></i>
+              Masuk
+            </button>
+          </li>
+          <li>
+            <button class="btn btn-danger btn-sm mobile-only-nav mobile-nav-action" data-action="close" id="mobileCloseActionBtn">
+              Tutup
             </button>
           </li>
         </ul>
@@ -93,30 +114,37 @@
   <div class="nav-overlay mobile-nav-action" data-action="close" id="navOverlay"></div>
 
   <!-- ========== HERO ========== -->
-  <section class="hero" id="beranda">
-    <!-- Background Slideshow — ganti gambar di folder img/ -->
+  <section class="hero" id="beranda" style="position:relative; overflow:hidden;">
+    <!-- Parallax Slideshow -->
     <div class="hero-slideshow" id="heroSlideshow">
       <div class="hero-slide active" style="background-image:url('img/hero/hero1.jpg')"></div>
       <div class="hero-slide" style="background-image:url('img/hero/hero2.jpg')"></div>
       <div class="hero-slide" style="background-image:url('img/hero/hero3.jpg')"></div>
     </div>
     <div class="hero-overlay"></div>
+    <!-- Particles Decoration -->
+    <div class="hero-particles">
+      <div class="particle p1"></div><div class="particle p2"></div><div class="particle p3"></div><div class="particle p4"></div><div class="particle p5"></div>
+      <div class="particle p6"></div><div class="particle p7"></div><div class="particle p8"></div>
+    </div>
     <div class="hero-decoration"></div>
-    <div class="container-custom">
-      <div class="hero-content animate-in">
+    <div class="container-custom" style="position:relative; z-index:3;">
+      <div class="hero-content animate-in tilt-element">
         <div class="hero-badge">
           <i data-lucide="sparkles" style="width:14px;height:14px"></i>
           Sekolah Islam Terpadu Unggulan
         </div>
-        <h1>Membentuk Generasi<br /><span>Berkarakter &amp; Berprestasi</span></h1>
-        <p>SMP IT Al-Fathonah mencetak generasi muda yang unggul dalam ilmu pengetahuan, berkarakter Islami, dan siap
-          menghadapi tantangan masa depan.</p>
+        <h1>Membangun Potensi<br /><span>Menuju</span></h1>
+        <!-- Typewriter effect container -->
+        <p style="min-height:1.5em; margin-bottom: 1rem;">
+          <span id="typewriterText"></span><span class="typewriter-cursor">|</span>
+        </p>
         <div class="hero-btns">
-          <a href="#tentang" class="btn btn-accent btn-lg">
+          <a href="#tentang" class="btn btn-accent btn-lg hover-scale">
             <i data-lucide="info" style="width:18px;height:18px"></i>
             Tentang Kami
           </a>
-          <a href="#kontak" class="btn btn-success btn-lg">
+          <a href="#kontak" class="btn btn-success btn-lg hover-scale">
             <i data-lucide="phone" style="width:18px;height:18px"></i>
             Hubungi Kami
           </a>
@@ -288,6 +316,74 @@
             <h4>Study Tour ke Museum Nasional</h4>
             <p>Kunjungan edukatif siswa kelas 9 ke Museum Nasional untuk mendalami sejarah Indonesia.</p>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TESTIMONI & KISAH ALUMNI ========== -->
+  <section class="section" id="testimoni" style="background:#fff;">
+    <div class="container-custom">
+      <div class="section-header reveal">
+        <h2>Apa Kata Mereka?</h2>
+        <p>Testimoni dari orang tua siswa dan kisah sukses para alumni Al-Fathonah.</p>
+      </div>
+      
+      <div class="testimonial-slider-container reveal">
+        <div class="testimonial-track" id="testimonialTrack">
+          <!-- Slide 1 -->
+          <div class="testimonial-slide">
+            <div class="testimonial-card tilt-element">
+              <i data-lucide="quote" class="quote-icon" style="color:var(--accent);width:40px;height:40px;margin-bottom:1rem;opacity:0.5;"></i>
+              <p class="testimonial-text" style="font-size:1.1rem;font-style:italic;line-height:1.6;margin-bottom:1.5rem;">"Alhamdulillah, sejak anak saya disekolahkan di SMP IT Al-Fathonah, hafalan Qur'annya meningkat tajam dan akhlaknya jauh lebih baik. Fasilitas asramanya juga sangat mendukung kenyamanan."</p>
+              <div class="testimonial-author" style="display:flex;align-items:center;gap:1rem;">
+                <div class="author-avatar"><img src="https://ui-avatars.com/api/?name=Bapak+Ahmad&background=1e3a8a&color=fff" alt="Avatar" style="width:50px;height:50px;border-radius:50%;"></div>
+                <div>
+                  <h4 style="margin:0;font-size:1.05rem;">Bapak Ahmad</h4>
+                  <span style="font-size:0.85rem;color:var(--text-light);">Orang Tua Siswa Kelas 8</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Slide 2 -->
+          <div class="testimonial-slide">
+            <div class="testimonial-card tilt-element">
+              <i data-lucide="quote" class="quote-icon" style="color:var(--accent);width:40px;height:40px;margin-bottom:1rem;opacity:0.5;"></i>
+              <p class="testimonial-text" style="font-size:1.1rem;font-style:italic;line-height:1.6;margin-bottom:1.5rem;">"Pendidikan karakter di sekolah ini luar biasa. Guru-gurunya sangat peduli dan tekun membimbing siswa baik secara akademik maupun spiritual. Lulusannya terbukti mampu bersaing."</p>
+              <div class="testimonial-author" style="display:flex;align-items:center;gap:1rem;">
+                <div class="author-avatar"><img src="https://ui-avatars.com/api/?name=Ibu+Siti+Rahma&background=10b981&color=fff" alt="Avatar" style="width:50px;height:50px;border-radius:50%;"></div>
+                <div>
+                  <h4 style="margin:0;font-size:1.05rem;">Ibu Siti Rahma</h4>
+                  <span style="font-size:0.85rem;color:var(--text-light);">Orang Tua Alumni (Angkatan 2024)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Slide 3 -->
+          <div class="testimonial-slide">
+            <div class="testimonial-card tilt-element">
+              <i data-lucide="quote" class="quote-icon" style="color:var(--accent);width:40px;height:40px;margin-bottom:1rem;opacity:0.5;"></i>
+              <p class="testimonial-text" style="font-size:1.1rem;font-style:italic;line-height:1.6;margin-bottom:1.5rem;">"Bekal ilmu agama dan kepemimpinan yang saya dapatkan selama mondok di SMP IT Al-Fathonah sangat berguna ketika saya melanjutkan pendidikan. Sukses selalu untuk sekolah tercinta!"</p>
+              <div class="testimonial-author" style="display:flex;align-items:center;gap:1rem;">
+                <div class="author-avatar"><img src="https://ui-avatars.com/api/?name=Fikri+Haikal&background=fbbf24&color=fff" alt="Avatar" style="width:50px;height:50px;border-radius:50%;"></div>
+                <div>
+                  <h4 style="margin:0;font-size:1.05rem;">Fikri Haikal</h4>
+                  <span style="font-size:0.85rem;color:var(--text-light);">Alumni Angkatan 2022</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="slider-controls" style="display:flex;justify-content:center;align-items:center;margin-top:2rem;gap:1rem;">
+          <button class="slider-btn prev-btn" onclick="moveTestimonial(-1)" style="background:var(--bg-light);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);"><i data-lucide="chevron-left" style="width:20px;height:20px;"></i></button>
+          <div class="slider-dots" id="testimonialDots" style="display:flex;gap:0.5rem;">
+            <!-- Dots will be generated by JS or static -->
+            <span class="dot active" onclick="setTestimonial(0)" style="width:10px;height:10px;border-radius:50%;background:var(--primary);cursor:pointer;"></span>
+            <span class="dot" onclick="setTestimonial(1)" style="width:10px;height:10px;border-radius:50%;background:rgba(30,58,138,0.2);cursor:pointer;"></span>
+            <span class="dot" onclick="setTestimonial(2)" style="width:10px;height:10px;border-radius:50%;background:rgba(30,58,138,0.2);cursor:pointer;"></span>
+          </div>
+          <button class="slider-btn next-btn" onclick="moveTestimonial(1)" style="background:var(--bg-light);border:none;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,0.05);"><i data-lucide="chevron-right" style="width:20px;height:20px;"></i></button>
         </div>
       </div>
     </div>
@@ -665,15 +761,17 @@
   </button>
 
   <!-- App JS -->
-  <script src="app.js?v=20260416m"></script>
+  <script src="app.js?v=20260422f"></script>
 
 
 
   <!-- Scroll / Nav Logic (inline for landing page) -->
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Force scroll to top on load/refresh
-      window.scrollTo(0, 0);
+      // Force scroll to top on load/refresh (with slight delay for mobile stability)
+      setTimeout(function() {
+        window.scrollTo(0, 0);
+      }, 100);
       if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
       // Initialize Lucide icons
@@ -684,10 +782,10 @@
       if (typeof loadEskulPublic === 'function') loadEskulPublic();
       if (typeof loadSarprasPublic === 'function') loadSarprasPublic();
       if (typeof loadSPMBPublicConfig === 'function') loadSPMBPublicConfig();
+      if (typeof loadPengumumanTicker === 'function') loadPengumumanTicker();
 
-      // Navbar scroll effect
       window.addEventListener('scroll', function () {
-        document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 60);
+        document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 30);
 
         // Back to top button visibility
         var btn = document.getElementById('backToTop');
@@ -794,6 +892,7 @@
       });
     });
   </script>
+
 </body>
 
 </html>
