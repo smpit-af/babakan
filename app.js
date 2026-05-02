@@ -716,6 +716,12 @@ async function initDashboard() {
             loadPengumumanAdmin();
         }
 
+        // Load essential data for bendahara (master kelas + siswa needed for keuangan)
+        if (currentRole === 'bendahara') {
+            loadMasterKelas();
+            loadSiswaData();
+        }
+
         // Load pengumuman, galeri, + siswa for dashboard (all roles)
         loadDashboardPengumuman();
         loadGaleriBeranda();
@@ -784,6 +790,18 @@ function applyRoleVisibility() {
     var isNonSiswa = role !== 'siswa';
     document.querySelectorAll('.role-non-siswa').forEach(function (el) {
         el.style.display = isNonSiswa ? '' : 'none';
+    });
+
+    // Manajemen Keuangan (Bendahara ONLY - admin excluded)
+    var isBendahara = (role === 'bendahara');
+    document.querySelectorAll('.role-bendahara').forEach(function (el) {
+        el.style.display = isBendahara ? '' : 'none';
+    });
+
+    // Laporan Bendahara untuk Kepsek ONLY (admin excluded)
+    var isKepsekOnly = (role === 'kepala_sekolah');
+    document.querySelectorAll('.role-kepsek-only').forEach(function (el) {
+        el.style.display = isKepsekOnly ? '' : 'none';
     });
 
     // Welcome message
@@ -890,6 +908,13 @@ window.showSection = function (sectionId, linkEl) {
     // ================= GALERI ================= //
     if (sectionId === 'sectionGaleri') { loadGaleri(); }
     // ========================================== //
+    if (sectionId === 'sectionRuangDiskusi') {
+        if(currentUser) {
+            var avatarStr = (currentUser.name || currentUser.email || 'U').charAt(0).toUpperCase();
+            document.getElementById('forumUserAvatar').innerText = avatarStr;
+        }
+        loadForumFeed();
+    }
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
     if (sectionId === 'sectionLaporanNilai') {
@@ -3279,7 +3304,7 @@ function deleteRapat(id, judul) {
 }
 
 // ============================================
-// PERJALANAN DINAS
+// pengeluaran dinas
 // ============================================
 var perjadinList = [];
 
@@ -3288,11 +3313,11 @@ async function loadPerjadinData() {
     if (!tbody || !supabaseClient) return;
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
     try {
-        const { data, error } = await supabaseClient.from('perjalanan_dinas').select('*').order('tanggal_berangkat', { ascending: false });
+        const { data, error } = await supabaseClient.from('pengeluaran_dinas').select('*').order('tanggal_berangkat', { ascending: false });
         if (error) throw error;
         perjadinList = data || [];
         if (perjadinList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data perjalanan dinas.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data pengeluaran dinas.</td></tr>';
             return;
         }
         tbody.innerHTML = perjadinList.map(function(p, i) {
@@ -3335,7 +3360,7 @@ function openPerjadinModal(data) {
     document.getElementById('formPerjadinStatus').value = data ? (data.status||'Direncanakan') : 'Direncanakan';
     document.getElementById('formPerjadinKeperluan').value = data ? (data.keperluan||'') : '';
     document.getElementById('formPerjadinHasil').value = data ? (data.hasil_keterangan||'') : '';
-    document.getElementById('perjadinModalTitle').textContent = data ? 'Edit Perjalanan Dinas' : 'Tambah Perjalanan Dinas';
+    document.getElementById('perjadinModalTitle').textContent = data ? 'Edit pengeluaran dinas' : 'Tambah pengeluaran dinas';
     document.getElementById('perjadinModal').classList.add('active');
     if (window.lucide) lucide.createIcons();
 }
@@ -3357,13 +3382,13 @@ async function savePerjadin() {
     if (!obj.keperluan) { showToast('Keperluan wajib diisi!', 'warning'); return; }
     try {
         if (id) {
-            const { error } = await supabaseClient.from('perjalanan_dinas').update(obj).eq('id', id);
+            const { error } = await supabaseClient.from('pengeluaran_dinas').update(obj).eq('id', id);
             if (error) throw error;
-            showToast('Data perjalanan dinas diperbarui!', 'success');
+            showToast('Data pengeluaran dinas diperbarui!', 'success');
         } else {
-            const { error } = await supabaseClient.from('perjalanan_dinas').insert([obj]);
+            const { error } = await supabaseClient.from('pengeluaran_dinas').insert([obj]);
             if (error) throw error;
-            showToast('Perjalanan dinas berhasil ditambahkan!', 'success');
+            showToast('pengeluaran dinas berhasil ditambahkan!', 'success');
         }
         closePerjadinModal();
         loadPerjadinData();
@@ -3376,11 +3401,11 @@ function editPerjadin(id) {
 }
 
 function deletePerjadin(id, tujuan) {
-    showCustomConfirm('Hapus Data Perjalanan Dinas?', 'Data perjalanan dinas ke <strong>"' + tujuan + '"</strong> akan dihapus permanen.', 'Ya, Hapus', async function() {
+    showCustomConfirm('Hapus Data pengeluaran dinas?', 'Data pengeluaran dinas ke <strong>"' + tujuan + '"</strong> akan dihapus permanen.', 'Ya, Hapus', async function() {
         try {
-            const { error } = await supabaseClient.from('perjalanan_dinas').delete().eq('id', id);
+            const { error } = await supabaseClient.from('pengeluaran_dinas').delete().eq('id', id);
             if (error) throw error;
-            showToast('Data perjalanan dinas dihapus!', 'success');
+            showToast('Data pengeluaran dinas dihapus!', 'success');
             loadPerjadinData();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
@@ -5695,6 +5720,8 @@ async function loadAsesmenList() {
 // --- Open Builder (new or edit) ---
 async function openAsesmenBuilder(existingId) {
     document.getElementById('asesmenBuilderArea').style.display = 'block';
+    document.getElementById('asesmenParseArea').style.display = 'none';
+    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
     asesmenBuilderSoalList = [];
 
     // populate dropdowns
@@ -5767,6 +5794,46 @@ async function openAsesmenBuilder(existingId) {
 function closeAsesmenBuilder() {
     document.getElementById('asesmenBuilderArea').style.display = 'none';
     asesmenBuilderSoalList = [];
+}
+
+function openParseArea() {
+    document.getElementById('asesmenParseArea').style.display = 'block';
+    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
+    document.getElementById('asesmenBuilderArea').style.display = 'none';
+    
+    populateMapelNameDropdown('parseMapel', '');
+    populateKelasNameDropdown('parseKelas', '');
+    var lblYear = document.getElementById('lblActiveYear');
+    var parseTahun = document.getElementById('parseTahun');
+    if (lblYear && parseTahun) {
+        var yearVal = lblYear.textContent;
+        parseTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
+    }
+    document.getElementById('asesmenParseArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeParseArea() {
+    document.getElementById('asesmenParseArea').style.display = 'none';
+}
+
+function openAIArea() {
+    document.getElementById('asesmenAIGenerateArea').style.display = 'block';
+    document.getElementById('asesmenParseArea').style.display = 'none';
+    document.getElementById('asesmenBuilderArea').style.display = 'none';
+    
+    populateMapelNameDropdown('aiMapel', '');
+    populateKelasNameDropdown('aiKelas', '');
+    var lblYear = document.getElementById('lblActiveYear');
+    var aiTahun = document.getElementById('aiTahun');
+    if (lblYear && aiTahun) {
+        var yearVal = lblYear.textContent;
+        aiTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
+    }
+    document.getElementById('asesmenAIGenerateArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeAIArea() {
+    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
 }
 
 async function editAsesmenDraft(id) {
@@ -6109,16 +6176,41 @@ function escHtml(str) { return String(str).replace(/&/g,'&amp;').replace(/</g,'&
 function escAttr(str) { return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // --- Save Draft ---
-async function saveDraftAsesmen(autoCloseBuilder) {
-    collectSoalFromDOM();
-    var judul = (document.getElementById('builderJudul') || {}).value || '';
-    var tipe = (document.getElementById('builderTipe') || {}).value || 'STS';
-    var mapel = (document.getElementById('builderMapel') || {}).value || '';
-    var kelas = (document.getElementById('builderKelas') || {}).value || '';
-    var waktu = (document.getElementById('builderWaktu') || {}).value || '';
-    var tanggal = (document.getElementById('builderTanggal') || {}).value || '';
-    var bobotPG = parseInt((document.getElementById('builderBobotPG') || {}).value) || 0;
-    var bobotEssay = parseInt((document.getElementById('builderBobotEssay') || {}).value) || 0;
+async function saveDraftAsesmen(source) {
+    // Detect source: 'parse', 'ai', or 'manual' (default)
+    var prefix = 'builder';
+    var autoCloseBuilder = true;
+    if (source === 'parse') {
+        prefix = 'parse';
+        autoCloseBuilder = false;
+    } else if (source === 'ai') {
+        prefix = 'ai';
+        autoCloseBuilder = false;
+    } else if (source === false || source === undefined || source === 'manual') {
+        prefix = 'builder';
+        autoCloseBuilder = (source !== false);
+    }
+
+    // For manual builder, collect from DOM cards
+    if (prefix === 'builder') collectSoalFromDOM();
+
+    // For parse/ai source, parse soal from textarea
+    if (prefix === 'parse' || prefix === 'ai') {
+        var textareaId = prefix === 'parse' ? 'parseTextarea' : 'aiTextarea';
+        var rawText = (document.getElementById(textareaId) || {}).value || '';
+        if (rawText.trim()) {
+            asesmenBuilderSoalList = parseTextToSoalList(rawText);
+        }
+    }
+
+    var judul = (document.getElementById(prefix + 'Judul') || {}).value || '';
+    var tipe = (document.getElementById(prefix + 'Tipe') || {}).value || 'STS';
+    var mapel = (document.getElementById(prefix + 'Mapel') || {}).value || '';
+    var kelas = (document.getElementById(prefix + 'Kelas') || {}).value || '';
+    var waktu = (document.getElementById(prefix + 'Waktu') || {}).value || '';
+    var tanggal = (document.getElementById(prefix + 'Tanggal') || {}).value || '';
+    var bobotPG = parseInt((document.getElementById(prefix + 'BobotPG') || {}).value) || 0;
+    var bobotEssay = parseInt((document.getElementById(prefix + 'BobotEssay') || {}).value) || 0;
     var existingId = (document.getElementById('builderAsesmenId') || {}).value || '';
 
     if (!judul.trim()) { showToast('Judul Asesmen wajib diisi!', 'warning'); return; }
@@ -6247,34 +6339,14 @@ async function deleteAsesmen(id) {
 // AUTO GENERATE ASESMEN VIA TEKS (SMART PARSER)
 // ============================================================
 
+// Legacy compatibility: redirect old function names
 async function openAutoGenerateForm() {
-    var area = document.getElementById('asesmenAutoGenerateArea');
-    if (area.style.display === 'block') { closeAutoGenerateArea(); return; }
-    area.style.display = 'block';
-    
-    await loadMasterMapel();
-    await loadMasterKelas();
-
-    // Populate dropdowns auto mapel
-    populateMapelNameDropdown('autoMapel', '');
-    populateKelasNameDropdown('autoKelas', '');
-
-    // Auto-fill Tahun Pelajaran dari master data (readonly)
-    var lblYear = document.getElementById('lblActiveYear');
-    var autoTahun = document.getElementById('autoTahun');
-    if (lblYear && autoTahun) {
-        var yearVal = lblYear.textContent;
-        autoTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
-    }
-    
-    document.getElementById('autoStatusLabel').innerHTML = '';
-    document.getElementById('autoJudul').focus();
-    // Tutup builder manual jika terbuka
-    document.getElementById('asesmenBuilderArea').style.display = 'none';
+    openParseArea();
 }
 
 function closeAutoGenerateArea() {
-    document.getElementById('asesmenAutoGenerateArea').style.display = 'none';
+    closeParseArea();
+    closeAIArea();
 }
 
 function resetAsesmenForms() {
@@ -6289,16 +6361,27 @@ function resetAsesmenForms() {
     asesmenBuilderSoalList = [];
     if(typeof renderSoalCards === 'function') renderSoalCards();
 
-    // 2. Bersihkan area auto generate
-    var autoIds = ['autoJudul', 'autoMapel', 'autoKelas', 'autoWaktu', 'autoTanggal', 'autoTextarea'];
-    autoIds.forEach(function(id) {
+    // 2. Bersihkan area parse
+    var parseIds = ['parseJudul', 'parseMapel', 'parseKelas', 'parseWaktu', 'parseTanggal', 'parseTextarea'];
+    parseIds.forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = '';
     });
-    var aTipe = document.getElementById('autoTipe'); if(aTipe) aTipe.value = 'PH';
-    var aPG = document.getElementById('autoBobotPG'); if(aPG) aPG.value = '2';
-    var aEssay = document.getElementById('autoBobotEssay'); if(aEssay) aEssay.value = '0';
-    var aStatus = document.getElementById('autoStatusLabel'); if(aStatus) aStatus.innerHTML = '';
+    var pTipe = document.getElementById('parseTipe'); if(pTipe) pTipe.value = 'PH';
+    var pPG = document.getElementById('parseBobotPG'); if(pPG) pPG.value = '2';
+    var pEssay = document.getElementById('parseBobotEssay'); if(pEssay) pEssay.value = '0';
+    var pStatus = document.getElementById('parseStatusLabel'); if(pStatus) pStatus.innerHTML = '';
+
+    // 3. Bersihkan area AI
+    var aiIds = ['aiJudul', 'aiMapel', 'aiKelas', 'aiWaktu', 'aiTanggal', 'aiTextarea'];
+    aiIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    var aTipe = document.getElementById('aiTipe'); if(aTipe) aTipe.value = 'PH';
+    var aPG = document.getElementById('aiBobotPG'); if(aPG) aPG.value = '2';
+    var aEssay = document.getElementById('aiBobotEssay'); if(aEssay) aEssay.value = '0';
+    var aStatus = document.getElementById('aiStatusLabel'); if(aStatus) aStatus.innerHTML = '';
 }
 
 function parseTextToSoalList(text) {
@@ -6375,19 +6458,23 @@ function parseTextToSoalList(text) {
     return parsedSoal;
 }
 
-function previewAutoGenerate() {
-    var text = document.getElementById('autoTextarea').value;
+function previewAutoGenerate(source) {
+    var textareaId = (source === 'ai') ? 'aiTextarea' : 'parseTextarea';
+    var prefix = (source === 'ai') ? 'ai' : 'parse';
+    var statusLabelId = (source === 'ai') ? 'aiStatusLabel' : 'parseStatusLabel';
+
+    var text = document.getElementById(textareaId).value;
     var rawList = parseTextToSoalList(text);
     
     if (rawList.length === 0) {
-        document.getElementById('autoStatusLabel').innerHTML = '<span style="color:var(--danger)">Gagal membaca soal. Pastikan naskah diawali format angka, misal: 1. Naskah...</span>';
+        document.getElementById(statusLabelId).innerHTML = '<span style="color:var(--danger)">Gagal membaca soal. Pastikan naskah diawali format angka, misal: 1. Naskah...</span>';
         return false;
     }
     
     var countPG = rawList.filter(s => s.tipe === 'pg').length;
     var countEssay = rawList.filter(s => s.tipe === 'essay').length;
     
-    document.getElementById('autoStatusLabel').innerHTML = 
+    document.getElementById(statusLabelId).innerHTML = 
         '<span style="color:var(--success)">✅ Membaca ' + rawList.length + ' soal (' + countPG + ' PG, ' + countEssay + ' Essay)</span>';
         
     asesmenBuilderSoalList = rawList;
@@ -6400,37 +6487,38 @@ function previewAutoGenerate() {
     populateMapelNameDropdown('builderMapel', '');
     populateKelasNameDropdown('builderKelas', '');
 
-    document.getElementById('builderJudul').value = document.getElementById('autoJudul').value;
-    document.getElementById('builderTipe').value = document.getElementById('autoTipe').value;
-    document.getElementById('builderMapel').value = document.getElementById('autoMapel').value;
-    document.getElementById('builderKelas').value = document.getElementById('autoKelas').value;
+    document.getElementById('builderJudul').value = (document.getElementById(prefix + 'Judul') || {}).value || '';
+    document.getElementById('builderTipe').value = (document.getElementById(prefix + 'Tipe') || {}).value || 'STS';
+    document.getElementById('builderMapel').value = (document.getElementById(prefix + 'Mapel') || {}).value || '';
+    document.getElementById('builderKelas').value = (document.getElementById(prefix + 'Kelas') || {}).value || '';
     
-    var autoThn = document.getElementById('autoTahun');
-    if (autoThn) document.getElementById('builderTahun').value = autoThn.value;
+    var srcThn = document.getElementById(prefix + 'Tahun');
+    if (srcThn) document.getElementById('builderTahun').value = srcThn.value;
     
-    document.getElementById('builderBobotPG').value = document.getElementById('autoBobotPG').value;
-    document.getElementById('builderBobotEssay').value = document.getElementById('autoBobotEssay').value;
-    document.getElementById('builderWaktu').value = document.getElementById('autoWaktu').value;
-    document.getElementById('builderTanggal').value = document.getElementById('autoTanggal').value;
+    document.getElementById('builderBobotPG').value = (document.getElementById(prefix + 'BobotPG') || {}).value || '2';
+    document.getElementById('builderBobotEssay').value = (document.getElementById(prefix + 'BobotEssay') || {}).value || '0';
+    document.getElementById('builderWaktu').value = (document.getElementById(prefix + 'Waktu') || {}).value || '90';
+    document.getElementById('builderTanggal').value = (document.getElementById(prefix + 'Tanggal') || {}).value || '';
     
     document.getElementById('builderAsesmenId').value = ''; // pastikan id kosong sbg rancangan baru
     return true;
 }
 
-function submitAutoGenerate() {
-    var stat = previewAutoGenerate(); 
+function submitAutoGenerate(source) {
+    var stat = previewAutoGenerate(source); 
     if (stat) {
-        // Cek mapel dkk
-        var jdl = document.getElementById('autoJudul').value;
+        var prefix = (source === 'ai') ? 'ai' : 'parse';
+        var jdl = (document.getElementById(prefix + 'Judul') || {}).value || '';
         if (!jdl.trim()) { showToast('Isi judul asesmen!', 'warning'); return; }
         
         showCustomConfirm(
-            '[AUTO GENERATE] Terbitkan Langsung?',
+            'Terbitkan Langsung?',
             'Anda sudah melihat pratinjaunya di form bawah.' +
             '<br>Sistem akan otomatis menge-save data ini dan menerbitkannya ke Google Form.<br>Lanjutkan?',
-            'Ya, Terbitkan & Tutup Auto-Area',
+            'Ya, Terbitkan',
             function() {
-                closeAutoGenerateArea();
+                if (source === 'ai') closeAIArea();
+                else closeParseArea();
                 confirmPublishAsesmen();
             }
         );
@@ -7340,3 +7428,2085 @@ function showTestimonial(index) {
     });
 }
 document.addEventListener('DOMContentLoaded', initTestimonial);
+
+// ==============================================================================
+// MODUL RUANG DISKUSI (FORUM) & AI CHAT
+// ==============================================================================
+
+// Konfigurasi ImgBB API Key
+// Anda harus mendaftar di https://api.imgbb.com/ untuk mendapatkan API Key gratis.
+const IMGBB_API_KEY = "60f358ee68fb1d063c7ced2e14a15c93"; 
+
+// Konfigurasi Google Apps Script URL untuk AI Chat (Gemini Proxy)
+const GAS_AI_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyJYNNxg_m89JVoJcnMHJRhyBnZsbpWxugeP8R0M_ahrbF7Iys1DWkhM_XsoyUUkCL_/exec";
+
+var selectedForumImageFile = null;
+
+// --- Kompresi Gambar menggunakan Canvas ---
+function compressImage(file, maxWidth, maxHeight, quality, callback) {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function(event) {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = function() {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > maxWidth) {
+                    height = Math.round((height *= maxWidth / width));
+                    width = maxWidth;
+                }
+            } else {
+                if (height > maxHeight) {
+                    width = Math.round((width *= maxHeight / height));
+                    height = maxHeight;
+                }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Output as Blob (JPEG)
+            canvas.toBlob(function(blob) {
+                callback(blob);
+            }, 'image/jpeg', quality);
+        };
+    };
+}
+
+// --- Preview Gambar di Input Form ---
+function handleForumImageSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validasi ukuran awal (opsional)
+    if (file.size > 5 * 1024 * 1024) { // 5MB
+        showToast("Ukuran gambar terlalu besar. Maksimal 5MB.", "warning");
+        return;
+    }
+
+    selectedForumImageFile = file;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('forumImagePreview').src = e.target.result;
+        document.getElementById('forumImagePreviewContainer').style.display = 'block';
+    }
+    reader.readAsDataURL(file);
+}
+
+function removeForumImage() {
+    selectedForumImageFile = null;
+    document.getElementById('forumInputImage').value = '';
+    document.getElementById('forumImagePreviewContainer').style.display = 'none';
+}
+
+// --- Submit Status ke Forum ---
+async function submitForumPost() {
+    if (!currentUser) {
+        showToast("Sesi habis. Silakan login kembali.", "error");
+        return;
+    }
+
+    const text = document.getElementById('forumInputText').value.trim();
+    if (!text && !selectedForumImageFile) {
+        showToast("Tulis sesuatu atau unggah gambar untuk dibagikan.", "warning");
+        return;
+    }
+
+    document.getElementById('globalLoaderText').innerText = "Memposting ke ruang diskusi...";
+    document.getElementById('globalLoader').style.display = 'flex';
+
+    try {
+        let imageUrl = null;
+
+        // 1. Upload Gambar ke ImgBB jika ada
+        if (selectedForumImageFile) {
+            // Kompres gambar terlebih dahulu (ditingkatkan resolusi dan kualitasnya)
+            const compressedBlob = await new Promise((resolve) => {
+                compressImage(selectedForumImageFile, 1920, 1920, 0.85, resolve);
+            });
+
+            // Siapkan FormData untuk ImgBB
+            const formData = new FormData();
+            formData.append('image', compressedBlob, 'forum_image.jpg');
+
+            const imgbbRes = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
+                method: 'POST',
+                body: formData
+            });
+            const imgbbData = await imgbbRes.json();
+            
+            if (imgbbData.success) {
+                imageUrl = imgbbData.data.url;
+            } else {
+                throw new Error("Gagal mengunggah gambar ke ImgBB.");
+            }
+        }
+
+        // 2. Simpan Data ke Supabase
+        const { data, error } = await supabaseClient.from('forum_posts').insert([
+            {
+                user_id: currentUser.id,
+                role: currentRole,
+                nama_pengguna: currentUser.name || currentUser.email,
+                konten: text,
+                image_url: imageUrl
+            }
+        ]);
+
+        if (error) throw error;
+        
+        // 3. Simpan ke Galeri jika diceklis
+        const saveToGallery = document.getElementById('forumSaveToGallery')?.checked;
+        if (imageUrl && saveToGallery) {
+            await supabaseClient.from('galeri').insert([{
+                gambar_url: imageUrl,
+                album_nama: 'Share',
+                keterangan: 'Dibagikan dari Ruang Diskusi oleh ' + (currentUser.name || currentUser.email),
+                tanggal: new Date().toISOString().split('T')[0]
+            }]);
+            
+            // Refresh galeri di background
+            if(typeof loadGaleri === 'function') loadGaleri();
+            if(typeof loadGaleriBeranda === 'function') loadGaleriBeranda();
+        }
+
+        // Bersihkan Form
+        document.getElementById('forumInputText').value = '';
+        removeForumImage();
+        showToast("Berhasil membagikan postingan!", "success");
+        
+        // Muat ulang feed
+        loadForumFeed();
+
+    } catch (e) {
+        console.error(e);
+        showToast(e.message || "Terjadi kesalahan saat memposting.", "error");
+    } finally {
+        document.getElementById('globalLoader').style.display = 'none';
+    }
+}
+
+// --- Load Forum Feed ---
+async function loadForumFeed() {
+    const container = document.getElementById('forumFeedContainer');
+    if (!container) return;
+    
+    container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;"><i data-lucide="loader" class="icon-spin"></i> Memuat...</p>';
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        // Ambil data postingan, terurut dari yang terbaru
+        const { data: posts, error } = await supabaseClient
+            .from('forum_posts')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        if (!posts || posts.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Belum ada diskusi. Jadilah yang pertama membagikan cerita!</p>';
+            return;
+        }
+
+        // Ambil likes dan comments
+        const { data: allLikes } = await supabaseClient.from('forum_likes').select('post_id, user_id');
+        const { data: allComments } = await supabaseClient.from('forum_comments').select('*').order('created_at', { ascending: true });
+
+        let html = '';
+        const myUserId = currentUser ? currentUser.id : null;
+
+        posts.forEach(post => {
+            const postLikes = (allLikes || []).filter(l => l.post_id === post.id);
+            const myLike = postLikes.find(l => l.user_id === myUserId);
+            const postComments = (allComments || []).filter(c => c.post_id === post.id);
+            
+            const avatarLetter = (post.nama_pengguna || 'U').charAt(0).toUpperCase();
+            const timeStr = new Date(post.created_at).toLocaleString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+
+            html += `
+            <div class="forum-post" id="post-${post.id}">
+                <div class="forum-post-header">
+                    <div class="forum-avatar">${avatarLetter}</div>
+                    <div class="forum-user-info">
+                        <h4>${escHtml(post.nama_pengguna)}</h4>
+                        <div class="forum-user-meta">
+                            <span class="forum-role-badge">${escHtml(post.role)}</span>
+                            <span>•</span>
+                            <span>${timeStr}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="forum-content">${escHtml(post.konten)}</div>
+                ${post.image_url ? `<img src="${post.image_url}" class="forum-image" alt="Post Image" onclick="openGaleriLightbox('${post.image_url}', 'Gambar dari ${escAttr(post.nama_pengguna)}')" />` : ''}
+                
+                <div class="forum-actions">
+                    <button class="forum-action-btn ${myLike ? 'liked' : ''}" onclick="toggleLike('${post.id}', this)">
+                        <i data-lucide="heart"></i> <span id="like-count-${post.id}">${postLikes.length}</span> Suka
+                    </button>
+                    <button class="forum-action-btn" onclick="document.getElementById('comment-input-${post.id}').focus()">
+                        <i data-lucide="message-square"></i> <span id="comment-count-${post.id}">${postComments.length}</span> Komentar
+                    </button>
+                    ${post.user_id === myUserId ? `
+                    <button class="forum-action-btn" onclick="deleteForumPost('${post.id}')" style="color: #ef4444; margin-left: auto;" title="Hapus Postingan">
+                        <i data-lucide="trash-2"></i> Hapus
+                    </button>
+                    ` : ''}
+                </div>
+
+                <div class="forum-comments-section">
+                    <div class="forum-comment-list" id="comment-list-${post.id}">
+            `;
+
+            // Tampilkan Komentar
+            postComments.forEach(comment => {
+                const cAvatar = (comment.nama_pengguna || 'U').charAt(0).toUpperCase();
+                html += `
+                <div class="forum-comment-item">
+                    <div class="forum-comment-avatar">${cAvatar}</div>
+                    <div class="forum-comment-body">
+                        <h5>${escHtml(comment.nama_pengguna)}</h5>
+                        <p>${escHtml(comment.konten)}</p>
+                    </div>
+                </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                    <div class="forum-comment-input-wrap">
+                        <input type="text" class="forum-comment-input" id="comment-input-${post.id}" placeholder="Tulis komentar..." onkeypress="if(event.key === 'Enter') submitComment('${post.id}')" />
+                        <button class="btn btn-primary" style="border-radius: 20px; padding: 0.5rem 1rem;" onclick="submitComment('${post.id}')"><i data-lucide="send" style="width:14px;height:14px;"></i></button>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Gagal memuat feed diskusi.</p>';
+    }
+}
+
+// --- Like / Unlike ---
+async function toggleLike(postId, btnEl) {
+    if (!currentUser) return;
+    
+    const isLiked = btnEl.classList.contains('liked');
+    const countSpan = document.getElementById(`like-count-${postId}`);
+    let count = parseInt(countSpan.innerText) || 0;
+
+    try {
+        // Optimistic UI update (Langsung ubah tampilan tanpa refresh)
+        if (isLiked) {
+            btnEl.classList.remove('liked');
+            countSpan.innerText = Math.max(0, count - 1);
+            // Eksekusi background
+            supabaseClient.from('forum_likes').delete().match({ post_id: postId, user_id: currentUser.id }).then();
+        } else {
+            btnEl.classList.add('liked');
+            countSpan.innerText = count + 1;
+            // Eksekusi background
+            supabaseClient.from('forum_likes').insert([{ post_id: postId, user_id: currentUser.id }]).then();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// --- Submit Komentar ---
+async function submitComment(postId) {
+    if (!currentUser) return;
+    const inputEl = document.getElementById(`comment-input-${postId}`);
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    // Optimistic UI update
+    const listEl = document.getElementById(`comment-list-${postId}`);
+    const cAvatar = (currentUser.name || currentUser.email || 'U').charAt(0).toUpperCase();
+    const newHtml = `
+        <div class="forum-comment-item">
+            <div class="forum-comment-avatar">${cAvatar}</div>
+            <div class="forum-comment-body">
+                <h5>${escHtml(currentUser.name || currentUser.email)}</h5>
+                <p>${escHtml(text)}</p>
+            </div>
+        </div>
+    `;
+    listEl.insertAdjacentHTML('beforeend', newHtml);
+    inputEl.value = '';
+    
+    const countSpan = document.getElementById(`comment-count-${postId}`);
+    if (countSpan) countSpan.innerText = (parseInt(countSpan.innerText) || 0) + 1;
+
+    try {
+        // Eksekusi background
+        supabaseClient.from('forum_comments').insert([{
+            post_id: postId,
+            user_id: currentUser.id,
+            nama_pengguna: currentUser.name || currentUser.email,
+            konten: text
+        }]).then();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// --- Hapus Postingan ---
+async function deleteForumPost(postId) {
+    if (typeof showCustomConfirm === 'function') {
+        showCustomConfirm(
+            'Hapus Postingan?', 
+            'Apakah Anda yakin ingin menghapus postingan ini secara permanen?', 
+            'Ya, Hapus', 
+            async function() {
+                executeDeletePost(postId);
+            }
+        );
+    } else {
+        if (!confirm("Apakah Anda yakin ingin menghapus postingan ini secara permanen?")) return;
+        executeDeletePost(postId);
+    }
+}
+
+async function executeDeletePost(postId) {
+    // Hapus dari UI langsung
+    const postEl = document.getElementById(`post-${postId}`);
+    if (postEl) postEl.remove();
+
+    try {
+        // Hapus postingan utama (likes dan comments akan otomatis terhapus karena ON DELETE CASCADE di database)
+        // Kita tidak bisa menghapus likes/comments secara manual dari frontend karena akan terbentur RLS (akses ditolak jika mencoba menghapus milik orang lain).
+        const { error } = await supabaseClient.from('forum_posts').delete().eq('id', postId);
+        
+        if (error) throw error;
+        
+        showToast("Postingan dihapus.", "success");
+    } catch (e) {
+        console.error(e);
+        showToast("Gagal menghapus postingan.", "error");
+    }
+}
+
+// Hook loadForumFeed dipanggil dari showSection yang sudah ada di atas (baris ~891)
+
+// ==============================================================================
+// AI CHATBOT (GEMINI PROXY)
+// ==============================================================================
+
+function toggleAiChat() {
+    const modal = document.getElementById('aiChatModal');
+    modal.classList.toggle('active');
+    if (modal.classList.contains('active')) {
+        document.getElementById('aiChatInput').focus();
+    }
+}
+
+// Tutup AI otomatis jika klik di luar area chat box
+document.addEventListener('click', function(e) {
+    const aiModal = document.getElementById('aiChatModal');
+    const aiFab = document.querySelector('.ai-fab');
+    if (aiModal && aiModal.classList.contains('active')) {
+        if (!aiModal.contains(e.target) && (!aiFab || !aiFab.contains(e.target))) {
+            aiModal.classList.remove('active');
+        }
+    }
+});
+
+async function sendAiMessage() {
+    const inputEl = document.getElementById('aiChatInput');
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    const chatBody = document.getElementById('aiChatBody');
+    
+    // 1. Tampilkan pesan user
+    chatBody.innerHTML += `
+      <div class="ai-msg-wrapper user">
+        <div class="ai-avatar user-avatar" style="background:#6366f1;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div class="ai-msg user">${escHtml(text)}</div>
+      </div>
+    `;
+    inputEl.value = '';
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    // 2. Tampilkan indikator mengetik
+    const typingId = 'typing-' + Date.now();
+    const typingWrapperId = 'wrapper-' + typingId;
+    chatBody.innerHTML += `
+        <div class="ai-msg-wrapper bot" id="${typingWrapperId}">
+          <div class="ai-avatar bot-avatar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+          </div>
+          <div class="ai-msg bot" id="${typingId}">
+            <div class="ai-typing"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+    `;
+    chatBody.scrollTop = chatBody.scrollHeight;
+
+    try {
+        // Menggunakan Groq API (Llama 3) yang super cepat dan gratis dengan kuota besar
+        const GROQ_API_KEY = "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";
+        const url = "https://api.groq.com/openai/v1/chat/completions";
+        
+        const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
+
+ATURAN WAJIB:
+1. Jawab menggunakan BAHASA YANG SAMA dengan bahasa pengguna. Jika pengguna bertanya dalam Bahasa Inggris, jawab dalam Bahasa Inggris. Jika dalam Bahasa Indonesia, jawab dalam Bahasa Indonesia yang BAKU sesuai EYD/PUEBI. Jika dalam bahasa lain (Arab, Jawa, Sunda, dll.), jawab dalam bahasa tersebut.
+2. JANGAN PERNAH membuat typo, salah ketik, atau kata-kata yang tidak utuh/terpotong.
+3. Pastikan setiap kalimat lengkap dan dapat dipahami dengan mudah.
+4. Gunakan tanda baca yang tepat dan konsisten.
+5. Jika menyebutkan istilah asing atau teknis, gunakan huruf miring dengan tanda bintang (*istilah*).
+6. Kamu adalah asisten UMUM yang cerdas. Kamu bisa dan HARUS menjawab SEMUA pertanyaan pengguna — baik tentang aplikasi sekolah, pelajaran, sains, matematika, sejarah, teknologi, kesehatan, agama, bahasa, maupun pertanyaan umum lainnya. Jangan pernah menolak pertanyaan umum hanya karena tidak terkait aplikasi.
+
+Berikan jawaban yang ramah, informatif, dan jelas. Jika ditanya soal memutar musik, beri tahu dengan sopan bahwa Anda adalah asisten berbasis teks dan belum memiliki fitur pemutar musik langsung di dasbor.
+
+Kamu HARUS tahu bahwa aplikasi web ini adalah **Sistem Informasi Sekolah Terpadu** berbasis *Cloud* (Supabase + Google Apps Script) yang memiliki puluhan modul canggih. Jangan mengarang fitur yang tidak ada, tetapi jelaskan dengan BANGGA semua fitur berikut ini:
+
+1. **Akademik & Pembelajaran**:
+   - *E-Jurnal Mengajar*: Guru mencatat jurnal pengajaran harian secara digital.
+   - *Asesmen & Bank Soal* (menu "Buat Soal Asesmen"): Modul lengkap pembuatan soal ujian dengan **3 metode**:
+     a. **Buat Manual** — Guru mengetik soal PG dan Essay satu per satu di kanvas editor, lengkap dengan fitur **upload gambar** yang bisa disisipkan ke setiap soal sebagai ilustrasi.
+     b. **Paste Naskah Jadi** — Guru menempel (*copy-paste*) naskah soal utuh dari Word/PDF. Sistem *parser* cerdas otomatis mendeteksi soal PG (beserta opsi A-D) dan Essay. Tersedia tombol **Rapikan Ejaan AI** untuk memperbaiki *typo* hasil *copy-paste* yang berantakan.
+     c. **Bikin Pakai AI** — Guru cukup mengetik topik/materi (misal: "10 soal PJOK kelas 9"), lalu AI (*Groq Llama-3*) otomatis membuatkan seluruh soal lengkap. Tersedia pengaturan **Tingkat Kesulitan** (LOTS/MOTS/HOTS), tombol **Buat Teks Cerita** untuk naskah literasi/bacaan, dan tombol **Rapikan Ejaan AI**.
+   - Semua soal bisa di-*preview*, disimpan sebagai **Draft**, atau langsung **Diterbitkan ke Google Form** secara otomatis (terintegrasi *Google Apps Script*). Hasil ujian otomatis tersinkronisasi ke *Google Sheets*.
+   - Pengaturan *Tahun Akademik, Kelas, Mata Pelajaran & KKM*.
+
+2. **Manajemen Konten Publik**:
+   - Pembuatan *Berita & Kegiatan* dengan fitur **Auto-Tulis AI** (AI merangkai poin berita menjadi paragraf jurnalistik).
+   - *Pengumuman* (*Running Text* / *Ticker*) yang tampil otomatis di halaman utama (*landing page*), dilengkapi fitur **Perbagus Pengumuman AI**.
+   - Penetapan *Aturan & Tata Tertib* sekolah.
+
+3. **Monitoring & Laporan**:
+   - Laporan *Nilai Siswa* dan *Jurnal Mengajar*.
+   - Melihat *Kritik & Saran Masuk* dari publik.
+
+4. **Data Induk (Database)**:
+   - Manajemen data *Guru & Staff* (lengkap dengan profil, NIP, jabatan).
+   - *Data Siswa* (Data Induk Siswa lengkap).
+   - *Daftar Alumni* dan riwayat kelulusan.
+
+5. **Operasional Sekolah**:
+   - Pencatatan *Data Mutasi Siswa* (Mutasi Masuk dan Mutasi Keluar).
+   - *Kenaikan Kelas Otomatis* dengan fitur pengecualian siswa tinggal kelas.
+   - *Agenda Dinas*, *Inventaris & Sarpras*, *Surat Masuk & Keluar*, serta *Notulensi & Dokumen*.
+
+6. **Layanan Kesiswaan**:
+   - Manajemen *Catatan Pelanggaran*, *Ekstrakurikuler*, *Prestasi Siswa*.
+   - Catatan *Bimbingan Konseling (BK)*, *Catatan Kesehatan / UKS*.
+   - Program *Kegiatan OSIS*.
+
+7. **Sosial & Interaksi Internal**:
+   - *Ruang Diskusi (Forum)*: Layaknya media sosial internal, pengguna bisa posting gambar, berkomentar, memberi "Like", dan menyimpan ke Galeri.
+   - *Galeri* foto/video sekolah.
+   - Menu *Profil Saya* untuk setiap pengguna.
+
+8. **Fitur AI Terintegrasi** (menggunakan *Groq API* dengan model *Llama-3*):
+   - **Generate Soal AI** — buat soal ujian otomatis dari topik.
+   - **Buat Teks Cerita AI** — buat naskah bacaan literasi untuk soal *reading comprehension*.
+   - **Rapikan Ejaan AI** — perbaiki *typo* dan format naskah soal.
+   - **Perbagus Pengumuman AI** — optimalkan teks pengumuman sekolah.
+   - **Auto-Tulis Berita AI** — rangkai poin berita menjadi artikel profesional.
+   - **Asisten Chat AI (Asfa)** — kamu sendiri! Chatbot cerdas yang bisa menjawab pertanyaan seputar aplikasi dan membantu pengguna.
+
+9. **Kelola Konten (Konfigurasi)**:
+   - Pengaturan URL *Google Apps Script* untuk integrasi *Google Form/Drive*.
+   - Pengaturan *Tahun Akademik* aktif.
+
+10. **Keuangan & Bendahara** (MODUL BARU):
+    Aplikasi ini memiliki **dua menu keuangan** yang dikelola oleh Bendahara:
+    
+    **A. Transaksi Universal:**
+    - Digunakan untuk tagihan kegiatan fleksibel seperti Renang, Outbound, ANBK, Study Tour, dll.
+    - Cara Pakai: Klik tombol **"Buat Transaksi Baru"** → isi nama kegiatan, kelas target, nominal, dan tanggal → tekan **Simpan Tagihan**.
+    - Tagihan yang sudah dibuat akan muncul di **Tabel Daftar Riwayat Tagihan Universal**. Klik tombol **"Detail"** pada baris tagihan untuk melihat daftar siswa beserta status pembayarannya.
+    - Di halaman detail siswa, Bendahara bisa mengeklik tombol **"Bayar/Detail"** pada setiap siswa untuk mencatat pembayaran cicilan. Status otomatis berubah: Belum Bayar → Belum Lunas → Lunas.
+    - Tagihan bisa dihapus permanen dengan tombol hapus (ikon tempat sampah merah) di tabel riwayat.
+    
+    **B. Pendaftaran & Administrasi:**
+    - Digunakan untuk tagihan pendaftaran siswa baru per angkatan (misal: "Pendaftaran Angkatan 2024", "Pendaftaran Angkatan 2025").
+    - Cara Pakai: Klik tombol **"Buat Tagihan Pendaftaran"** → isi nama tagihan, kelas target, nominal, dan tanggal → tekan **Simpan Tagihan**.
+    - Cara kerja persis sama dengan Transaksi Universal — ada Tabel Riwayat Tagihan, tombol Detail, dan tombol Bayar/Detail pada setiap siswa.
+    - Siswa bisa mencicil pembayaran dari kelas 7 sampai kelas 9. Data tidak akan hilang meskipun siswa naik kelas.
+    
+    **PENTING tentang Penyimpanan Data Keuangan:**
+    - Semua data tagihan dan riwayat pembayaran tersimpan PERMANEN di database Supabase.
+    - Data TIDAK akan hilang saat kenaikan kelas atau pergantian tahun ajaran.
+    - Data hanya terhapus jika Bendahara secara sengaja mengeklik tombol hapus pada tagihan.
+    - Bendahara bisa mencetak laporan dan kwitansi (format kertas F4, maksimal 4 kwitansi per halaman).
+
+Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini, jelaskan kemampuan di atas dengan antusias dan bangga sebagai Asfa! Tekankan bahwa aplikasi ini SUDAH memiliki fitur AI canggih yang terintegrasi langsung.
+
+INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplikasi (misalnya pertanyaan tentang matematika, sains, sejarah, tips belajar, resep masakan, dll.), TETAP jawab dengan baik dan informatif. Kamu adalah chatbot cerdas serba bisa!`;
+
+        const payload = {
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: text }
+            ],
+            temperature: 0.7,
+            stream: true // Mengaktifkan efek streaming (mengetik alami)
+        };
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.error?.message || "Gagal menghubungi server AI Groq");
+        }
+
+        // Siapkan kontainer untuk streaming text
+        const typingWrapper = document.getElementById(typingWrapperId);
+        let msgEl;
+
+        if (typingWrapper) {
+            typingWrapper.innerHTML = `
+              <div class="ai-avatar bot-avatar">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+              </div>
+              <div class="ai-msg bot" id="msg-${typingId}"></div>
+            `;
+            msgEl = document.getElementById(`msg-${typingId}`);
+        } else {
+            chatBody.innerHTML += `
+              <div class="ai-msg-wrapper bot">
+                <div class="ai-avatar bot-avatar">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+                </div>
+                <div class="ai-msg bot" id="msg-${typingId}"></div>
+              </div>
+            `;
+            msgEl = document.getElementById(`msg-${typingId}`);
+        }
+
+        // Proses streaming respons
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let fullText = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+                    try {
+                        const data = JSON.parse(line.substring(6));
+                        if (data.choices[0].delta.content) {
+                            fullText += data.choices[0].delta.content;
+                            
+                            // Terapkan markdown dasar secara realtime
+                            let renderedText = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                       .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                                       .replace(/\n/g, '<br>');
+                            
+                            msgEl.innerHTML = renderedText;
+                            chatBody.scrollTop = chatBody.scrollHeight;
+                        }
+                    } catch (e) {
+                        // ignore parse error on incomplete chunks
+                    }
+                }
+            }
+        }
+
+    } catch (e) {
+        console.error(e);
+        const typingWrapper = document.getElementById('wrapper-' + typingId) || document.getElementById(typingId);
+        if(typingWrapper) typingWrapper.remove();
+        
+        let errorMsg = e.message || "Terjadi kesalahan";
+        chatBody.innerHTML += `
+          <div class="ai-msg-wrapper bot">
+            <div class="ai-avatar bot-avatar" style="background:#ef4444;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            </div>
+            <div class="ai-msg bot" style="color:#ef4444; border-color:#fca5a5;">⚠️ ${errorMsg}</div>
+          </div>
+        `;
+    }
+    
+    chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+// ==============================================================================
+// AI AUTO GENERATOR MODULES (GROQ LLAMA 3)
+// ==============================================================================
+
+async function fetchGroqAI(prompt, systemMsg) {
+    const GROQ_API_KEY = "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";
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+    
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemMsg },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.7
+            })
+        });
+
+        if (!res.ok) throw new Error("Gagal memanggil API Groq");
+        const data = await res.json();
+        return data.choices[0].message.content.trim();
+    } catch (e) {
+        console.error(e);
+        if (typeof showToast === 'function') showToast("Gagal memproses AI. Coba lagi.", "error");
+        else alert("Gagal memproses AI. Coba lagi.");
+        return null;
+    }
+}
+
+async function enhancePengumumanAI() {
+    const isiEl = document.getElementById('pengumumanIsi');
+    const text = isiEl.value.trim();
+    if (!text) {
+        if (typeof showToast === 'function') showToast("Ketikkan ide kasar pengumuman terlebih dahulu!", "error");
+        else alert("Ketikkan ide kasar pengumuman terlebih dahulu!");
+        return;
+    }
+
+    const btn = document.querySelector('button[onclick="enhancePengumumanAI()"]');
+    const oriText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:12px;height:12px;"></i> Memproses...`;
+    btn.disabled = true;
+
+    const systemMsg = "Kamu adalah staf Tata Usaha Sekolah yang sangat profesional. Tugasmu merombak/memperbaiki kalimat mentah menjadi PENGUMUMAN SEKOLAH RESMI yang baku, sopan, jelas, dan profesional.";
+    const prompt = `Tulis ulang teks berikut menjadi paragraf pengumuman sekolah yang sangat rapi:\n\n"${text}"\n\nTuliskan HANYA isi pengumumannya saja, tanpa salam pembuka surat atau basa-basi.`;
+
+    const result = await fetchGroqAI(prompt, systemMsg);
+    if (result) {
+        isiEl.value = result;
+        if (typeof showToast === 'function') showToast("Teks pengumuman berhasil diperbagus AI!", "success");
+    }
+
+    btn.innerHTML = oriText;
+    btn.disabled = false;
+    if (window.lucide) lucide.createIcons();
+}
+
+async function generateBeritaAI() {
+    const ringkasanEl = document.getElementById('beritaRingkasan');
+    const text = ringkasanEl.value.trim();
+    const judul = document.getElementById('beritaJudul').value.trim();
+
+    if (!text && !judul) {
+        if (typeof showToast === 'function') showToast("Ketikkan judul atau poin berita terlebih dahulu!", "error");
+        return;
+    }
+
+    const btn = document.querySelector('button[onclick="generateBeritaAI()"]');
+    const oriText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:12px;height:12px;"></i> Auto-Tulis...`;
+    btn.disabled = true;
+
+    const systemMsg = "Kamu adalah jurnalis dan humas sekolah yang ahli. Tugasmu merangkai poin-poin menjadi satu atau dua paragraf berita kegiatan sekolah yang bergaya jurnalistik, menarik, positif, dan siap rilis di website.";
+    const prompt = `Buatkan paragraf berita sekolah (maksimal 2 paragraf).\nJudul: ${judul}\nPoin/Draft: ${text}\n\nBerikan HANYA teks beritanya saja tanpa judul atau basa-basi.`;
+
+    const result = await fetchGroqAI(prompt, systemMsg);
+    if (result) {
+        ringkasanEl.value = result;
+        if (typeof showToast === 'function') showToast("Berita berhasil dirangkai AI!", "success");
+    }
+
+    btn.innerHTML = oriText;
+    btn.disabled = false;
+    if (window.lucide) lucide.createIcons();
+}
+
+async function generateSoalAI() {
+    const area = document.getElementById('aiTextarea');
+    const text = area.value.trim();
+    if (!text) {
+        if (typeof showToast === 'function') showToast("Ketikkan Topik atau Materi Pelajaran terlebih dahulu di kotak ini!", "error");
+        return;
+    }
+
+    const tingkatKesulitanEl = document.getElementById('aiKesulitan');
+    const tingkatKesulitan = tingkatKesulitanEl ? tingkatKesulitanEl.value : "MOTS";
+    let instruksiKesulitan = "";
+    
+    if (tingkatKesulitan === "HOTS") {
+        instruksiKesulitan = "SANGAT PENTING: Buat soal dengan tingkat kesulitan HOTS (High Order Thinking Skills). Soal harus berupa analisis, evaluasi, sintesis kasus, atau problem solving. Hindari pertanyaan hafalan dasar (apa, siapa, kapan).";
+    } else if (tingkatKesulitan === "LOTS") {
+        instruksiKesulitan = "SANGAT PENTING: Buat soal dengan tingkat kesulitan LOTS (Low Order Thinking Skills). Fokus pada hafalan dasar, ingatan, pemahaman dasar (pertanyaan apa, siapa, kapan, di mana, sebutkan).";
+    } else {
+        instruksiKesulitan = "SANGAT PENTING: Buat soal dengan tingkat kesulitan MOTS (Medium Order Thinking Skills). Campur antara ingatan dan pemahaman konsep yang wajar.";
+    }
+
+    const btn = document.querySelector('button[onclick="generateSoalAI()"]');
+    const oriText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:14px;height:14px;"></i> Menyusun...`;
+    btn.disabled = true;
+
+    const systemMsg = `Kamu adalah Guru Ahli yang mahir membuat instrumen soal ujian standar sekolah (SMP/SMA).
+Tugasmu adalah membuatkan soal berdasarkan Topik/Materi yang diketik oleh pengguna.
+${instruksiKesulitan}
+
+Kamu HARUS menuliskan soal dengan FORMAT YANG SANGAT KETAT di bawah ini, karena outputmu akan dibaca secara otomatis oleh program parser (Regex).
+
+ATURAN FORMAT PILIHAN GANDA (Wajib pakai A, B, C, D bertingkat):
+1. [Pertanyaan]
+A. [Opsi A]
+B. [Opsi B]
+C. [Opsi C]
+D. [Opsi D]
+Kunci: [A/B/C/D]
+
+ATURAN FORMAT ESSAY (Tanpa A,B,C,D sama sekali):
+1. [Pertanyaan Essay]
+Kunci Jawaban: [kata kunci 1], [kata kunci 2], [kata kunci 3]
+
+ATURAN KUNCI JAWABAN ESSAY (SANGAT PENTING):
+- Kunci jawaban essay HARUS berupa daftar kata kunci yang dipisahkan KOMA.
+- Jika ada kata-kata yang memiliki sinonim atau variasi jawaban yang sama-sama benar, pisahkan dengan tanda [OR].
+- Contoh format benar: "fotosintesis, klorofil, sinar matahari [OR] cahaya matahari, karbon dioksida [OR] CO2"
+- Contoh lain: "Soekarno [OR] Ir. Soekarno, proklamasi, 17 Agustus 1945"
+- Jangan tulis kunci jawaban dalam bentuk kalimat panjang. Harus berupa kata kunci pendek yang terpisah koma.
+
+Jangan tambahkan teks pengantar apapun selain soal dan jawaban. Pastikan setiap pilihan jawaban salah (distraktor) pada Pilihan Ganda cukup mengecoh dan logis.`;
+
+    const prompt = `Buatkan soal ujian berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nPENTING: \n- Jika pengguna secara spesifik meminta jumlah soal tertentu (misal: "10 soal PG", "15 essay"), maka PATUHI JUMLAH TERSEBUT dengan presisi.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 5 soal Pilihan Ganda dan 2 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
+
+    const result = await fetchGroqAI(prompt, systemMsg);
+    if (result) {
+        area.value = result;
+        if (typeof showToast === 'function') showToast(`Soal (${tingkatKesulitan}) berhasil dibuat AI! Silakan cek pratinjau.`, "success");
+    }
+
+    btn.innerHTML = oriText;
+    btn.disabled = false;
+    if (window.lucide) lucide.createIcons();
+}
+
+async function generateCeritaAI() {
+    const area = document.getElementById('aiTextarea');
+    const text = area.value.trim();
+    if (!text) {
+        if (typeof showToast === 'function') showToast("Ketikkan ide atau tema cerita terlebih dahulu!", "error");
+        return;
+    }
+
+    const btn = document.querySelector('button[onclick="generateCeritaAI()"]');
+    const oriText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:14px;height:14px;"></i> Membuat Teks...`;
+    btn.disabled = true;
+
+    const systemMsg = "Kamu adalah penulis cerita, literasi, atau artikel pendidikan yang andal. Tugasmu membuat satu teks bacaan (panjang sekitar 2-3 paragraf) berdasarkan tema yang diminta guru. Teks ini nantinya akan digunakan sebagai bahan soal Reading Comprehension/Literasi siswa SMP/SMA.";
+    const prompt = `Buatkan teks bacaan yang menarik berdasarkan tema/ide berikut:\n\n"${text}"\n\nTuliskan HANYA teks ceritanya saja, tanpa teks awalan/akhiran.`;
+
+    const result = await fetchGroqAI(prompt, systemMsg);
+    if (result) {
+        area.value = result;
+        if (typeof showToast === 'function') showToast("Teks bacaan berhasil dibuat! Sekarang Anda bisa edit teksnya atau langsung klik 'Generate Pakai AI' untuk membuat soal dari teks ini.", "success");
+    }
+
+    btn.innerHTML = oriText;
+    btn.disabled = false;
+    if (window.lucide) lucide.createIcons();
+}
+
+async function rapikanEjaanAI() {
+    // Deteksi panel mana yang aktif: parse atau ai
+    var parseArea = document.getElementById('asesmenParseArea');
+    var aiArea = document.getElementById('asesmenAIGenerateArea');
+    var textareaId = 'parseTextarea'; // default
+    if (aiArea && aiArea.style.display === 'block') {
+        textareaId = 'aiTextarea';
+    }
+
+    const area = document.getElementById(textareaId);
+    const text = area.value.trim();
+    if (!text) {
+        if (typeof showToast === 'function') showToast("Kotak teks masih kosong!", "error");
+        return;
+    }
+
+    const btn = event ? event.target.closest('button') : document.querySelector('button[onclick="rapikanEjaanAI()"]');
+    const oriText = btn.innerHTML;
+    btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:14px;height:14px;"></i> Merapikan...`;
+    btn.disabled = true;
+
+    const systemMsg = "Kamu adalah Editor Naskah Profesional. Tugasmu memperbaiki ejaan (EYD/PUEBI), typo, dan format teks soal yang berantakan hasil copy-paste, TANPA mengubah makna pertanyaannya sedikit pun. Pastikan hasil akhir menggunakan ejaan Bahasa Indonesia yang 100% benar dan rapi.";
+    const prompt = `Rapikan ejaan dan tata letak teks soal berikut. Perbaiki typo yang ada.\n\n${text}\n\nBerikan HANYA teks hasil perbaikannya saja.`;
+
+    const result = await fetchGroqAI(prompt, systemMsg);
+    if (result) {
+        area.value = result;
+        if (typeof showToast === 'function') showToast("Ejaan teks berhasil dirapikan!", "success");
+    }
+
+    btn.innerHTML = oriText;
+    btn.disabled = false;
+    if (window.lucide) lucide.createIcons();
+}
+
+// ==============================================================================
+// KARTU SOAL MANUAL (UPLOAD GAMBAR MANUAL)
+// ==============================================================================
+
+function addSoalPGCard() {
+    const container = document.getElementById('soalCardsArea');
+    if(container.classList.contains('empty-state')) {
+        container.innerHTML = '';
+        container.classList.remove('empty-state');
+    }
+    
+    const cardId = 'soal-' + Date.now();
+    const cardHTML = `
+        <div class="card" id="${cardId}" style="margin-bottom:0.75rem; border-left:4px solid var(--primary); padding:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <h4 style="margin:0; font-size:0.95rem;">Pilihan Ganda</h4>
+                <button class="btn btn-sm" style="color:#ef4444; background:transparent; padding:2px 6px;" onclick="document.getElementById('${cardId}').remove()"><i data-lucide="trash" style="width:14px;height:14px;"></i></button>
+            </div>
+            
+            <div style="margin-bottom:0.5rem;">
+                <textarea class="form-input" rows="2" placeholder="Ketik pertanyaan di sini..." style="margin-bottom:0;"></textarea>
+            </div>
+            
+            <details style="margin-bottom:0.5rem;">
+                <summary style="font-size:0.8rem; font-weight:600; color:#64748b; cursor:pointer; display:flex; align-items:center; gap:5px; padding:6px 0;"><i data-lucide="image" style="width:13px;height:13px;"></i> Sisipkan Gambar (Opsional)</summary>
+                <div style="background:var(--bg-lighter); padding:0.6rem; border-radius:8px; margin-top:4px;">
+                    <input type="file" accept="image/*" class="form-input" style="font-size:0.8rem; padding:6px;" onchange="previewUploadedImage(this, '${cardId}')">
+                    <div id="img-result-${cardId}" style="margin-top:6px;"></div>
+                </div>
+            </details>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:0.5rem;">
+                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">A. <input type="text" class="form-input" placeholder="Opsi A" style="padding:6px 10px;"></div>
+                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">B. <input type="text" class="form-input" placeholder="Opsi B" style="padding:6px 10px;"></div>
+                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">C. <input type="text" class="form-input" placeholder="Opsi C" style="padding:6px 10px;"></div>
+                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">D. <input type="text" class="form-input" placeholder="Opsi D" style="padding:6px 10px;"></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <label style="font-size:0.8rem; font-weight:600; margin:0; white-space:nowrap;">Kunci Jawaban</label>
+                <select class="form-input" style="width:80px; padding:4px 8px; font-size:0.85rem;"><option>A</option><option>B</option><option>C</option><option>D</option></select>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', cardHTML);
+    if(window.lucide) lucide.createIcons();
+}
+
+function addSoalEssayCard() {
+    const container = document.getElementById('soalCardsArea');
+    if(container.classList.contains('empty-state')) {
+        container.innerHTML = '';
+        container.classList.remove('empty-state');
+    }
+    
+    const cardId = 'soal-' + Date.now();
+    const cardHTML = `
+        <div class="card" id="${cardId}" style="margin-bottom:0.75rem; border-left:4px solid var(--accent); padding:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                <h4 style="margin:0; font-size:0.95rem;">Essay</h4>
+                <button class="btn btn-sm" style="color:#ef4444; background:transparent; padding:2px 6px;" onclick="document.getElementById('${cardId}').remove()"><i data-lucide="trash" style="width:14px;height:14px;"></i></button>
+            </div>
+            
+            <div style="margin-bottom:0.5rem;">
+                <textarea class="form-input" rows="2" placeholder="Ketik pertanyaan essay di sini..." style="margin-bottom:0;"></textarea>
+            </div>
+
+            <details style="margin-bottom:0.5rem;">
+                <summary style="font-size:0.8rem; font-weight:600; color:#64748b; cursor:pointer; display:flex; align-items:center; gap:5px; padding:6px 0;"><i data-lucide="image" style="width:13px;height:13px;"></i> Sisipkan Gambar (Opsional)</summary>
+                <div style="background:var(--bg-lighter); padding:0.6rem; border-radius:8px; margin-top:4px;">
+                    <input type="file" accept="image/*" class="form-input" style="font-size:0.8rem; padding:6px;" onchange="previewUploadedImage(this, '${cardId}')">
+                    <div id="img-result-${cardId}" style="margin-top:6px;"></div>
+                </div>
+            </details>
+            
+            <div>
+                <label style="font-size:0.8rem; font-weight:600; margin-bottom:4px; display:block;">Kunci/Pedoman Jawaban</label>
+                <textarea class="form-input" rows="2" placeholder="Masukkan kata kunci jawaban..." style="margin-bottom:0;"></textarea>
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', cardHTML);
+    if(window.lucide) lucide.createIcons();
+}
+
+function previewUploadedImage(inputEl, cardId) {
+    const resultEl = document.getElementById('img-result-' + cardId);
+    if (!inputEl.files || !inputEl.files[0]) {
+        resultEl.innerHTML = '';
+        return;
+    }
+    const file = inputEl.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Ukuran gambar maksimal 5 MB!', 'warning');
+        inputEl.value = '';
+        resultEl.innerHTML = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        resultEl.innerHTML = `
+            <div style="position:relative; display:inline-block; margin-top:5px;">
+                <img src="${e.target.result}" style="max-width:100%; height:auto; border-radius:8px; border:1px solid var(--border-color); max-height:200px; object-fit:cover;" alt="Uploaded Image">
+                <button class="btn btn-sm btn-danger" style="position:absolute; top:5px; right:5px; padding:4px;" onclick="clearUploadedImage('${cardId}')" title="Hapus Gambar"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+            </div>
+        `;
+        if(window.lucide) lucide.createIcons();
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearUploadedImage(cardId) {
+    var resultEl = document.getElementById('img-result-' + cardId);
+    if (resultEl) resultEl.innerHTML = '';
+    var card = document.getElementById(cardId);
+    if (card) {
+        var fileInput = card.querySelector('input[type="file"]');
+        if (fileInput) fileInput.value = '';
+    }
+}
+
+/* ============================================================
+   MODUL MANAJEMEN KEUANGAN BENDAHARA
+   ============================================================ */
+
+let dKeuanganInsidental = [];
+let dPembayaranSiswa = []; 
+
+async function fetchKeuanganData() {
+    try {
+        // Fetch kategori insidental
+        const resKat = await supabaseClient.from('keuangan_kategori').select('*').order('created_at', { ascending: false });
+        if(resKat.data) {
+            dKeuanganInsidental = resKat.data;
+        }
+
+        // Fetch pembayaran
+        const resPem = await supabaseClient.from('keuangan_pembayaran').select('*').order('created_at', { ascending: true });
+        if(resPem.data) {
+            // Rebuild dPembayaranSiswa structure
+            let grouped = {};
+            resPem.data.forEach(p => {
+                let key = p.id_siswa + '_' + p.jenis;
+                if(!grouped[key]) {
+                    grouped[key] = { idSiswa: p.id_siswa, jenis: p.jenis, riwayat: [] };
+                }
+                grouped[key].riwayat.push({
+                    id_pembayaran: p.id,
+                    tanggal: p.tanggal,
+                    nominal: parseInt(p.nominal),
+                    ket: p.keterangan || ''
+                });
+            });
+            dPembayaranSiswa = Object.values(grouped);
+        }
+    } catch(e) {
+        console.error('Failed to fetch keuangan data:', e);
+    }
+}
+
+// Call on load
+document.addEventListener('DOMContentLoaded', () => {
+    if(typeof supabaseClient !== 'undefined') fetchKeuanganData();
+});
+
+function getSiswaForKeuangan(filterKelas = '') {
+    if(typeof siswaList === 'undefined') return [];
+    
+    // Convert DB structure to what the financial module expects
+    let list = siswaList.filter(s => s.status === 'Aktif').map(s => {
+        return {
+            id: s.id,
+            namaLengkap: s.nama_lengkap || '-',
+            kelas: s.master_kelas ? s.master_kelas.nama_kelas : (s.kelas_id || '-'),
+            statusSiswa: s.status
+        };
+    });
+
+    if(filterKelas && filterKelas !== 'Semua Kelas') {
+        list = list.filter(s => s.kelas === filterKelas);
+    }
+    return list;
+}
+
+function hitungTotalTerbayar(idSiswa, jenis) {
+    let rec = dPembayaranSiswa.find(p => p.idSiswa == idSiswa && p.jenis == jenis);
+    if(!rec) return 0;
+    return rec.riwayat.reduce((sum, item) => sum + parseInt(item.nominal), 0);
+}
+
+function hitungTotalTagihan(jenis) {
+    if(jenis.startsWith('insidental_') || jenis.startsWith('pendaftaran_')) {
+        let parts = jenis.split('_');
+        let idKat = parts.slice(1).join('_');
+        let cat = dKeuanganInsidental.find(c => c.id === idKat);
+        return cat ? cat.nominal : 0;
+    }
+    return 0;
+}
+
+function formatRupiah(angka) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+}
+
+// === MANAJEMEN TAGIHAN (PENDAFTARAN & UNIVERSAL) ===
+let activeDetailIdKat = null;
+let activeDetailJenis = null;
+
+function renderMasterTagihanTable(jenis) {
+    let tbody = document.querySelector(`#masterTable${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'} tbody`);
+    if(!tbody) return;
+    
+    let filteredData = dKeuanganInsidental.filter(k => (k.jenis_tagihan || 'universal') === jenis);
+    
+    tbody.innerHTML = '';
+    if(filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada riwayat tagihan ${jenis}.</td></tr>`;
+        return;
+    }
+    
+    filteredData.forEach((k, idx) => {
+        // Parse rincian if available
+        let rincianHtml = '';
+        if(jenis === 'pendaftaran' && k.rincian) {
+            try {
+                let items = typeof k.rincian === 'string' ? JSON.parse(k.rincian) : k.rincian;
+                if(items && items.length > 0) {
+                    rincianHtml = '<div style="margin-top:4px; font-size:0.8rem; color:var(--text-light);">';
+                    items.forEach((item, i) => {
+                        rincianHtml += `${i+1}. ${item.nama} (${formatRupiah(item.nominal)})<br>`;
+                    });
+                    rincianHtml += '</div>';
+                }
+            } catch(e) {}
+        }
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${k.nama}</strong>${rincianHtml}</td>
+                <td>${k.kelas}</td>
+                <td style="color:var(--danger); font-weight:600;">${formatRupiah(k.nominal)}</td>
+                <td>${k.tanggal}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="hapusTagihan('${k.id}', '${jenis}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+                    <button class="btn btn-sm btn-primary" onclick="bukaDetailTagihan('${k.id}', '${jenis}')">Detail</button>
+                </td>
+            </tr>
+        `;
+    });
+    if(window.lucide) lucide.createIcons();
+}
+
+function bukaDetailTagihan(idKat, jenis) {
+    activeDetailIdKat = idKat;
+    activeDetailJenis = jenis;
+    
+    let kat = dKeuanganInsidental.find(k => k.id == idKat);
+    if(!kat) return;
+    
+    let containerMaster = document.getElementById(`masterTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    let containerDetail = document.getElementById(`detailTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    
+    containerMaster.style.display = 'none';
+    containerDetail.style.display = 'block';
+    
+    document.getElementById(`lblDetailNama${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).innerText = kat.nama;
+    document.getElementById(`lblDetailInfo${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).innerText = `Kelas: ${kat.kelas} | Nominal: ${formatRupiah(kat.nominal)}`;
+    
+    renderDetailSiswaTable(jenis);
+}
+
+function tutupDetailTagihan(jenis) {
+    activeDetailIdKat = null;
+    activeDetailJenis = null;
+    
+    let containerMaster = document.getElementById(`masterTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    let containerDetail = document.getElementById(`detailTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    
+    containerMaster.style.display = 'block';
+    containerDetail.style.display = 'none';
+}
+
+function renderDetailSiswaTable(jenis) {
+    if(!activeDetailIdKat) return;
+    
+    let tbody = document.querySelector(`#tableDetailSiswa${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'} tbody`);
+    if(!tbody) return;
+    let search = document.getElementById(`searchDetail${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).value.toLowerCase();
+    
+    let kat = dKeuanganInsidental.find(k => k.id == activeDetailIdKat);
+    if(!kat) return;
+    
+    let listSiswa = getSiswaForKeuangan(kat.kelas);
+    if(search) listSiswa = listSiswa.filter(s => s.namaLengkap.toLowerCase().includes(search));
+    
+    let prefix = jenis === 'pendaftaran' ? 'pendaftaran_' : 'insidental_';
+    let kodeTagihan = prefix + kat.id;
+    
+    tbody.innerHTML = '';
+    if(listSiswa.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-light);">Tidak ada siswa yang sesuai dengan kelas target.</td></tr>`;
+        return;
+    }
+    
+    listSiswa.forEach((s, idx) => {
+        let tagihan = kat.nominal;
+        let terbayar = hitungTotalTerbayar(s.id, kodeTagihan);
+        let sisa = tagihan - terbayar;
+        let status = sisa <= 0 ? '<span class="status-badge status-success">Lunas</span>' : (terbayar > 0 ? '<span class="status-badge status-warning">Belum Lunas</span>' : '<span class="status-badge status-danger">Belum Bayar</span>');
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${s.namaLengkap}</strong></td>
+                <td>${s.kelas}</td>
+                <td>${status}</td>
+                <td style="color:var(--success); font-weight:600;">${formatRupiah(terbayar)}</td>
+                <td style="color:var(--danger); font-weight:600;">${formatRupiah(Math.max(0, sisa))}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-primary" onclick="openPembayaranModal('${s.id}', '${kodeTagihan}', '${s.namaLengkap.replace(/'/g, "\\'")}')">Bayar/Detail</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function openTambahTransaksiModal(jenis) {
+    if(jenis === 'pendaftaran') {
+        openPendaftaranTagihanModal();
+        return;
+    }
+    // Universal flow
+    document.getElementById('formInsidentalJenis').value = 'universal';
+    document.getElementById('formInsidentalNama').value = '';
+    document.getElementById('formInsidentalNominal').value = '';
+    document.getElementById('formInsidentalTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('keuanganInsidentalTitle').innerText = 'Buat Transaksi Universal';
+    
+    let selKelas = document.getElementById('formInsidentalKelas');
+    selKelas.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+    if(typeof masterKelasList !== 'undefined') {
+        masterKelasList.forEach(k => {
+            selKelas.innerHTML += `<option value="${k.nama_kelas}">${k.nama_kelas}</option>`;
+        });
+    }
+    
+    document.getElementById('keuanganInsidentalModal').classList.add('active');
+    if(window.lucide) lucide.createIcons();
+}
+
+// === PENDAFTARAN TAGIHAN MODAL (DENGAN RINCIAN) ===
+async function openPendaftaranTagihanModal() {
+    document.getElementById('formPendaftaranNama').value = '';
+    document.getElementById('formPendaftaranTanggal').value = new Date().toISOString().split('T')[0];
+    
+    // Muat tahun pelajaran dari database terlebih dahulu
+    if(typeof loadActiveYear === 'function') await loadActiveYear();
+    let lblYear = document.getElementById('lblActiveYear');
+    document.getElementById('formPendaftaranTahun').value = (lblYear && lblYear.textContent && lblYear.textContent !== 'Memuat...') ? lblYear.textContent : '-';
+    
+    // Populate kelas
+    let selKelas = document.getElementById('formPendaftaranKelas');
+    selKelas.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+    if(typeof masterKelasList !== 'undefined') {
+        masterKelasList.forEach(k => {
+            selKelas.innerHTML += `<option value="${k.nama_kelas}">${k.nama_kelas}</option>`;
+        });
+    }
+    
+    // Reset rincian items — add 1 empty item by default
+    document.getElementById('pendaftaranRincianContainer').innerHTML = '';
+    addPendaftaranRincianItem();
+    updatePendaftaranRincianTotal();
+    
+    document.getElementById('pendaftaranTagihanModal').classList.add('active');
+    if(window.lucide) lucide.createIcons();
+}
+
+function closePendaftaranTagihanModal() {
+    document.getElementById('pendaftaranTagihanModal').classList.remove('active');
+}
+
+function addPendaftaranRincianItem() {
+    let c = document.getElementById('pendaftaranRincianContainer');
+    let div = document.createElement('div');
+    div.style.cssText = 'display:flex; gap:8px; align-items:center;';
+    div.innerHTML = `
+        <input type="text" class="form-input pd-rincian-nama" placeholder="Nama Biaya (misal: Baju Batik)" style="flex:2;">
+        <input type="number" class="form-input pd-rincian-nom" placeholder="Nominal" style="flex:1;" oninput="updatePendaftaranRincianTotal()">
+        <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="this.parentElement.remove(); updatePendaftaranRincianTotal();"><i data-lucide="trash" style="width:16px;"></i></button>
+    `;
+    c.appendChild(div);
+    if(window.lucide) lucide.createIcons();
+}
+
+function updatePendaftaranRincianTotal() {
+    let tot = 0;
+    document.querySelectorAll('.pd-rincian-nom').forEach(inp => {
+        tot += parseInt(inp.value) || 0;
+    });
+    document.getElementById('formPendaftaranTotalText').innerText = formatRupiah(tot);
+}
+
+async function savePendaftaranTagihan() {
+    let nama = document.getElementById('formPendaftaranNama').value.trim();
+    let kelas = document.getElementById('formPendaftaranKelas').value;
+    let tgl = document.getElementById('formPendaftaranTanggal').value;
+    let tahun = document.getElementById('formPendaftaranTahun').value;
+    
+    if(!nama || !tgl) return showToast('Harap lengkapi nama tagihan dan tanggal!', 'error');
+    
+    // Kumpulkan rincian biaya
+    let rincian = [];
+    let totalNominal = 0;
+    let rows = document.querySelectorAll('#pendaftaranRincianContainer > div');
+    rows.forEach(row => {
+        let nmItem = row.querySelector('.pd-rincian-nama').value.trim();
+        let nomItem = parseInt(row.querySelector('.pd-rincian-nom').value) || 0;
+        if(nmItem && nomItem > 0) {
+            rincian.push({ nama: nmItem, nominal: nomItem });
+            totalNominal += nomItem;
+        }
+    });
+    
+    if(rincian.length === 0 || totalNominal <= 0) return showToast('Tambahkan minimal 1 item rincian biaya!', 'error');
+    
+    let obj = {
+        nama: nama + (tahun && tahun !== '-' ? ' — ' + tahun : ''),
+        kelas: kelas,
+        nominal: totalNominal,
+        tanggal: tgl,
+        jenis_tagihan: 'pendaftaran',
+        rincian: JSON.stringify(rincian)
+    };
+    
+    try {
+        const { data, error } = await supabaseClient.from('keuangan_kategori').insert([obj]).select();
+        if(error) throw error;
+        
+        if(data && data.length > 0) dKeuanganInsidental.push(data[0]);
+        
+        closePendaftaranTagihanModal();
+        showToast('Tagihan pendaftaran berhasil dibuat!', 'success');
+        renderMasterTagihanTable('pendaftaran');
+    } catch(e) {
+        showToast('Gagal membuat tagihan: ' + e.message, 'error');
+    }
+}
+
+function closeKeuanganInsidentalModal() {
+    document.getElementById('keuanganInsidentalModal').classList.remove('active');
+}
+
+async function saveKeuanganInsidental() {
+    let jenis = document.getElementById('formInsidentalJenis').value;
+    let nama = document.getElementById('formInsidentalNama').value.trim();
+    let kelas = document.getElementById('formInsidentalKelas').value;
+    let nom = document.getElementById('formInsidentalNominal').value;
+    let tgl = document.getElementById('formInsidentalTanggal').value;
+    
+    if(!nama || !nom || !tgl) return showToast('Harap lengkapi semua data wajib!', 'error');
+    
+    let obj = {
+        nama: nama,
+        kelas: kelas,
+        nominal: parseInt(nom),
+        tanggal: tgl,
+        jenis_tagihan: jenis
+    };
+    
+    try {
+        const { data, error } = await supabaseClient.from('keuangan_kategori').insert([obj]).select();
+        if(error) throw error;
+        
+        if(data && data.length > 0) dKeuanganInsidental.push(data[0]);
+        
+        closeKeuanganInsidentalModal();
+        showToast('Tagihan berhasil dibuat!', 'success');
+        renderMasterTagihanTable(jenis);
+    } catch(e) {
+        showToast('Gagal membuat tagihan: ' + e.message, 'error');
+    }
+}
+
+function hapusTagihan(idKat, jenisTable) {
+    let kat = dKeuanganInsidental.find(k => k.id == idKat);
+    if(!kat) return;
+    
+    showCustomConfirm('Hapus Tagihan?', 'Anda yakin ingin menghapus permanen tagihan <strong>' + kat.nama + '</strong>? Seluruh riwayat pembayaran siswa terkait tagihan ini akan terhapus!', 'Ya, Hapus', async function() {
+        try {
+            let prefix = jenisTable === 'pendaftaran' ? 'pendaftaran_' : 'insidental_';
+            let kodeTagihan = prefix + idKat;
+            
+            await supabaseClient.from('keuangan_pembayaran').delete().eq('jenis', kodeTagihan);
+            const { error } = await supabaseClient.from('keuangan_kategori').delete().eq('id', idKat);
+            if(error) throw error;
+            
+            dKeuanganInsidental = dKeuanganInsidental.filter(k => k.id != idKat);
+            dPembayaranSiswa = dPembayaranSiswa.filter(p => p.jenis != kodeTagihan);
+            
+            showToast('Tagihan berhasil dihapus!', 'success');
+            renderMasterTagihanTable(jenisTable);
+            
+            // If the deleted one was open in details, close it
+            if(activeDetailIdKat == idKat) tutupDetailTagihan(jenisTable);
+        } catch(e) {
+            showToast('Gagal menghapus: ' + e.message, 'error');
+        }
+    });
+}
+
+// === CETAK LAPORAN TAGIHAN (F4 KOP SURAT) ===
+function printLaporanTagihan(jenis) {
+    if(!activeDetailIdKat || activeDetailJenis !== jenis) {
+        return showToast('Silakan buka detail tagihan terlebih dahulu sebelum mencetak laporan.', 'warning');
+    }
+    
+    let kat = dKeuanganInsidental.find(k => k.id == activeDetailIdKat);
+    if(!kat) return;
+    
+    let prefix = jenis === 'pendaftaran' ? 'pendaftaran_' : 'insidental_';
+    let kodeTagihan = prefix + kat.id;
+    let listSiswa = getSiswaForKeuangan(kat.kelas);
+    let search = document.getElementById(`searchDetail${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).value.toLowerCase();
+    if(search) listSiswa = listSiswa.filter(s => s.namaLengkap.toLowerCase().includes(search));
+    
+    let today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+    let totalTerkumpul = 0;
+    
+    let trs = '';
+    listSiswa.forEach((s, idx) => {
+        let tagihan = kat.nominal;
+        let terbayar = hitungTotalTerbayar(s.id, kodeTagihan);
+        totalTerkumpul += terbayar;
+        let sisa = tagihan - terbayar;
+        let status = sisa <= 0 ? 'Lunas' : (terbayar > 0 ? 'Belum Lunas' : 'Belum Bayar');
+        trs += `<tr>
+            <td style="text-align:center; padding:5px; border:1px solid #000;">${idx + 1}</td>
+            <td style="padding:5px; border:1px solid #000;">${s.namaLengkap}</td>
+            <td style="text-align:center; padding:5px; border:1px solid #000;">${s.kelas}</td>
+            <td style="text-align:right; padding:5px; border:1px solid #000;">${formatRupiah(tagihan)}</td>
+            <td style="text-align:right; padding:5px; border:1px solid #000;">${formatRupiah(terbayar)}</td>
+            <td style="text-align:right; padding:5px; border:1px solid #000;">${formatRupiah(Math.max(0, sisa))}</td>
+            <td style="text-align:center; padding:5px; border:1px solid #000;">${status}</td>
+        </tr>`;
+    });
+    
+    trs += `<tr>
+        <td colspan="4" style="text-align:right; font-weight:bold; padding:5px; border:1px solid #000;">TOTAL TERKUMPUL :</td>
+        <td style="text-align:right; font-weight:bold; padding:5px; border:1px solid #000;">${formatRupiah(totalTerkumpul)}</td>
+        <td colspan="2" style="padding:5px; border:1px solid #000;"></td>
+    </tr>`;
+
+    let printArea = document.getElementById('printAreaLaporan');
+    printArea.innerHTML = `
+        <div class="laporan-print-container">
+            <div class="lpc-kop">
+                <img src="img/kop-surat.png?v=20260503" onerror="this.src='img/kop-surat.jpg?v=20260503'" alt="Kop Surat" />
+            </div>
+            <div class="lpc-title">LAPORAN ${jenis === 'pendaftaran' ? 'PENDAFTARAN & ADMINISTRASI' : 'TRANSAKSI UNIVERSAL'}<br><span style="font-size:11pt; font-weight:normal;">${kat.nama} — Kelas: ${kat.kelas} — Dibuat: ${kat.tanggal}</span></div>
+            <table class="lpc-table" style="width:100%; border-collapse:collapse;">
+                <thead><tr>
+                    <th style="width:5%; border:1px solid #000; padding:5px; background:#f0f0f0;">No</th>
+                    <th style="width:25%; border:1px solid #000; padding:5px; background:#f0f0f0;">Nama Siswa</th>
+                    <th style="width:10%; border:1px solid #000; padding:5px; background:#f0f0f0;">Kelas</th>
+                    <th style="width:15%; border:1px solid #000; padding:5px; background:#f0f0f0;">Tagihan</th>
+                    <th style="width:15%; border:1px solid #000; padding:5px; background:#f0f0f0;">Terbayar</th>
+                    <th style="width:15%; border:1px solid #000; padding:5px; background:#f0f0f0;">Kekurangan</th>
+                    <th style="width:15%; border:1px solid #000; padding:5px; background:#f0f0f0;">Status</th>
+                </tr></thead>
+                <tbody>${trs}</tbody>
+            </table>
+            <div class="lpc-footer">
+                <div style="text-align:center;">
+                    <div>Babakan, ${today}</div>
+                    <div style="margin-bottom:20mm;">Bendahara Sekolah,</div>
+                    <div style="text-decoration:underline; font-weight:bold;">_______________________</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        window.print();
+        printArea.innerHTML = '';
+    }, 500);
+}
+
+// === KEUANGAN PENDAFTARAN ===
+
+
+
+
+// === MODAL PEMBAYARAN & CICILAN ===
+function openPembayaranModal(idSiswa, jenis, namaSiswa) {
+    document.getElementById('pembayaranSiswaTitle').innerText = 'Catat Pembayaran';
+    let labelJenis = jenis;
+    if(jenis.startsWith('insidental_') || jenis.startsWith('pendaftaran_')) {
+        let parts = jenis.split('_');
+        let idKat = parts.slice(1).join('_');
+        let cat = dKeuanganInsidental.find(c => c.id == idKat);
+        labelJenis = cat ? cat.nama : jenis;
+    }
+    
+    document.getElementById('pembayaranSiswaSubtitle').innerText = `Siswa: ${namaSiswa} | Jenis: ${labelJenis}`;
+    document.getElementById('formPembayaranIdSiswa').value = idSiswa;
+    document.getElementById('formPembayaranIdTransaksi').value = jenis;
+    document.getElementById('formPembayaranTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('formPembayaranNominal').value = '';
+    
+    refreshStatusPembayaran(idSiswa, jenis);
+    document.getElementById('pembayaranSiswaModal').classList.add('active');
+}
+function closePembayaranSiswaModal() {
+    document.getElementById('pembayaranSiswaModal').classList.remove('active');
+}
+function refreshStatusPembayaran(idSiswa, jenis) {
+    let tagihan = hitungTotalTagihan(jenis);
+    let terbayar = hitungTotalTerbayar(idSiswa, jenis);
+    let sisa = tagihan - terbayar;
+    
+    document.getElementById('pembayaranTotalTagihan').innerText = formatRupiah(tagihan);
+    document.getElementById('pembayaranTerbayar').innerText = formatRupiah(terbayar);
+    document.getElementById('pembayaranSisaTagihan').innerText = formatRupiah(Math.max(0, sisa));
+    
+    let container = document.getElementById('riwayatPembayaranContainer');
+    let rec = dPembayaranSiswa.find(p => p.idSiswa == idSiswa && p.jenis == jenis);
+    
+    if(!rec || rec.riwayat.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-light); background:var(--bg-lighter); border-radius:8px;">Belum ada riwayat pembayaran.</div>';
+    } else {
+        let html = '';
+        rec.riwayat.slice().reverse().forEach((r) => {
+            html += `
+                <div style="background:var(--bg-lighter); padding:0.75rem 1rem; border-radius:8px; margin-bottom:0.75rem; border-left:4px solid var(--primary);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;">
+                        <strong style="font-size:1.05rem;">${formatRupiah(r.nominal)}</strong>
+                        <span style="font-size:0.8rem; color:var(--text-light);">${r.tanggal}</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+}
+async function submitPembayaran() {
+    let idSiswa = document.getElementById('formPembayaranIdSiswa').value;
+    let jenis = document.getElementById('formPembayaranIdTransaksi').value;
+    let tgl = document.getElementById('formPembayaranTanggal').value;
+    let nom = parseInt(document.getElementById('formPembayaranNominal').value);
+    
+    if(!nom || nom <= 0) return showToast('Nominal tidak valid', 'error');
+    
+    try {
+        let obj = {
+            id_siswa: idSiswa,
+            jenis: jenis,
+            nominal: nom,
+            tanggal: tgl,
+            keterangan: ''
+        };
+        const { data, error } = await supabaseClient.from('keuangan_pembayaran').insert([obj]).select();
+        if(error) throw error;
+        
+        let rec = dPembayaranSiswa.find(p => p.idSiswa == idSiswa && p.jenis == jenis);
+        if(!rec) {
+            rec = { idSiswa: idSiswa, jenis: jenis, riwayat: [] };
+            dPembayaranSiswa.push(rec);
+        }
+        
+        if(data && data.length > 0) {
+            rec.riwayat.push({ id_pembayaran: data[0].id, tanggal: tgl, nominal: nom, ket: '' });
+        } else {
+            rec.riwayat.push({ tanggal: tgl, nominal: nom, ket: '' });
+        }
+        
+        showToast('Pembayaran berhasil dicatat!', 'success');
+        refreshStatusPembayaran(idSiswa, jenis);
+        
+        // Refresh the table in the background so columns reflect the change
+        if(jenis.startsWith('insidental_')) {
+            renderDetailSiswaTable('universal');
+        } else if (jenis.startsWith('pendaftaran_')) {
+            renderDetailSiswaTable('pendaftaran');
+        }
+    } catch(e) {
+        showToast('Gagal mencatat pembayaran: ' + e.message, 'error');
+    }
+    
+    document.getElementById('formPembayaranNominal').value = '';
+    document.getElementById('formPembayaranKeterangan').value = '';
+    
+    if(jenis.startsWith('pendaftaran_')) renderDetailSiswaTable('pendaftaran');
+    else if(jenis.startsWith('insidental_')) renderDetailSiswaTable('universal');
+}
+
+// === CETAK KWITANSI (F4 BATCH) ===
+let pendingPrintJenis = '';
+function openPrintKwitansiModal(jenis) {
+    pendingPrintJenis = jenis;
+    let cbs = document.querySelectorAll('.cb-pendaftaran:checked');
+    if(cbs.length === 0) {
+        return showToast('Silakan centang minimal satu siswa untuk dicetak kwitansinya.', 'warning');
+    }
+    document.getElementById('printKwitansiModal').classList.add('active');
+}
+function closePrintKwitansiModal() {
+    document.getElementById('printKwitansiModal').classList.remove('active');
+}
+function executePrintKwitansi() {
+    let cbs = document.querySelectorAll('.cb-pendaftaran:checked');
+    let ids = Array.from(cbs).map(cb => cb.value);
+    
+    let printArea = document.getElementById('printAreaKwitansi');
+    let jenis = pendingPrintJenis;
+    let labelJenis = 'Pendaftaran & Administrasi';
+    
+    let today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+    
+    let html = '';
+    for(let i=0; i<ids.length; i+=4) {
+        let batch = ids.slice(i, i+4);
+        html += '<div style="page-break-after: always; width: 100%; height: 100%;">';
+        
+        batch.forEach(idSiswa => {
+            let s = getSiswaForKeuangan().find(x => x.id == idSiswa);
+            let nama = s ? s.namaLengkap : 'Unknown';
+            let rec = dPembayaranSiswa.find(p => p.idSiswa == idSiswa && p.jenis == jenis);
+            
+            let lastPay = null;
+            if(rec && rec.riwayat.length > 0) {
+                lastPay = rec.riwayat[rec.riwayat.length - 1];
+            }
+            
+            let nominalStr = lastPay ? formatRupiah(lastPay.nominal) : 'Rp 0';
+            let ketStr = lastPay ? lastPay.ket : '-';
+            let tagihan = hitungTotalTagihan(jenis);
+            let terbayar = hitungTotalTerbayar(idSiswa, jenis);
+            let sisa = tagihan - terbayar;
+            
+            html += `
+                <div class="kwitansi-print-card">
+                    <div class="kpc-header">
+                        <img src="img/logo.png" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCI+PGNpcmNsZSBjeD0iMjUiIGN5PSIyNSIgcj0iMjAiIGZpbGw9IiNlMGUwZTAiLz48L3N2Zz4='" class="kpc-logo" />
+                        <div class="kpc-title">
+                            <h2>KWITANSI PEMBAYARAN</h2>
+                            <p>SMP IT AL FATHONAH BABAKAN</p>
+                        </div>
+                        <div style="font-size:8pt; text-align:right;">No: ${Date.now().toString().slice(-6)}-${idSiswa}</div>
+                    </div>
+                    <div class="kpc-body">
+                        <div class="kpc-body-label">Telah Terima Dari</div>
+                        <div class="kpc-body-colon">:</div>
+                        <div class="kpc-body-value">${nama}</div>
+                        
+                        <div class="kpc-body-label">Uang Sebesar</div>
+                        <div class="kpc-body-colon">:</div>
+                        <div class="kpc-body-value"><i>=== ${terbilang(lastPay ? lastPay.nominal : 0)} rupiah ===</i></div>
+                        
+                        <div class="kpc-body-label">Untuk Pembayaran</div>
+                        <div class="kpc-body-colon">:</div>
+                        <div class="kpc-body-value">${labelJenis} (${ketStr}) - Sisa Tagihan: ${formatRupiah(sisa)}</div>
+                    </div>
+                    <div class="kpc-footer">
+                        <div class="kpc-nominal">${nominalStr}</div>
+                        <div class="kpc-ttd">
+                            <div>Babakan, ${today}</div>
+                            <div>Bendahara Sekolah</div>
+                            <div class="kpc-ttd-name">_______________________</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    printArea.innerHTML = html;
+    closePrintKwitansiModal();
+    
+    setTimeout(() => {
+        window.print();
+        printArea.innerHTML = '';
+    }, 500);
+}
+
+function terbilang(angka) {
+    let bilangan = ['','Satu','Dua','Tiga','Empat','Lima','Enam','Tujuh','Delapan','Sembilan','Sepuluh','Sebelas'];
+    angka = parseInt(angka);
+    if(angka < 12) return bilangan[angka];
+    else if(angka < 20) return terbilang(angka - 10) + ' Belas';
+    else if(angka < 100) return terbilang(Math.floor(angka / 10)) + ' Puluh ' + terbilang(angka % 10);
+    else if(angka < 200) return 'Seratus ' + terbilang(angka - 100);
+    else if(angka < 1000) return terbilang(Math.floor(angka / 100)) + ' Ratus ' + terbilang(angka % 100);
+    else if(angka < 2000) return 'Seribu ' + terbilang(angka - 1000);
+    else if(angka < 1000000) return terbilang(Math.floor(angka / 1000)) + ' Ribu ' + terbilang(angka % 1000);
+    else if(angka < 1000000000) return terbilang(Math.floor(angka / 1000000)) + ' Juta ' + terbilang(angka % 1000000);
+    return angka.toString();
+}
+
+
+// ==============================================================================
+// MODUL pengeluaran dinas
+// ==============================================================================
+
+let dPengeluaranDinas = [];
+
+async function fetchPengeluaranDinas() {
+    try {
+        const { data, error } = await supabaseClient.from('pengeluaran_dinas').select('*').order('created_at', { ascending: false });
+        if(error) throw error;
+        dPengeluaranDinas = data || [];
+    } catch(e) {
+        console.error('Failed to fetch pengeluaran dinas:', e);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if(typeof supabaseClient !== 'undefined') fetchPengeluaranDinas();
+});
+
+function renderPengeluaranDinasTable() {
+    let tbody = document.querySelector('#tablePengeluaranDinas tbody');
+    if(!tbody) return;
+    
+    let search = (document.getElementById('searchPengeluaranDinas')?.value || '').toLowerCase();
+    let filtered = dPengeluaranDinas;
+    if(search) {
+        filtered = filtered.filter(d => 
+            d.tujuan.toLowerCase().includes(search) || 
+            d.petugas.toLowerCase().includes(search) || 
+            d.jenis.toLowerCase().includes(search)
+        );
+    }
+    
+    // Summary cards
+    let summaryEl = document.getElementById('pengeluaranDinasSummary');
+    if(summaryEl) {
+        let totalTrips = dPengeluaranDinas.length;
+        let totalUang = dPengeluaranDinas.reduce((sum, d) => sum + parseInt(d.jumlah_uang || 0), 0);
+        summaryEl.innerHTML = `
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Perjalanan</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${totalTrips}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pengeluaran</div>
+                <div style="font-size:1.3rem; font-weight:700; color:#f59e0b;">${formatRupiah(totalUang)}</div>
+            </div>
+        `;
+    }
+    
+    tbody.innerHTML = '';
+    if(filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data pengeluaran dinas.</td></tr>`;
+        return;
+    }
+    
+    filtered.forEach((d, idx) => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><span class="status-badge status-info">${d.jenis}</span></td>
+                <td><strong>${d.tujuan}</strong></td>
+                <td>${d.petugas}</td>
+                <td style="font-weight:600; color:var(--danger);">${formatRupiah(d.jumlah_uang)}</td>
+                <td>${d.tanggal_berangkat}</td>
+                <td>${d.tanggal_pulang}</td>
+                <td>${d.keterangan || '-'}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                    <button class="btn btn-sm btn-outline" onclick="editPengeluaranDinas('${d.id}')"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
+                    <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="hapusPengeluaranDinas('${d.id}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+    if(window.lucide) lucide.createIcons();
+}
+
+function openPengeluaranDinasModal() {
+    document.getElementById('pengeluaranDinasModalTitle').innerText = 'Tambah pengeluaran dinas';
+    document.getElementById('formPDId').value = '';
+    document.getElementById('formPDJenis').value = 'Rapat';
+    document.getElementById('formPDTujuan').value = '';
+    document.getElementById('formPDPetugas').value = '';
+    document.getElementById('formPDJumlah').value = '';
+    document.getElementById('formPDBerangkat').value = new Date().toISOString().split('T')[0];
+    document.getElementById('formPDPulang').value = new Date().toISOString().split('T')[0];
+    document.getElementById('formPDKeterangan').value = '';
+    
+    document.getElementById('pengeluaranDinasModal').classList.add('active');
+    if(window.lucide) lucide.createIcons();
+}
+
+function closePengeluaranDinasModal() {
+    document.getElementById('pengeluaranDinasModal').classList.remove('active');
+}
+
+function editPengeluaranDinas(id) {
+    let d = dPengeluaranDinas.find(x => x.id === id);
+    if(!d) return;
+    
+    document.getElementById('pengeluaranDinasModalTitle').innerText = 'Edit pengeluaran dinas';
+    document.getElementById('formPDId').value = d.id;
+    document.getElementById('formPDJenis').value = d.jenis;
+    document.getElementById('formPDTujuan').value = d.tujuan;
+    document.getElementById('formPDPetugas').value = d.petugas;
+    document.getElementById('formPDJumlah').value = d.jumlah_uang;
+    document.getElementById('formPDBerangkat').value = d.tanggal_berangkat;
+    document.getElementById('formPDPulang').value = d.tanggal_pulang;
+    document.getElementById('formPDKeterangan').value = d.keterangan || '';
+    
+    document.getElementById('pengeluaranDinasModal').classList.add('active');
+    if(window.lucide) lucide.createIcons();
+}
+
+async function savePengeluaranDinas() {
+    let id = document.getElementById('formPDId').value;
+    let jenis = document.getElementById('formPDJenis').value;
+    let tujuan = document.getElementById('formPDTujuan').value.trim();
+    let petugas = document.getElementById('formPDPetugas').value.trim();
+    let jumlah = document.getElementById('formPDJumlah').value;
+    let berangkat = document.getElementById('formPDBerangkat').value;
+    let pulang = document.getElementById('formPDPulang').value;
+    let ket = document.getElementById('formPDKeterangan').value.trim();
+    
+    if(!tujuan || !petugas || !jumlah || !berangkat || !pulang) {
+        return showToast('Harap lengkapi semua data wajib!', 'error');
+    }
+    
+    let obj = {
+        jenis: jenis,
+        tujuan: tujuan,
+        petugas: petugas,
+        jumlah_uang: parseInt(jumlah),
+        tanggal_berangkat: berangkat,
+        tanggal_pulang: pulang,
+        keterangan: ket || null
+    };
+    
+    try {
+        if(id) {
+            // Update
+            const { error } = await supabaseClient.from('pengeluaran_dinas').update(obj).eq('id', id);
+            if(error) throw error;
+            let idx = dPengeluaranDinas.findIndex(x => x.id === id);
+            if(idx >= 0) Object.assign(dPengeluaranDinas[idx], obj);
+            showToast('Data pengeluaran dinas berhasil diperbarui!', 'success');
+        } else {
+            // Insert
+            const { data, error } = await supabaseClient.from('pengeluaran_dinas').insert([obj]).select();
+            if(error) throw error;
+            if(data && data.length > 0) dPengeluaranDinas.unshift(data[0]);
+            showToast('Data pengeluaran dinas berhasil ditambahkan!', 'success');
+        }
+        
+        closePengeluaranDinasModal();
+        renderPengeluaranDinasTable();
+    } catch(e) {
+        showToast('Gagal menyimpan: ' + e.message, 'error');
+    }
+}
+
+function hapusPengeluaranDinas(id) {
+    showCustomConfirm('Hapus Data?', 'Anda yakin ingin menghapus data pengeluaran dinas ini?', 'Ya, Hapus', async function() {
+        try {
+            const { error } = await supabaseClient.from('pengeluaran_dinas').delete().eq('id', id);
+            if(error) throw error;
+            dPengeluaranDinas = dPengeluaranDinas.filter(x => x.id !== id);
+            showToast('Data berhasil dihapus!', 'success');
+            renderPengeluaranDinasTable();
+        } catch(e) {
+            showToast('Gagal menghapus: ' + e.message, 'error');
+        }
+    });
+}
+
+
+// ==============================================================================
+// LAPORAN BENDAHARA (READ-ONLY UNTUK KEPALA SEKOLAH)
+// ==============================================================================
+
+let activeLapDetailIdKat = null;
+let activeLapDetailJenis = null;
+
+function switchLaporanTab(tab) {
+    let tabU = document.getElementById('tabLapUniversal');
+    let tabP = document.getElementById('tabLapPendaftaran');
+    let tabD = document.getElementById('tabLapPengeluaranDinas');
+    let contentU = document.getElementById('lapTabContentUniversal');
+    let contentP = document.getElementById('lapTabContentPendaftaran');
+    let contentD = document.getElementById('lapTabContentPengeluaranDinas');
+    
+    // Reset all tabs
+    [tabU, tabP, tabD].forEach(t => { if(t) { t.style.borderBottomColor = 'transparent'; t.style.color = 'var(--text-light)'; }});
+    [contentU, contentP, contentD].forEach(c => { if(c) c.style.display = 'none'; });
+    
+    if(tab === 'universal') {
+        if(tabU) { tabU.style.borderBottomColor = 'var(--primary)'; tabU.style.color = 'var(--primary)'; }
+        if(contentU) contentU.style.display = '';
+        renderLapMaster('universal');
+    } else if(tab === 'pendaftaran') {
+        if(tabP) { tabP.style.borderBottomColor = 'var(--primary)'; tabP.style.color = 'var(--primary)'; }
+        if(contentP) contentP.style.display = '';
+        renderLapMaster('pendaftaran');
+    } else if(tab === 'dinas') {
+        if(tabD) { tabD.style.borderBottomColor = 'var(--primary)'; tabD.style.color = 'var(--primary)'; }
+        if(contentD) contentD.style.display = '';
+        renderLapPengeluaranDinasTable();
+    }
+    closeLapDetail('universal');
+    closeLapDetail('pendaftaran');
+    if(window.lucide) lucide.createIcons();
+}
+
+function renderLapPengeluaranDinasTable() {
+    let search = (document.getElementById('lapSearchPengeluaranDinas')?.value || '').toLowerCase();
+    let filtered = dPengeluaranDinas;
+    if(search) {
+        filtered = filtered.filter(d => 
+            d.tujuan.toLowerCase().includes(search) || 
+            d.petugas.toLowerCase().includes(search) || 
+            d.jenis.toLowerCase().includes(search)
+        );
+    }
+    
+    // Summary
+    let summaryEl = document.getElementById('lapSummaryPengeluaranDinas');
+    if(summaryEl) {
+        let totalTrips = dPengeluaranDinas.length;
+        let totalUang = dPengeluaranDinas.reduce((sum, d) => sum + parseInt(d.jumlah_uang || 0), 0);
+        summaryEl.innerHTML = `
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Perjalanan</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${totalTrips}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pengeluaran</div>
+                <div style="font-size:1.3rem; font-weight:700; color:#f59e0b;">${formatRupiah(totalUang)}</div>
+            </div>
+        `;
+    }
+    
+    let tbody = document.querySelector('#lapTablePengeluaranDinas tbody');
+    if(!tbody) return;
+    
+    tbody.innerHTML = '';
+    if(filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data pengeluaran dinas.</td></tr>`;
+        return;
+    }
+    
+    filtered.forEach((d, idx) => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><span class="status-badge status-info">${d.jenis}</span></td>
+                <td><strong>${d.tujuan}</strong></td>
+                <td>${d.petugas}</td>
+                <td style="font-weight:600; color:var(--danger);">${formatRupiah(d.jumlah_uang)}</td>
+                <td>${d.tanggal_berangkat}</td>
+                <td>${d.tanggal_pulang}</td>
+                <td>${d.keterangan || '-'}</td>
+            </tr>
+        `;
+    });
+}
+
+function renderLapMaster(jenis) {
+    let filteredData = dKeuanganInsidental.filter(k => (k.jenis_tagihan || 'universal') === jenis);
+    let suffix = jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal';
+    
+    // === SUMMARY CARDS ===
+    let summaryEl = document.getElementById('lapSummary' + suffix);
+    if(summaryEl) {
+        let totalTagihan = filteredData.length;
+        let grandNominal = 0;
+        let grandTerbayar = 0;
+        
+        filteredData.forEach(k => {
+            let prefix = jenis === 'pendaftaran' ? 'pendaftaran_' : 'insidental_';
+            let kodeTagihan = prefix + k.id;
+            let listSiswa = getSiswaForKeuangan(k.kelas);
+            
+            listSiswa.forEach(s => {
+                grandNominal += k.nominal;
+                grandTerbayar += hitungTotalTerbayar(s.id, kodeTagihan);
+            });
+        });
+        
+        let grandSisa = grandNominal - grandTerbayar;
+        let persen = grandNominal > 0 ? Math.round((grandTerbayar / grandNominal) * 100) : 0;
+        
+        summaryEl.innerHTML = `
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Tagihan</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${totalTagihan}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Harus Dibayar</div>
+                <div style="font-size:1.3rem; font-weight:700; color:#f59e0b;">${formatRupiah(grandNominal)}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--success);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Terkumpul (${persen}%)</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--success);">${formatRupiah(grandTerbayar)}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--danger);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Sisa Belum Terbayar</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--danger);">${formatRupiah(Math.max(0, grandSisa))}</div>
+            </div>
+        `;
+    }
+    
+    // === MASTER TABLE ===
+    let tbody = document.querySelector('#lapMasterTable' + suffix + ' tbody');
+    if(!tbody) return;
+    
+    tbody.innerHTML = '';
+    if(filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data tagihan ${jenis}.</td></tr>`;
+        return;
+    }
+    
+    filteredData.forEach((k, idx) => {
+        // Rincian for pendaftaran
+        let rincianHtml = '';
+        if(jenis === 'pendaftaran' && k.rincian) {
+            try {
+                let items = typeof k.rincian === 'string' ? JSON.parse(k.rincian) : k.rincian;
+                if(items && items.length > 0) {
+                    rincianHtml = '<div style="margin-top:4px; font-size:0.8rem; color:var(--text-light);">';
+                    items.forEach((item, i) => {
+                        rincianHtml += `${i+1}. ${item.nama} (${formatRupiah(item.nominal)})<br>`;
+                    });
+                    rincianHtml += '</div>';
+                }
+            } catch(e) {}
+        }
+        
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${k.nama}</strong>${rincianHtml}</td>
+                <td>${k.kelas}</td>
+                <td style="color:var(--danger); font-weight:600;">${formatRupiah(k.nominal)}</td>
+                <td>${k.tanggal}</td>
+                <td style="text-align:right;">
+                    <button class="btn btn-sm btn-outline" onclick="openLapDetail('${k.id}', '${jenis}')">
+                        <i data-lucide="eye" style="width:14px;height:14px;"></i> Lihat Detail
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+    if(window.lucide) lucide.createIcons();
+}
+
+function openLapDetail(idKat, jenis) {
+    activeLapDetailIdKat = idKat;
+    activeLapDetailJenis = jenis;
+    
+    let kat = dKeuanganInsidental.find(k => k.id == idKat);
+    if(!kat) return;
+    
+    let suffix = jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal';
+    document.getElementById('lapDetailTitle' + suffix).innerText = kat.nama;
+    document.getElementById('lapDetailSub' + suffix).innerText = `Kelas: ${kat.kelas} | Nominal: ${formatRupiah(kat.nominal)} | Tanggal: ${kat.tanggal}`;
+    document.getElementById('lapDetailContainer' + suffix).style.display = '';
+    document.getElementById('lapSearch' + suffix).value = '';
+    
+    renderLapDetail(jenis);
+    if(window.lucide) lucide.createIcons();
+}
+
+function closeLapDetail(jenis) {
+    let suffix = jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal';
+    let el = document.getElementById('lapDetailContainer' + suffix);
+    if(el) el.style.display = 'none';
+    if(activeLapDetailJenis === jenis) {
+        activeLapDetailIdKat = null;
+        activeLapDetailJenis = null;
+    }
+}
+
+function renderLapDetail(jenis) {
+    if(!activeLapDetailIdKat || activeLapDetailJenis !== jenis) return;
+    
+    let kat = dKeuanganInsidental.find(k => k.id == activeLapDetailIdKat);
+    if(!kat) return;
+    
+    let suffix = jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal';
+    let prefix = jenis === 'pendaftaran' ? 'pendaftaran_' : 'insidental_';
+    let kodeTagihan = prefix + kat.id;
+    
+    let listSiswa = getSiswaForKeuangan(kat.kelas);
+    let search = document.getElementById('lapSearch' + suffix).value.toLowerCase();
+    if(search) listSiswa = listSiswa.filter(s => s.namaLengkap.toLowerCase().includes(search));
+    
+    let tbody = document.querySelector('#lapDetailTable' + suffix + ' tbody');
+    if(!tbody) return;
+    
+    tbody.innerHTML = '';
+    if(listSiswa.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-light);">Tidak ada siswa ditemukan.</td></tr>`;
+        return;
+    }
+    
+    listSiswa.forEach((s, idx) => {
+        let tagihan = kat.nominal;
+        let terbayar = hitungTotalTerbayar(s.id, kodeTagihan);
+        let sisa = tagihan - terbayar;
+        let status = sisa <= 0 ? '<span class="status-badge status-success">Lunas</span>' : (terbayar > 0 ? '<span class="status-badge status-warning">Belum Lunas</span>' : '<span class="status-badge status-danger">Belum Bayar</span>');
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><strong>${s.namaLengkap}</strong></td>
+                <td>${s.kelas}</td>
+                <td>${status}</td>
+                <td style="color:var(--success); font-weight:600;">${formatRupiah(terbayar)}</td>
+                <td style="color:var(--danger); font-weight:600;">${formatRupiah(Math.max(0, sisa))}</td>
+            </tr>
+        `;
+    });
+}
+
+const originalShowSectionKeuangan = window.showSection;
+if(originalShowSectionKeuangan) {
+    window.showSection = function(sectionId, element) {
+        originalShowSectionKeuangan(sectionId, element);
+        if(sectionId === 'sectionKeuanganInsidental') { tutupDetailTagihan('universal'); renderMasterTagihanTable('universal'); }
+        if(sectionId === 'sectionKeuanganPendaftaran') { tutupDetailTagihan('pendaftaran'); renderMasterTagihanTable('pendaftaran'); loadActiveYear(); }
+        if(sectionId === 'sectionPengeluaranDinas') { fetchPengeluaranDinas().then(() => renderPengeluaranDinasTable()); }
+        if(sectionId === 'sectionLaporanKeuangan') { Promise.all([fetchKeuanganData(), fetchPengeluaranDinas()]).then(() => switchLaporanTab('universal')); }
+    };
+}
