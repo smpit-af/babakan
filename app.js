@@ -6061,7 +6061,7 @@ function renderSoalCards() {
                 '<option value="D"' + (s.kunci === 'D' ? ' selected' : '') + '>D</option>' +
                 '</select></div>';
         } else {
-            html += '<div class="soal-kunci-row" style="margin-top:0.5rem;background:#f8fafc;padding:0.75rem;border-radius:6px;border:1px dashed #cbd5e1;"><label style="font-weight:600;margin-bottom:0.5rem;display:block;color:var(--text);"><i data-lucide="key" style="width:14px;height:14px;color:#0ea5e9;"></i> Kata Kunci Essay (Opsional):</label>';
+            html += '<div style="margin-top:0.5rem;background:#f8fafc;padding:0.75rem;border-radius:6px;border:1px dashed #cbd5e1;"><label style="font-weight:600;margin-bottom:0.5rem;display:block;color:var(--text);"><i data-lucide="key" style="width:14px;height:14px;color:#0ea5e9;"></i> Kata Kunci Essay (Opsional):</label>';
             
             var rawKunciStr = s.kunci || '';
             var isOrLogic = rawKunciStr.indexOf('[OR]') === 0;
@@ -6185,8 +6185,8 @@ async function saveDraftAsesmen(autoCloseBuilder) {
         showToast('Draft asesmen berhasil disimpan! (' + asesmenBuilderSoalList.length + ' soal)', 'success');
         if (autoCloseBuilder !== false) {
             closeAsesmenBuilder();
+            resetAsesmenForms();
         }
-        resetAsesmenForms();
         loadAsesmenList();
     } catch(e) { showToast('Gagal menyimpan draft: ' + e.message, 'error'); } 
     finally { hideGlobalLoader(); }
@@ -6443,6 +6443,20 @@ function confirmPublishAsesmen() {
 
     var judul = (document.getElementById('builderJudul') || {}).value || '';
     if (!judul.trim()) { showToast('Judul Asesmen wajib diisi!', 'warning'); return; }
+
+    var tanggal = (document.getElementById('builderTanggal') || {}).value || '';
+    if (!tanggal) { showToast('Tanggal ujian wajib diisi!', 'warning'); return; }
+    
+    var today = new Date();
+    today.setHours(0,0,0,0);
+    var inputDate = new Date(tanggal);
+    inputDate.setHours(0,0,0,0);
+    
+    if (inputDate < today) {
+        showToast('Gagal Menerbitkan: Tanggal ujian (' + tanggal + ') tidak boleh sebelum hari ini!', 'error');
+        return;
+    }
+
     if (asesmenBuilderSoalList.length === 0) { showToast('Tambahkan minimal 1 soal sebelum menerbitkan!', 'warning'); return; }
 
     // Validate all PG have kunci jawaban
