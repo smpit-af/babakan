@@ -4397,3 +4397,807 @@ body.dark-mode .toast-info {
     height: 16px !important;
   }
 }
+
+/* =========================================================
+   RUANG DISKUSI (FORUM) & AI CHAT STYLES
+   ========================================================= */
+
+/* Forum Post Card */
+.forum-post {
+  background: white;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  border: 1px solid rgba(0,0,0,0.06);
+  transition: box-shadow 0.3s;
+}
+.forum-post:hover {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.forum-post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+.forum-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+}
+.forum-user-info h4 {
+  margin: 0 0 2px 0;
+  font-size: 1rem;
+  color: var(--text-dark);
+}
+.forum-user-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-light);
+}
+.forum-role-badge {
+  background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #4f46e5;
+}
+.forum-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.forum-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.forum-actions {
+  display: flex;
+  gap: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+.forum-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.forum-action-btn:hover {
+  background: #f1f5f9;
+  color: var(--primary);
+}
+.forum-action-btn.liked {
+  color: #ef4444;
+}
+.forum-action-btn.liked i, .forum-action-btn.liked svg {
+  fill: #ef4444;
+  stroke: #ef4444;
+}
+
+/* Forum Comments */
+.forum-comments-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+.forum-comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.forum-comment-item {
+  display: flex;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+.forum-comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.forum-comment-body h5 {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forum-comment-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+.forum-comment-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+.forum-comment-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  outline: none;
+  background: white;
+}
+.forum-comment-input:focus {
+  border-color: var(--primary-light);
+}
+.forum-comment-input-wrap .btn {
+  flex-shrink: 0;
+}
+
+/* Forum Create Post Card */
+#sectionRuangDiskusi .dash-section-header {
+  margin-bottom: 1.5rem;
+}
+#sectionRuangDiskusi .dash-section-header h2 {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#sectionRuangDiskusi {
+  min-height: calc(100vh - 100px);
+}
+#sectionRuangDiskusi > .card {
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  padding: 1.25rem;
+}
+#sectionRuangDiskusi #forumInputText {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+#sectionRuangDiskusi #forumInputText:focus {
+  border-color: #6366f1;
+  outline: none;
+  background: white;
+}
+
+@media (max-width: 600px) {
+  #sectionRuangDiskusi > .card > div {
+    flex-direction: column;
+  }
+  #sectionRuangDiskusi > .card > div > div:first-child {
+    display: none;
+  }
+  .forum-post {
+    padding: 1rem;
+  }
+  .forum-actions {
+    gap: 0.75rem;
+  }
+}
+
+/* AI Chatbot FAB */
+.ai-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  cursor: pointer;
+  z-index: 999;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none;
+}
+.ai-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+.ai-fab svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* AI Chat Modal */
+.ai-chat-modal {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 380px;
+  max-height: calc(100vh - 120px);
+  height: 500px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transform: translateY(20px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.ai-chat-modal.active {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+@media (max-width: 480px) {
+  .ai-chat-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    bottom: auto;
+    right: auto;
+  }
+}
+.ai-chat-header {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ai-chat-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-chat-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.8;
+  font-size: 0.9rem;
+  outline: none;
+}
+.ai-chat-input:focus { border-color: #6366f1; }
+.ai-chat-send {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 50%;
+}
+.forum-comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+.forum-comment-body h5 {
+  margin: 0 0 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.forum-comment-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+.forum-comment-input-wrap {
+  display: flex;
+  gap: 8px;
+}
+.forum-comment-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  outline: none;
+  background: white;
+}
+.forum-comment-input:focus {
+  border-color: var(--primary-light);
+}
+.forum-comment-input-wrap .btn {
+  flex-shrink: 0;
+}
+
+/* Forum Create Post Card */
+#sectionRuangDiskusi .dash-section-header {
+  margin-bottom: 1.5rem;
+}
+#sectionRuangDiskusi .dash-section-header h2 {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#sectionRuangDiskusi {
+  min-height: calc(100vh - 100px);
+}
+#sectionRuangDiskusi > .card {
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  padding: 1.25rem;
+}
+#sectionRuangDiskusi #forumInputText {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s;
+}
+#sectionRuangDiskusi #forumInputText:focus {
+  border-color: #6366f1;
+  outline: none;
+  background: white;
+}
+
+@media (max-width: 600px) {
+  #sectionRuangDiskusi > .card > div {
+    flex-direction: column;
+  }
+  #sectionRuangDiskusi > .card > div > div:first-child {
+    display: none;
+  }
+  .forum-post {
+    padding: 1rem;
+  }
+  .forum-actions {
+    gap: 0.75rem;
+  }
+}
+
+/* AI Chatbot FAB */
+.ai-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+  cursor: pointer;
+  z-index: 999;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none;
+}
+.ai-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+}
+.ai-fab svg {
+  width: 28px;
+  height: 28px;
+}
+
+/* AI Chat Modal */
+.ai-chat-modal {
+  position: fixed;
+  bottom: 90px;
+  right: 24px;
+  width: 380px;
+  max-height: calc(100vh - 120px);
+  height: 500px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transform: translateY(20px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.ai-chat-modal.active {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+@media (max-width: 480px) {
+  .ai-chat-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    bottom: auto;
+    right: auto;
+  }
+}
+.ai-chat-header {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ai-chat-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-chat-close {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-chat-close:hover { opacity: 1; }
+
+.ai-chat-body {
+  flex: 1;
+  padding: 1.2rem;
+  overflow-y: auto;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.ai-msg-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+.ai-msg-wrapper.user {
+  flex-direction: row-reverse;
+}
+
+.ai-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.ai-avatar.bot-avatar {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.ai-msg {
+  max-width: 80%;
+  padding: 0.85rem 1.15rem;
+  border-radius: 16px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.ai-msg p { margin-bottom: 0.5rem; }
+.ai-msg p:last-child { margin-bottom: 0; }
+.ai-msg ul, .ai-msg ol { margin-left: 1.2rem; margin-bottom: 0.5rem; }
+
+.ai-msg.bot {
+  background: white;
+  border: 1px solid rgba(0,0,0,0.05);
+  color: #334155;
+  border-bottom-left-radius: 4px;
+}
+.ai-msg.user {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.ai-msg.bot strong {
+  color: #0f172a;
+}
+
+.ai-chat-input-area {
+  padding: 1rem;
+  background: white;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ai-chat-input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.6rem 1rem;
+  font-size: 0.92rem;
+  outline: none;
+  transition: all 0.2s;
+}
+.ai-chat-input:focus { 
+  border-color: #6366f1; 
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.ai-chat-send {
+  background: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(99,102,241,0.3);
+}
+.ai-chat-send:hover { 
+  background: #4f46e5; 
+  transform: translateY(-1px);
+}
+
+.ai-typing {
+  display: flex;
+  gap: 4px;
+  padding: 0.5rem;
+}
+.ai-typing span {
+  width: 6px;
+  height: 6px;
+  background: #94a3b8;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+.ai-typing span:nth-child(1) { animation-delay: -0.32s; }
+.ai-typing span:nth-child(2) { animation-delay: -0.16s; }
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* ============================================
+   PRINT STYLES (F4 - 210mm x 330mm)
+   ============================================ */
+
+@media print {
+  @page {
+    size: 215.9mm 330.2mm; /* F4 or Folio approximate */
+    margin: 10mm;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  #printAreaKwitansi, #printAreaKwitansi *,
+  #printAreaLaporan, #printAreaLaporan * {
+    visibility: visible;
+  }
+  
+  #printAreaKwitansi, #printAreaLaporan {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: block !important;
+  }
+  
+  /* Kwitansi Layout (4 per page) */
+  .kwitansi-print-card {
+    height: 70mm; /* 4 cards fits perfectly in ~310mm printable area */
+    border: 1px dashed #000;
+    margin-bottom: 3mm;
+    padding: 4mm 6mm;
+    page-break-inside: avoid;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, sans-serif;
+  }
+  
+  .kpc-header {
+    display: flex;
+    align-items: center;
+    border-bottom: 2px solid #000;
+    padding-bottom: 2mm;
+    margin-bottom: 2mm;
+  }
+  
+  .kpc-logo {
+    width: 35px;
+    height: 35px;
+    margin-right: 10px;
+    object-fit: contain;
+  }
+  
+  .kpc-title {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .kpc-title h2 {
+    margin: 0;
+    font-size: 14pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  
+  .kpc-title p {
+    margin: 0;
+    font-size: 8pt;
+  }
+  
+  .kpc-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 80px 10px 1fr;
+    gap: 1mm 0;
+    font-size: 10pt;
+    line-height: 1.2;
+  }
+  
+  .kpc-body-label { font-weight: bold; }
+  .kpc-body-colon { text-align: center; }
+  .kpc-body-value { border-bottom: 1px dotted #ccc; }
+  
+  .kpc-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 2mm;
+  }
+  
+  .kpc-nominal {
+    background: #f0f0f0;
+    border: 1px solid #000;
+    padding: 2mm 5mm;
+    font-size: 12pt;
+    font-weight: bold;
+    font-style: italic;
+  }
+  
+  .kpc-ttd {
+    text-align: center;
+    font-size: 9pt;
+  }
+  
+  .kpc-ttd-name {
+    margin-top: 15mm;
+    text-decoration: underline;
+    font-weight: bold;
+  }
+  
+  /* Laporan Layout */
+  .laporan-print-container {
+    font-family: Arial, sans-serif;
+    color: #000;
+  }
+  
+  .lpc-kop {
+    text-align: center;
+    margin-bottom: 8mm; /* Extra margin to accommodate scale */
+  }
+  
+  .lpc-kop img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    transform: scale(1.15);
+    transform-origin: top center;
+  }
+  
+  .lpc-title {
+    text-align: center;
+    font-size: 14pt;
+    font-weight: bold;
+    margin-bottom: 5mm;
+    text-transform: uppercase;
+  }
+  
+  .lpc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin-bottom: 5mm;
+  }
+  
+  .lpc-table th, .lpc-table td {
+    border: 1px solid #000;
+    padding: 2mm;
+  }
+  
+  .lpc-table th {
+    background: #f0f0f0 !important;
+    font-weight: bold;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  .lpc-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10mm;
+    text-align: center;
+  }
+}
