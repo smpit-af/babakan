@@ -59,8 +59,8 @@
   <aside class="dash-sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo-wrapper">
-        <img src="img/logo.png" alt="Logo" class="sidebar-logo"
-          onerror="this.style.display='none'">
+        <img src="img/logo.png?v=20260503" alt="Logo" class="sidebar-logo"
+          onerror="this.onerror=null; this.src='img/logo.jpg?v=20260503';">
       </div>
       <div class="sidebar-school">
         <span class="sidebar-school-name">SMP IT AL-FATHONAH</span>
@@ -169,6 +169,10 @@
           <i data-lucide="chart-bar" style="width:18px;height:18px"></i>
           <span>Laporan Jurnal Mengajar</span>
         </a>
+        <a href="#" class="sidebar-link role-kepsek-only" onclick="showSection('sectionLaporanKeuangan', this)">
+          <i data-lucide="file-spreadsheet" style="width:18px;height:18px"></i>
+          <span>Laporan Bendahara</span>
+        </a>
       </div>
 
 
@@ -187,6 +191,21 @@
           <span>Daftar Alumni</span>
         </a>
       </div>
+
+      <div class="sidebar-nav-group role-bendahara">
+        <span class="sidebar-nav-label">Manajemen Keuangan</span>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionKeuanganInsidental', this)">
+          <i data-lucide="wallet" style="width:18px;height:18px"></i>
+          <span>Transaksi Universal</span>
+        </a>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionKeuanganPendaftaran', this)">
+          <i data-lucide="user-plus" style="width:18px;height:18px"></i>
+          <span>Pendaftaran & Administrasi</span>
+        </a>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionPengeluaranDinas', this)">
+          <i data-lucide="map-pin" style="width:18px;height:18px"></i>
+          <span>Pengeluaran Dinas</span>
+        </a>
       </div>
 
       <div class="sidebar-nav-group role-operasional">
@@ -250,6 +269,10 @@
         <a href="#" class="sidebar-link role-non-siswa" onclick="showSection('sectionGaleri', this)">
           <i data-lucide="image" style="width:18px;height:18px"></i>
           <span>Galeri</span>
+        </a>
+        <a href="#" class="sidebar-link" onclick="showSection('sectionRuangDiskusi', this)">
+          <i data-lucide="globe" style="width:18px;height:18px"></i>
+          <span>Ruang Diskusi (Forum)</span>
         </a>
         <a href="#" class="sidebar-link" onclick="showSection('sectionKritikSaran', this)">
           <i data-lucide="message-square" style="width:18px;height:18px"></i>
@@ -1734,42 +1757,34 @@
         </div>
       </div>
 
-      <!-- Auto Generate Form Area (hidden by default) -->
-      <div id="asesmenAutoGenerateArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
+      <!-- Parse Area (Copy-Paste) -->
+      <div id="asesmenParseArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
         <div class="card" style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
-          
-          <!-- Header Gradient Background -->
-          <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); padding: 2rem 2.5rem; color: white; display: flex; justify-content: space-between; align-items: center; position: relative;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 2rem 2.5rem; color: white; display: flex; justify-content: space-between; align-items: center; position: relative;">
             <div style="display: flex; align-items: center; gap: 1.25rem; z-index: 2;">
               <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 14px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2);">
-                <i data-lucide="zap" style="width:30px;height:30px; color: #fde047;"></i>
+                <i data-lucide="clipboard-paste" style="width:30px;height:30px; color: #fff;"></i>
               </div>
               <div>
-                <h3 style="font-size: 1.5rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Panel Generate Super Kilat</h3>
-                <p style="margin: 0.3rem 0 0 0; color: #eff6ff; font-size: 0.95rem; opacity: 0.9;">Sihir teks naskah mentah Word/PDF Anda menjadi form ujian interaktif secara instan.</p>
+                <h3 style="font-size: 1.5rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Panel Paste Naskah Jadi</h3>
+                <p style="margin: 0.3rem 0 0 0; color: #d1fae5; font-size: 0.95rem; opacity: 0.9;">Ubah naskah soal Word/PDF Anda menjadi form ujian interaktif.</p>
               </div>
             </div>
-            <button class="btn" onclick="closeAutoGenerateArea()" style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.6rem 1.25rem; box-shadow: none; z-index: 2;" onmouseover="this.style.background='rgba(0,0,0,0.25)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">
+            <button class="btn" onclick="closeParseArea()" style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.6rem 1.25rem; box-shadow: none; z-index: 2;" onmouseover="this.style.background='rgba(0,0,0,0.25)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">
               <i data-lucide="x" style="width:16px;height:16px; margin-right: 6px;"></i> Tutup Panel
             </button>
             <div style="position: absolute; right:-20px; top:-50px; width:200px; height:200px; background: rgba(255,255,255,0.05); border-radius:50%;"></div>
           </div>
 
-          <!-- Form Area -->
           <div style="padding: 2.5rem; background:#ffffff;">
-            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-              
-              <!-- Judul -->
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="type" style="width:18px;height:18px;color:#94a3b8"></i> Judul Asesmen <span style="color:#ef4444">*</span></label>
-                <input type="text" id="autoJudul" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;" placeholder="Contoh: Penilaian Harian PAI Kelas 7" />
+                <input type="text" id="parseJudul" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;" placeholder="Contoh: Penilaian Harian PAI Kelas 7" />
               </div>
-
-              <!-- Tipe Ujian -->
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="file-badge-2" style="width:18px;height:18px;color:#94a3b8"></i> Tipe Ujian <span style="color:#ef4444">*</span></label>
-                <select id="autoTipe" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                <select id="parseTipe" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
                   <option value="PH">Penilaian Harian (PH)</option>
                   <option value="STS">Sumatif Tengah Semester (STS)</option>
                   <option value="SAS">Sumatif Akhir Semester (SAS)</option>
@@ -1777,79 +1792,204 @@
                   <option value="SAT">Sumatif Akhir Tahun (SAT)</option>
                 </select>
               </div>
-
-              <!-- Tahun Pelajaran -->
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="calendar-days" style="width:18px;height:18px;color:#94a3b8"></i> Tahun Pelajaran</label>
-                <input type="text" id="autoTahun" class="form-input" readonly style="height: 52px; border-radius: 12px; background: #f1f5f9; border: 1px dashed #94a3b8; color: #475569; font-weight: 700; cursor: not-allowed; text-align: center;" />
+                <input type="text" id="parseTahun" class="form-input" readonly style="height: 52px; border-radius: 12px; background: #f1f5f9; border: 1px dashed #94a3b8; color: #475569; font-weight: 700; cursor: not-allowed; text-align: center;" />
               </div>
-
-              <!-- Mapel -->
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="book-open" style="width:18px;height:18px;color:#94a3b8"></i> Mata Pelajaran <span style="color:#ef4444">*</span></label>
-                <select id="autoMapel" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                <select id="parseMapel" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
                   <option value="">Pilih Mata Pelajaran</option>
                 </select>
               </div>
-
-              <!-- Kelas -->
               <div class="form-group" style="margin: 0;">
                 <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="users" style="width:18px;height:18px;color:#94a3b8"></i> Kelas <span style="color:#ef4444">*</span></label>
-                <select id="autoKelas" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                <select id="parseKelas" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
                   <option value="">Pilih Kelas</option>
                 </select>
               </div>
             </div>
 
-            <!-- Konfigurasi Teknis Lanjutan -->
             <div style="padding: 1.5rem 1.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-              <h4 style="margin: 0 0 1.25rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 0.5rem;"><i data-lucide="sliders" style="width:18px;height:18px; color:#3b82f6;"></i> Detail Ujian & Pembobotan</h4>
-              
+              <h4 style="margin: 0 0 1.25rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 0.5rem;"><i data-lucide="sliders" style="width:18px;height:18px; color:#10b981;"></i> Detail Ujian & Pembobotan</h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal PG <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="autoBobotPG" class="form-input" value="2" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                  <input type="number" id="parseBobotPG" class="form-input" value="2" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal Essay <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="autoBobotEssay" class="form-input" value="0" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                  <input type="number" id="parseBobotEssay" class="form-input" value="0" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Waktu (Menit) <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="autoWaktu" class="form-input" value="90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                  <input type="number" id="parseWaktu" class="form-input" value="90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Hari/Tanggal Ujian <span style="color:#ef4444">*</span></label>
-                  <input type="date" id="autoTanggal" class="form-input" style="height: 48px; border-radius: 10px; font-weight: 600;" />
+                  <input type="date" id="parseTanggal" class="form-input" style="height: 48px; border-radius: 10px; font-weight: 600;" />
                 </div>
               </div>
             </div>
 
-          <div style="background:var(--bg-lighter); padding:1rem; border-radius:8px; margin-bottom:1rem; font-size: 0.9rem; border-left: 4px solid var(--primary);">
-            <strong>📌 Cara Mem-paste Naskah Ujian:</strong><br/>
-            Salin naskah tes Anda (dari Word/PDF) dan tempel ke kotak raksasa di bawah. Sistem **telah diajarkan secara pintar** untuk mendeteksi soal Pilihan Ganda (beserta opsi A-E-nya yang sejajar horizontal) maupun soal Essay secara otomatis. Angka untuk nomor wajib diakhiri tanda titik (contoh: <code>1. </code>).
-          </div>
+            <div style="background:var(--bg-lighter); padding:1rem; border-radius:8px; margin-bottom:1rem; font-size: 0.9rem; border-left: 4px solid var(--primary);">
+              <strong>📌 Cara Mem-paste Naskah Ujian:</strong><br/>
+              Salin naskah tes Anda (dari Word/PDF) dan tempel ke kotak raksasa di bawah. Sistem **telah diajarkan secara pintar** untuk mendeteksi soal Pilihan Ganda (beserta opsi A-E-nya yang sejajar horizontal) maupun soal Essay secara otomatis. Angka untuk nomor wajib diakhiri tanda titik (contoh: <code>1. </code>).
+            </div>
 
-          <div class="form-group" style="margin-top: 1rem;">
-            <label class="form-label" style="font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-              <i data-lucide="file-text" style="width:18px;height:18px"></i> Tempel Naskah Soal Utuh Disini
-            </label>
-            <div style="background: var(--bg-lighter); padding: 5px; border-radius: 12px; border: 1px solid #d1d5db; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;">
-              <textarea id="autoTextarea" class="form-input" rows="18" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Paste (Tempel) teks naskah soal Anda di sini...&#10;&#10;[Contoh Format yang Baik]&#10;&#10;1. Apa nama ibukota Indonesia?&#10;A. Bandung    C. Jakarta&#10;B. Bali       D. Surabaya&#10;Kunci: C&#10;&#10;2. Berikan 3 contoh hewan karnivora! (Akan terbaca sbg essay jika tidak ada A,B,C,D)&#10;Kunci Jawaban: Harimau, Singa, Elang"></textarea>
+            <div class="form-group" style="margin-top: 1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                <label class="form-label" style="font-weight: 600; color: var(--primary); margin-bottom:0; display:flex; align-items:center; gap:0.5rem;">
+                  <i data-lucide="file-text" style="width:18px;height:18px"></i> Tempel Naskah Soal Utuh Disini
+                </label>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: #2563eb; border-color: #2563eb; display: flex; align-items: center; gap: 4px;" onclick="rapikanEjaanAI()">
+                    <i data-lucide="spell-check" style="width:14px;height:14px;"></i> Rapikan Ejaan AI
+                  </button>
+                </div>
+              </div>
+              <div style="background: var(--bg-lighter); padding: 5px; border-radius: 12px; border: 1px solid #d1d5db; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;">
+                <textarea id="parseTextarea" class="form-input" rows="18" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Paste (Tempel) teks naskah soal Anda di sini...&#10;&#10;[Contoh Format yang Baik]&#10;&#10;1. Apa nama ibukota Indonesia?&#10;A. Bandung    C. Jakarta&#10;B. Bali       D. Surabaya&#10;Kunci: C&#10;&#10;2. Berikan 3 contoh hewan karnivora! (Akan terbaca sbg essay jika tidak ada A,B,C,D)&#10;Kunci Jawaban: Harimau, Singa, Elang"></textarea>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div id="parseStatusLabel" style="font-weight:600; color:var(--text-light); font-size: 0.9rem;"></div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="previewAutoGenerate('parse')">
+                  <i data-lucide="eye" style="width:16px;height:16px"></i> Pratinjau Terbaca
+                </button>
+                <button class="btn btn-outline btn-hover-green" onclick="saveDraftAsesmen('parse')" id="btnSimpanDraftParse">
+                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan ke Draft
+                </button>
+                <button class="btn btn-primary" onclick="submitAutoGenerate('parse')">
+                  <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke Formulir
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div id="autoStatusLabel" style="font-weight:600; color:var(--text-light); font-size: 0.9rem;"></div>
-            <div style="display:flex; gap:10px;">
-              <button class="btn btn-outline" onclick="previewAutoGenerate()">
-                <i data-lucide="eye" style="width:16px;height:16px"></i> Pratinjau Terbaca
-              </button>
-              <button class="btn btn-primary" onclick="submitAutoGenerate()">
-                <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke Formulir
-              </button>
+      <!-- AI Generate Area (Baru) -->
+      <div id="asesmenAIGenerateArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
+        <div class="card" style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
+          <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 2rem 2.5rem; color: white; display: flex; justify-content: space-between; align-items: center; position: relative;">
+            <div style="display: flex; align-items: center; gap: 1.25rem; z-index: 2;">
+              <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 14px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2);">
+                <i data-lucide="sparkles" style="width:30px;height:30px; color: #fde047;"></i>
+              </div>
+              <div>
+                <h3 style="font-size: 1.5rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Panel Pembuat Soal AI</h3>
+                <p style="margin: 0.3rem 0 0 0; color: #ede9fe; font-size: 0.95rem; opacity: 0.9;">Buat soal otomatis dari sebuah topik, dilengkapi pengatur tingkat kesulitan.</p>
+              </div>
             </div>
+            <button class="btn" onclick="closeAIArea()" style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.6rem 1.25rem; box-shadow: none; z-index: 2;" onmouseover="this.style.background='rgba(0,0,0,0.25)'" onmouseout="this.style.background='rgba(0,0,0,0.15)'">
+              <i data-lucide="x" style="width:16px;height:16px; margin-right: 6px;"></i> Tutup Panel
+            </button>
+            <div style="position: absolute; right:-20px; top:-50px; width:200px; height:200px; background: rgba(255,255,255,0.05); border-radius:50%;"></div>
           </div>
+
+          <div style="padding: 2.5rem; background:#ffffff;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="type" style="width:18px;height:18px;color:#94a3b8"></i> Judul Asesmen <span style="color:#ef4444">*</span></label>
+                <input type="text" id="aiJudul" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;" placeholder="Contoh: Penilaian Harian PAI Kelas 7" />
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="file-badge-2" style="width:18px;height:18px;color:#94a3b8"></i> Tipe Ujian <span style="color:#ef4444">*</span></label>
+                <select id="aiTipe" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                  <option value="PH">Penilaian Harian (PH)</option>
+                  <option value="STS">Sumatif Tengah Semester (STS)</option>
+                  <option value="SAS">Sumatif Akhir Semester (SAS)</option>
+                  <option value="SAJ">Sumatif Akhir Jenjang (SAJ)</option>
+                  <option value="SAT">Sumatif Akhir Tahun (SAT)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="calendar-days" style="width:18px;height:18px;color:#94a3b8"></i> Tahun Pelajaran</label>
+                <input type="text" id="aiTahun" class="form-input" readonly style="height: 52px; border-radius: 12px; background: #f1f5f9; border: 1px dashed #94a3b8; color: #475569; font-weight: 700; cursor: not-allowed; text-align: center;" />
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="book-open" style="width:18px;height:18px;color:#94a3b8"></i> Mata Pelajaran <span style="color:#ef4444">*</span></label>
+                <select id="aiMapel" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                  <option value="">Pilih Mata Pelajaran</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="users" style="width:18px;height:18px;color:#94a3b8"></i> Kelas <span style="color:#ef4444">*</span></label>
+                <select id="aiKelas" class="form-input" style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
+                  <option value="">Pilih Kelas</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i data-lucide="brain-circuit" style="width:18px;height:18px;color:#8b5cf6"></i> Kesulitan AI <span style="color:#ef4444">*</span></label>
+                <select id="aiKesulitan" class="form-input" style="height: 52px; border-radius: 12px; background: #f5f3ff; border: 1px solid #c4b5fd; color: #5b21b6; font-weight:600; font-size: 0.95rem;">
+                  <option value="MOTS">Sedang (MOTS) - Campuran</option>
+                  <option value="LOTS">Dasar (LOTS) - Hafalan</option>
+                  <option value="HOTS">Sulit (HOTS) - Penalaran & Kasus</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="padding: 1.5rem 1.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+              <h4 style="margin: 0 0 1.25rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 0.5rem;"><i data-lucide="sliders" style="width:18px;height:18px; color:#7c3aed;"></i> Detail Ujian & Pembobotan</h4>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal PG <span style="color:#ef4444">*</span></label>
+                  <input type="number" id="aiBobotPG" class="form-input" value="2" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal Essay <span style="color:#ef4444">*</span></label>
+                  <input type="number" id="aiBobotEssay" class="form-input" value="0" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Waktu (Menit) <span style="color:#ef4444">*</span></label>
+                  <input type="number" id="aiWaktu" class="form-input" value="90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Hari/Tanggal Ujian <span style="color:#ef4444">*</span></label>
+                  <input type="date" id="aiTanggal" class="form-input" style="height: 48px; border-radius: 10px; font-weight: 600;" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.75rem;">
+                <label class="form-label" style="font-weight: 600; color: var(--primary); margin-bottom:0; display:flex; align-items:center; gap:0.5rem;">
+                  <i data-lucide="brain-circuit" style="width:18px;height:18px"></i> Ketik Tema / Materi Pembelajaran
+                </label>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: #059669; border-color: #059669; display: flex; align-items: center; gap: 4px;" onclick="generateCeritaAI()">
+                    <i data-lucide="book-open" style="width:14px;height:14px;"></i> Buat Teks Cerita
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; color: #2563eb; border-color: #2563eb; display: flex; align-items: center; gap: 4px;" onclick="rapikanEjaanAI()">
+                    <i data-lucide="spell-check" style="width:14px;height:14px;"></i> Rapikan Ejaan AI
+                  </button>
+                  <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color:white; border:none; padding: 0.4rem 0.8rem; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(139,92,246,0.3);" onclick="generateSoalAI()">
+                    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Generate Pakai AI
+                  </button>
+                </div>
+              </div>
+              <div style="background: var(--bg-lighter); padding: 5px; border-radius: 12px; border: 1px solid #c4b5fd; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;">
+                <textarea id="aiTextarea" class="form-input" rows="8" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Contoh perintah: 'Buatkan 10 soal pilihan ganda mata pelajaran PJOK untuk kelas 9 semester 2 kurikulum merdeka' atau cukup ketik materi 'Sistem Pencernaan Manusia' dan AI akan membuatkannya otomatis..."></textarea>
+              </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div id="aiStatusLabel" style="font-weight:600; color:var(--text-light); font-size: 0.9rem;"></div>
+              <div style="display:flex; gap:10px;">
+                <button class="btn btn-outline" onclick="previewAutoGenerate('ai')">
+                  <i data-lucide="eye" style="width:16px;height:16px"></i> Pratinjau Terbaca
+                </button>
+                <button class="btn btn-outline btn-hover-green" onclick="saveDraftAsesmen('ai')" id="btnSimpanDraftAI">
+                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan ke Draft
+                </button>
+                <button class="btn btn-primary" onclick="submitAutoGenerate('ai')">
+                  <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke Formulir
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1858,12 +1998,13 @@
       <!-- Action Bar -->
       <div class="dash-toolbar" style="display:flex; gap:.5rem; flex-wrap:wrap;">
         <button class="btn btn-outline" style="border-color:var(--primary); color:var(--primary);" onclick="openAsesmenBuilder()">
-          <i data-lucide="plus" style="width:18px;height:18px"></i>
-          Buat Asesmen Manual
+          <i data-lucide="plus" style="width:18px;height:18px"></i> Buat Manual
         </button>
-        <button class="btn btn-primary" onclick="openAutoGenerateForm()">
-          <i data-lucide="zap" style="width:18px;height:18px"></i>
-          Generate Cepat via Teks
+        <button class="btn btn-primary" style="background:#059669; border-color:#059669;" onclick="openParseArea()">
+          <i data-lucide="clipboard-paste" style="width:18px;height:18px"></i> Paste Naskah Jadi
+        </button>
+        <button class="btn btn-primary" style="background:#7c3aed; border-color:#7c3aed;" onclick="openAIArea()">
+          <i data-lucide="sparkles" style="width:18px;height:18px"></i> Bikin Pakai AI
         </button>
       </div>
 
@@ -1959,6 +2100,401 @@
             <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada arsip asesmen.</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: RUANG DISKUSI (FORUM) ========== -->
+    <section id="sectionRuangDiskusi" class="dash-section">
+      <div class="dash-section-header">
+        <h2><i data-lucide="globe" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;"></i>Ruang Diskusi &amp; Berbagi</h2>
+        <p style="color:var(--text-light);margin-top:4px;">Berbagi cerita, informasi, dan diskusi bersama semua warga sekolah.</p>
+      </div>
+
+      <!-- Area Status/Posting Baru -->
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 1rem; align-items: flex-start;">
+          <div class="forum-avatar" id="forumUserAvatar">U</div>
+          <div style="flex: 1; min-width: 0;">
+            <textarea id="forumInputText" class="form-input" rows="3" placeholder="Apa yang ingin Anda bagikan hari ini?"></textarea>
+            
+            <div id="forumImagePreviewContainer" style="display: none; position: relative; margin-bottom: 0.75rem; max-width: 200px;">
+              <img id="forumImagePreview" src="" style="width: 100%; border-radius: 10px; border: 2px solid #e2e8f0;" />
+              <button onclick="removeForumImage()" style="position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i data-lucide="x" style="width: 14px; height: 14px;"></i></button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+              <div style="display:flex; align-items:center;">
+                <input type="file" id="forumInputImage" accept="image/*" style="display: none;" onchange="handleForumImageSelect(event)" />
+                <button class="btn btn-outline" style="padding: 0.4rem 0.9rem; font-size: 0.82rem; border-radius: 20px;" onclick="document.getElementById('forumInputImage').click()">
+                  <i data-lucide="image" style="width: 15px; height: 15px;"></i> Tambah Foto
+                </button>
+                <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--text-light); margin-left:12px; cursor:pointer; user-select:none;">
+                  <input type="checkbox" id="forumSaveToGallery" style="accent-color:var(--primary); width:16px; height:16px;">
+                  Simpan ke Galeri
+                </label>
+              </div>
+              <button class="btn btn-primary" style="border-radius: 20px; padding: 0.5rem 1.2rem;" onclick="submitForumPost()">
+                <i data-lucide="send" style="width: 15px; height: 15px;"></i> Kirim
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Area Feed Postingan -->
+      <div id="forumFeedContainer" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <p style="text-align: center; color: var(--text-light); padding: 2rem;">Memuat diskusi...</p>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: TRANSAKSI UNIVERSAL ========== -->
+    <section class="dash-section" id="sectionKeuanganInsidental">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2><i data-lucide="wallet" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Universal</h2>
+          <p>Buat dan kelola riwayat tagihan pembayaran insidental/kegiatan fleksibel.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openTambahTransaksiModal('universal')">
+          <i data-lucide="plus" style="width:18px;height:18px;"></i> Buat Transaksi Baru
+        </button>
+      </div>
+
+      <!-- MASTER TABLE TRANSAKSI UNIVERSAL -->
+      <div class="card" id="masterTableContainerUniversal">
+        <h3 style="margin-bottom:1rem;">Daftar Riwayat Tagihan Universal</h3>
+        <div class="table-container">
+          <table class="data-table" id="masterTableUniversal">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Transaksi</th>
+                <th>Kelas Target</th>
+                <th>Nominal Tagihan</th>
+                <th>Tgl Dibuat</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DETAIL SISWA TRANSAKSI UNIVERSAL -->
+      <div class="card" id="detailTableContainerUniversal" style="display:none; margin-top:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <button class="btn btn-outline" onclick="tutupDetailTagihan('universal')">
+              <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali
+            </button>
+            <div>
+              <h3 style="margin:0; font-size:1.1rem;" id="lblDetailNamaUniversal">-</h3>
+              <p style="margin:0; font-size:0.85rem; color:var(--text-light);" id="lblDetailInfoUniversal">-</p>
+            </div>
+          </div>
+          <button class="btn btn-outline" onclick="printLaporanTagihan('universal')">
+            <i data-lucide="printer" style="width:16px;height:16px;"></i> Cetak Laporan
+          </button>
+        </div>
+        
+        <div style="margin-bottom:1rem;">
+          <input type="text" id="searchDetailUniversal" class="form-input" placeholder="Cari nama siswa..." onkeyup="renderDetailSiswaTable('universal')">
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="tableDetailSiswaUniversal">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Siswa</th>
+                <th>Kelas</th>
+                <th>Status</th>
+                <th>Terbayar</th>
+                <th>Sisa Tagihan</th>
+                <th style="text-align:right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: KEUANGAN PENDAFTARAN ========== -->
+    <section class="dash-section" id="sectionKeuanganPendaftaran">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2><i data-lucide="file-text" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Pendaftaran &amp; Administrasi</h2>
+          <p>Kelola daftar tagihan pendaftaran per angkatan untuk siswa baru.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openTambahTransaksiModal('pendaftaran')">
+          <i data-lucide="plus" style="width:18px;height:18px;"></i> Buat Tagihan Pendaftaran
+        </button>
+      </div>
+
+      <!-- MASTER TABLE PENDAFTARAN -->
+      <div class="card" id="masterTableContainerPendaftaran">
+        <h3 style="margin-bottom:1rem;">Daftar Riwayat Tagihan Pendaftaran</h3>
+        <div class="table-container">
+          <table class="data-table" id="masterTablePendaftaran">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Tagihan</th>
+                <th>Kelas Target</th>
+                <th>Nominal Tagihan</th>
+                <th>Tgl Dibuat</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- DETAIL SISWA PENDAFTARAN -->
+      <div class="card" id="detailTableContainerPendaftaran" style="display:none; margin-top:1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <button class="btn btn-outline" onclick="tutupDetailTagihan('pendaftaran')">
+              <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali
+            </button>
+            <div>
+              <h3 style="margin:0; font-size:1.1rem;" id="lblDetailNamaPendaftaran">-</h3>
+              <p style="margin:0; font-size:0.85rem; color:var(--text-light);" id="lblDetailInfoPendaftaran">-</p>
+            </div>
+          </div>
+          <button class="btn btn-outline" onclick="printLaporanTagihan('pendaftaran')">
+            <i data-lucide="printer" style="width:16px;height:16px;"></i> Cetak Laporan
+          </button>
+        </div>
+        
+        <div style="margin-bottom:1rem;">
+          <input type="text" id="searchDetailPendaftaran" class="form-input" placeholder="Cari nama siswa..." onkeyup="renderDetailSiswaTable('pendaftaran')">
+        </div>
+
+        <div class="table-container">
+          <table class="data-table" id="tableDetailSiswaPendaftaran">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Siswa</th>
+                <th>Kelas</th>
+                <th>Status</th>
+                <th>Terbayar</th>
+                <th>Sisa Tagihan</th>
+                <th style="text-align:right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: PENGELUARAN DINAS ========== -->
+    <section class="dash-section" id="sectionPengeluaranDinas">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2><i data-lucide="map-pin" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Pengeluaran Dinas</h2>
+          <p>Catat dan kelola pengeluaran untuk rapat, sosialisasi, dan perjalanan dinas lainnya.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openPengeluaranDinasModal()">
+          <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Pengeluaran Dinas
+        </button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div id="pengeluaranDinasSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+
+      <div class="card">
+        <div style="margin-bottom:1rem;">
+          <input type="text" id="searchPengeluaranDinas" class="form-input" placeholder="Cari tujuan, petugas, atau jenis..." onkeyup="renderPengeluaranDinasTable()">
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="tablePengeluaranDinas">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th>Jenis</th>
+                <th>Tujuan</th>
+                <th>Petugas</th>
+                <th>Jumlah Uang</th>
+                <th>Berangkat</th>
+                <th>Pulang</th>
+                <th>Keterangan</th>
+                <th style="text-align:right; width:100px;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: LAPORAN BENDAHARA (KEPSEK ONLY) ========== -->
+    <section class="dash-section" id="sectionLaporanKeuangan">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2><i data-lucide="file-spreadsheet" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Laporan Bendahara</h2>
+          <p>Pantau seluruh data keuangan sekolah yang dikelola oleh Bendahara. Data ini bersifat <strong>hanya baca</strong>.</p>
+        </div>
+      </div>
+
+      <!-- TAB NAVIGATION -->
+      <div class="card" style="margin-bottom:0; border-bottom-left-radius:0; border-bottom-right-radius:0; padding-bottom:0;">
+        <div style="display:flex; gap:0; border-bottom:2px solid var(--border-color);">
+          <button class="btn" id="tabLapUniversal" onclick="switchLaporanTab('universal')" style="border:none; border-bottom:3px solid var(--primary); border-radius:0; padding:12px 24px; font-weight:600; color:var(--primary); background:transparent; cursor:pointer;">
+            <i data-lucide="wallet" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Transaksi Universal
+          </button>
+          <button class="btn" id="tabLapPendaftaran" onclick="switchLaporanTab('pendaftaran')" style="border:none; border-bottom:3px solid transparent; border-radius:0; padding:12px 24px; font-weight:600; color:var(--text-light); background:transparent; cursor:pointer;">
+            <i data-lucide="file-text" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Pendaftaran & Administrasi
+          </button>
+          <button class="btn" id="tabLapPengeluaranDinas" onclick="switchLaporanTab('dinas')" style="border:none; border-bottom:3px solid transparent; border-radius:0; padding:12px 24px; font-weight:600; color:var(--text-light); background:transparent; cursor:pointer;">
+            <i data-lucide="map-pin" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;"></i>Pengeluaran Dinas
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: UNIVERSAL -->
+      <div class="card" id="lapTabContentUniversal" style="border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
+        <!-- Summary Cards -->
+        <div id="lapSummaryUniversal" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+
+        <!-- Master List -->
+        <h3 style="margin-bottom:1rem; font-size:1rem;">Daftar Tagihan Universal</h3>
+        <div class="table-container">
+          <table class="data-table" id="lapMasterTableUniversal">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Transaksi</th>
+                <th>Kelas</th>
+                <th>Nominal</th>
+                <th>Tgl Dibuat</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Detail Siswa (toggled) -->
+        <div id="lapDetailContainerUniversal" style="display:none; margin-top:1.5rem; border-top:1px solid var(--border-color); padding-top:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <button class="btn btn-outline" onclick="closeLapDetail('universal')">
+                <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali
+              </button>
+              <div>
+                <h4 style="margin:0;" id="lapDetailTitleUniversal">-</h4>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-light);" id="lapDetailSubUniversal">-</p>
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <input type="text" class="form-input" id="lapSearchUniversal" placeholder="Cari nama siswa..." onkeyup="renderLapDetail('universal')">
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="lapDetailTableUniversal">
+              <thead>
+                <tr>
+                  <th style="width:50px;">No</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                  <th>Status</th>
+                  <th>Terbayar</th>
+                  <th>Sisa Tagihan</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: PENDAFTARAN -->
+      <div class="card" id="lapTabContentPendaftaran" style="display:none; border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
+        <!-- Summary Cards -->
+        <div id="lapSummaryPendaftaran" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+
+        <!-- Master List -->
+        <h3 style="margin-bottom:1rem; font-size:1rem;">Daftar Tagihan Pendaftaran</h3>
+        <div class="table-container">
+          <table class="data-table" id="lapMasterTablePendaftaran">
+            <thead>
+              <tr>
+                <th style="width:50px;">No</th>
+                <th>Nama Tagihan</th>
+                <th>Kelas</th>
+                <th>Nominal</th>
+                <th>Tgl Dibuat</th>
+                <th style="text-align:right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <!-- Detail Siswa (toggled) -->
+        <div id="lapDetailContainerPendaftaran" style="display:none; margin-top:1.5rem; border-top:1px solid var(--border-color); padding-top:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+            <div style="display:flex; gap:1rem; align-items:center;">
+              <button class="btn btn-outline" onclick="closeLapDetail('pendaftaran')">
+                <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali
+              </button>
+              <div>
+                <h4 style="margin:0;" id="lapDetailTitlePendaftaran">-</h4>
+                <p style="margin:0; font-size:0.85rem; color:var(--text-light);" id="lapDetailSubPendaftaran">-</p>
+              </div>
+            </div>
+          </div>
+          <div style="margin-bottom:1rem;">
+            <input type="text" class="form-input" id="lapSearchPendaftaran" placeholder="Cari nama siswa..." onkeyup="renderLapDetail('pendaftaran')">
+          </div>
+          <div class="table-container">
+            <table class="data-table" id="lapDetailTablePendaftaran">
+              <thead>
+                <tr>
+                  <th style="width:50px;">No</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                  <th>Status</th>
+                  <th>Terbayar</th>
+                  <th>Sisa Tagihan</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CONTENT: PENGELUARAN DINAS -->
+      <div class="card" id="lapTabContentPengeluaranDinas" style="display:none; border-top-left-radius:0; border-top-right-radius:0; border-top:none;">
+        <!-- Summary Cards -->
+        <div id="lapSummaryPengeluaranDinas" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+
+        <h3 style="margin-bottom:1rem; font-size:1rem;">Riwayat Pengeluaran Dinas</h3>
+        <div style="margin-bottom:1rem;">
+          <input type="text" class="form-input" id="lapSearchPengeluaranDinas" placeholder="Cari tujuan, petugas, atau jenis..." onkeyup="renderLapPengeluaranDinasTable()">
+        </div>
+        <div class="table-container">
+          <table class="data-table" id="lapTablePengeluaranDinas">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th>Jenis</th>
+                <th>Tujuan</th>
+                <th>Petugas</th>
+                <th>Jumlah Uang</th>
+                <th>Berangkat</th>
+                <th>Pulang</th>
+                <th>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -2363,6 +2899,8 @@
     </div>
   </div>
 
+
+
   <!-- ========== PENGUMUMAN MODAL ========== -->
   <div class="modal-overlay" id="pengumumanModal">
     <div class="modal modal-wide" style="position:relative;">
@@ -2381,7 +2919,12 @@
           <input type="text" class="form-input" id="pengumumanJudul" placeholder="Judul pengumuman" required />
         </div>
         <div class="form-group">
-          <label for="pengumumanIsi">Isi Pengumuman *</label>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <label for="pengumumanIsi" style="margin-bottom:0;">Isi Pengumuman *</label>
+            <button type="button" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: #8b5cf6; border-color: #8b5cf6; display: flex; align-items: center; gap: 4px; box-shadow:none;" onclick="enhancePengumumanAI()">
+              <i data-lucide="sparkles" style="width:12px;height:12px;"></i> Perbagus AI
+            </button>
+          </div>
           <textarea class="form-input" id="pengumumanIsi" placeholder="Isi pengumuman..." rows="4" style="resize:vertical;" required></textarea>
         </div>
         <div class="form-row-spmb">
@@ -2429,9 +2972,13 @@
           <input type="text" class="form-input" id="beritaJudul" placeholder="Judul berita/kegiatan" required />
         </div>
         <div class="form-group">
-          <label for="beritaRingkasan">Ringkasan</label>
-          <textarea class="form-input" id="beritaRingkasan" placeholder="Ringkasan singkat..." rows="2"
-            style="resize:vertical;"></textarea>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <label for="beritaRingkasan" style="margin-bottom:0;">Ringkasan</label>
+            <button type="button" class="btn btn-sm btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: #8b5cf6; border-color: #8b5cf6; display: flex; align-items: center; gap: 4px; box-shadow:none;" onclick="generateBeritaAI()">
+              <i data-lucide="sparkles" style="width:12px;height:12px;"></i> Auto-Tulis AI
+            </button>
+          </div>
+          <textarea class="form-input" id="beritaRingkasan" placeholder="Ringkasan singkat..." rows="2" style="resize:vertical;"></textarea>
         </div>
         <div class="form-group">
           <label for="beritaGambar">URL Gambar (opsional)</label>
@@ -2772,6 +3319,65 @@
       <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline" onclick="closeMutasiKeluarModal()">Batal</button> <button class="btn btn-danger" onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
     </div>
   </div>
+
+  <!-- ========== MODAL: PENGELUARAN DINAS ========== -->
+  <div class="modal-overlay" id="pengeluaranDinasModal">
+    <div class="modal" style="max-width:600px;position:relative;">
+      <button class="modal-close" onclick="closePengeluaranDinasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background:rgba(37,99,235,.12);color:#2563eb;"><i data-lucide="map-pin" style="width:26px;height:26px"></i></div>
+        <h3 id="pengeluaranDinasModalTitle">Tambah Pengeluaran Dinas</h3>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">Isi rincian pengeluaran dinas, termasuk tujuan, petugas, dan biaya.</p>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem; padding: 1.5rem;">
+        <input type="hidden" id="formPDId" value="" />
+        <div class="grid-responsive">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Jenis Kegiatan *</label>
+            <select id="formPDJenis" class="form-input">
+              <option value="Rapat">Rapat</option>
+              <option value="Sosialisasi">Sosialisasi</option>
+              <option value="Workshop">Workshop</option>
+              <option value="Pelatihan">Pelatihan</option>
+              <option value="Studi Banding">Studi Banding</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Jumlah Uang (Rp) *</label>
+            <input type="number" id="formPDJumlah" class="form-input" placeholder="500000" />
+          </div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Tujuan / Lokasi *</label>
+          <input type="text" id="formPDTujuan" class="form-input" placeholder="Contoh: Dinas Pendidikan Kab. Bandung" />
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Petugas / Yang Bertugas *</label>
+          <input type="text" id="formPDPetugas" class="form-input" placeholder="Contoh: Pak Ahmad, Bu Siti" />
+        </div>
+        <div class="grid-responsive">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tanggal Berangkat *</label>
+            <input type="date" id="formPDBerangkat" class="form-input" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tanggal Pulang *</label>
+            <input type="date" id="formPDPulang" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Keterangan (Opsional)</label>
+          <textarea id="formPDKeterangan" class="form-input" rows="2" placeholder="Catatan tambahan..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:right; border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
+        <button class="btn btn-outline" onclick="closePengeluaranDinasModal()">Batal</button>
+        <button class="btn btn-primary" onclick="savePengeluaranDinas()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== KENAIKAN KELAS MODAL ========== -->
   <div class="modal-overlay" id="kenaikanKelasModal">
     <div class="modal modal-wide" style="position:relative;">
@@ -2823,6 +3429,159 @@
     </div>
   </div>
   
+  <!-- ========== MODAL: BUAT TRANSAKSI / TAGIHAN BARU ========== -->
+  <div class="modal-overlay" id="keuanganInsidentalModal">
+    <div class="modal" style="max-width:600px;position:relative;">
+      <button class="modal-close" onclick="closeKeuanganInsidentalModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background:rgba(37,99,235,.12);color:#2563eb;"><i data-lucide="wallet" style="width:26px;height:26px"></i></div>
+        <h3 id="keuanganInsidentalTitle">Buat Transaksi Baru</h3>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;" id="keuanganInsidentalDesc">Tentukan nama kegiatan, kelas target, nominal, dan tanggal pembukaan transaksi.</p>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem; padding: 1.5rem;">
+        <input type="hidden" id="formInsidentalJenis" value="universal" />
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Nama Transaksi / Kegiatan *</label>
+          <input type="text" id="formInsidentalNama" class="form-input" placeholder="Contoh: Kegiatan Renang, Study Tour, ANBK" />
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Kelas Target *</label>
+          <select id="formInsidentalKelas" class="form-input">
+            <option value="Semua Kelas">Semua Kelas</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Jumlah yang Harus Dibayar (Rp) *</label>
+          <input type="number" id="formInsidentalNominal" class="form-input" placeholder="500000" />
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Tanggal Dibuat *</label>
+          <input type="date" id="formInsidentalTanggal" class="form-input" />
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:right; border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
+        <button class="btn btn-outline" onclick="closeKeuanganInsidentalModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveKeuanganInsidental()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan Tagihan</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========== MODAL: BUAT TAGIHAN PENDAFTARAN (DENGAN RINCIAN) ========== -->
+  <div class="modal-overlay" id="pendaftaranTagihanModal">
+    <div class="modal" style="max-width:600px;position:relative;">
+      <button class="modal-close" onclick="closePendaftaranTagihanModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background:rgba(16,185,129,.12);color:#10b981;"><i data-lucide="file-text" style="width:26px;height:26px"></i></div>
+        <h3>Buat Tagihan Pendaftaran</h3>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">Tentukan nama tagihan, tahun pelajaran, dan rincian biaya pendaftaran siswa baru.</p>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem; padding: 1.5rem;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Nama Tagihan *</label>
+          <input type="text" id="formPendaftaranNama" class="form-input" placeholder="Contoh: Pendaftaran Angkatan 2024/2025" />
+        </div>
+        <div class="grid-responsive">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tahun Pelajaran</label>
+            <input type="text" id="formPendaftaranTahun" class="form-input" readonly style="background:#f1f5f9; cursor:not-allowed;" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tanggal Dibuat</label>
+            <input type="date" id="formPendaftaranTanggal" class="form-input" />
+          </div>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">Kelas Target *</label>
+          <select id="formPendaftaranKelas" class="form-input">
+            <option value="Semua Kelas">Semua Kelas</option>
+          </select>
+        </div>
+
+        <!-- RINCIAN BIAYA -->
+        <div>
+          <label class="form-label" style="font-weight:600; font-size:1rem; margin-bottom:8px;">Rincian Biaya Pendaftaran</label>
+          <div id="pendaftaranRincianContainer" style="display:flex; flex-direction:column; gap:8px;">
+            <!-- Dynamic items -->
+          </div>
+          <button class="btn btn-outline" style="width:100%; margin-top:10px; border-style:dashed;" onclick="addPendaftaranRincianItem()">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Item Biaya
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
+        <span style="font-weight:700; font-size:1.1rem; color:var(--primary-dark);">Total: <span id="formPendaftaranTotalText">Rp 0</span></span>
+        <div>
+          <button class="btn btn-outline" onclick="closePendaftaranTagihanModal()">Batal</button>
+          <button class="btn btn-primary" onclick="savePendaftaranTagihan()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan Tagihan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PEMBAYARAN SISWA MODAL (CATAT & RIWAYAT) ========== -->
+  <div class="modal-overlay" id="pembayaranSiswaModal">
+    <div class="modal modal-wide" style="position:relative; max-width:700px;">
+      <button class="modal-close" onclick="closePembayaranSiswaModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header" style="text-align:left; display:flex; align-items:center; gap:1rem;">
+        <div class="modal-logo" style="margin:0; background:rgba(16,185,129,.12);color:#10b981;"><i data-lucide="banknote" style="width:26px;height:26px"></i></div>
+        <div>
+          <h3 style="margin:0;" id="pembayaranSiswaTitle">Catat Pembayaran</h3>
+          <p style="margin:0;" id="pembayaranSiswaSubtitle">Siswa: - | Jenis: -</p>
+        </div>
+      </div>
+      <div class="modal-body" style="display:grid; grid-template-columns:1fr 1fr; gap:2rem;">
+        <div>
+           <h4 style="font-size:1rem; margin-bottom:1rem; color:var(--primary-dark);">Status Tagihan</h4>
+           <div style="background:var(--bg-lighter); padding:1rem; border-radius:12px; margin-bottom:1.5rem;">
+             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span style="color:var(--text-light);">Total Tagihan:</span> <strong id="pembayaranTotalTagihan">Rp 0</strong></div>
+             <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;"><span style="color:var(--text-light);">Terbayar:</span> <strong id="pembayaranTerbayar" style="color:var(--success);">Rp 0</strong></div>
+             <div style="display:flex; justify-content:space-between; padding-top:0.5rem; border-top:1px solid var(--border-color);"><span style="color:var(--text-light);">Sisa Tagihan:</span> <strong id="pembayaranSisaTagihan" style="color:var(--danger);">Rp 0</strong></div>
+           </div>
+           
+           <h4 style="font-size:1rem; margin-bottom:1rem; color:var(--primary-dark);">Catat Pembayaran Baru</h4>
+           <input type="hidden" id="formPembayaranIdTransaksi" />
+           <input type="hidden" id="formPembayaranIdSiswa" />
+           <div class="form-group"><label class="form-label">Tanggal Bayar</label><input type="date" id="formPembayaranTanggal" class="form-input" /></div>
+           <div class="form-group"><label class="form-label">Nominal (Rp) *</label><input type="number" id="formPembayaranNominal" class="form-input" placeholder="Masukkan nominal" /></div>
+           <button class="btn btn-primary" style="width:100%;" onclick="submitPembayaran()">Simpan Pembayaran</button>
+        </div>
+        
+        <div>
+           <h4 style="font-size:1rem; margin-bottom:1rem; color:var(--primary-dark);">Riwayat Pembayaran</h4>
+           <div style="max-height:350px; overflow-y:auto; padding-right:10px;" id="riwayatPembayaranContainer">
+             <!-- Histori -->
+           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PRINT KWITANSI BATCH MODAL ========== -->
+  <div class="modal-overlay" id="printKwitansiModal">
+    <div class="modal" style="max-width:500px;position:relative;">
+      <button class="modal-close" onclick="closePrintKwitansiModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background:rgba(99,102,241,.12);color:#6366f1;"><i data-lucide="printer" style="width:26px;height:26px"></i></div>
+        <h3>Cetak Kwitansi Batch</h3>
+        <p>Cetak Kwitansi F4 untuk riwayat pembayaran terbaru dari siswa terpilih.</p>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Format Cetak</label>
+           <select class="form-input" disabled><option>Kertas F4 - Maks 5 Kwitansi / Halaman</option></select>
+        </div>
+        <p style="font-size:0.9rem; color:var(--text-light); text-align:center; padding:1rem; background:var(--bg-lighter); border-radius:8px;">
+          Sistem akan mencetak riwayat pembayaran <strong style="color:var(--text-dark);">terbaru</strong> untuk setiap siswa yang Anda centang pada tabel sebelumnya.
+        </p>
+      </div>
+      <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline" onclick="closePrintKwitansiModal()">Batal</button> <button class="btn btn-primary" onclick="executePrintKwitansi()">Lanjutkan Cetak</button></div>
+    </div>
+  </div>
+  
+  <!-- PRINT CONTAINERS (HIDDEN) -->
+  <div id="printAreaKwitansi" style="display:none; background:white; color:black;"></div>
+  <div id="printAreaLaporan" style="display:none; background:white; color:black;"></div>
+
   <!-- ========== GALERI LIGHTBOX (STANDALONE) ========== -->
   <div id="galeriLightbox" onclick="if(event.target===this)closeGaleriLightbox()" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.92);display:none;flex-direction:column;justify-content:center;align-items:center;padding:1rem;">
     <button style="position:absolute;top:16px;right:16px;background:none;border:none;color:white;cursor:pointer;z-index:10;padding:8px;" onclick="closeGaleriLightbox()">
@@ -2832,7 +3591,7 @@
     <div id="galeriLightboxCaption" style="color:white;margin-top:1rem;font-size:1.05rem;text-align:center;max-width:80vw;line-height:1.5;"></div>
   </div>
 
-  <script src="app.js?v=20260417g"></script>
+  <script src="app.js?v=20260502v4"></script>
 
   <!-- Dashboard Init -->
   <script>
@@ -2846,6 +3605,32 @@
     <div style="background:transparent; color:white; text-align:center; padding:2rem; display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
       <i data-lucide="loader" class="icon-spin" style="width:36px;height:36px; color:#60a5fa;"></i>
       <h4 id="globalLoaderText" style="margin:0; font-weight:500; font-size:1rem; letter-spacing:0.3px;">Sedang memproses...</h4>
+    </div>
+  </div>
+
+  <!-- ========== AI CHATBOT ========== -->
+  <button class="ai-fab" id="aiChatFab" onclick="toggleAiChat()">
+    <i data-lucide="bot"></i>
+  </button>
+
+  <div class="ai-chat-modal" id="aiChatModal">
+    <div class="ai-chat-header">
+      <h3><i data-lucide="bot" style="width: 20px; height: 20px;"></i> Asisten AI Sekolah</h3>
+      <button class="ai-chat-close" onclick="toggleAiChat()"><i data-lucide="x" style="width: 20px; height: 20px;"></i></button>
+    </div>
+    <div class="ai-chat-body" id="aiChatBody">
+      <div class="ai-msg-wrapper bot">
+        <div class="ai-avatar bot-avatar">
+          <i data-lucide="bot" style="width: 18px; height: 18px;"></i>
+        </div>
+        <div class="ai-msg bot">Halo! Saya Asisten AI cerdas Anda. Ada yang bisa saya bantu terkait sekolah hari ini?</div>
+      </div>
+    </div>
+    <div class="ai-chat-input-area">
+      <input type="text" class="ai-chat-input" id="aiChatInput" placeholder="Ketik pesan..." onkeypress="if(event.key === 'Enter') sendAiMessage()" />
+      <button class="ai-chat-send" onclick="sendAiMessage()">
+        <i data-lucide="send" style="width: 16px; height: 16px; margin-left: -2px;"></i>
+      </button>
     </div>
   </div>
 
