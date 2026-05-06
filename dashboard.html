@@ -124,6 +124,11 @@
           <i data-lucide="archive" style="width:18px;height:18px"></i>
           <span>Arsip Asesmen</span>
         </a>
+        <a href="#" class="sidebar-link role-akademik" onclick="showSection('sectionSampahAsesmen',this)">
+          <i data-lucide="trash-2" style="width:18px;height:18px"></i>
+          <span>Sampah Asesmen</span>
+          <span class="sidebar-badge" id="sampahBadgeSidebar" style="display:none; background:#ef4444;">0</span>
+        </a>
         <a href="#" class="sidebar-link role-akademik" onclick="showSection('sectionJurnalMengajar',this)">
           <i data-lucide="notebook-pen" style="width:18px;height:18px"></i>
           <span>Jurnal Mengajar</span>
@@ -762,10 +767,15 @@
               <div id="profilGuruFotoPreview" style="width:140px; height:140px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; overflow:hidden; border:5px solid #fff; box-shadow:0 4px 14px rgba(0,0,0,0.1); margin-bottom:1rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               </div>
-              <label class="btn btn-primary" style="cursor:pointer; border-radius:30px; box-shadow:0 4px 12px rgba(37,99,235,0.2);">
-                <i data-lucide="camera" style="width:16px;height:16px;"></i> Ubah Foto Profil
-                <input type="file" id="profilGuruFoto" accept="image/*" style="display:none;" onchange="previewProfilGuruFoto(this)" />
-              </label>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <label class="btn btn-primary" style="cursor:pointer; border-radius:30px; box-shadow:0 4px 12px rgba(37,99,235,0.2);">
+                  <i data-lucide="camera" style="width:16px;height:16px;"></i> Ubah Foto Profil
+                  <input type="file" id="profilGuruFoto" accept="image/*" style="display:none;" onchange="previewProfilGuruFoto(this)" />
+                </label>
+                <button type="button" id="btnHapusFotoProfil" class="btn btn-danger" style="display:none; cursor:pointer; border-radius:30px; box-shadow:0 4px 12px rgba(239,68,68,0.2); padding: 0.5rem;" onclick="hapusProfilGuruFoto()" title="Hapus Foto">
+                  <i data-lucide="trash-2" style="width:16px;height:16px;margin:0;"></i>
+                </button>
+              </div>
               <p style="margin:8px 0 0; font-size:0.8rem; color:var(--text-light);">Format disarankan: 1:1 (Persegi), Maks. 2MB</p>
             </div>
             
@@ -1823,7 +1833,7 @@
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Waktu (Menit) <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="parseWaktu" class="form-input" value="90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                  <input type="number" id="parseWaktu" class="form-input" placeholder="Contoh: 90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Hari/Tanggal Ujian <span style="color:#ef4444">*</span></label>
@@ -1945,7 +1955,7 @@
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Waktu (Menit) <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="aiWaktu" class="form-input" value="90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
+                  <input type="number" id="aiWaktu" class="form-input" placeholder="Contoh: 90" style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
                 </div>
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label" style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Hari/Tanggal Ujian <span style="color:#ef4444">*</span></label>
@@ -1954,25 +1964,41 @@
               </div>
             </div>
 
+            <!-- KOTAK PERINTAH AI -->
             <div class="form-group" style="margin-top: 1rem;">
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px; margin-bottom: 0.75rem;">
-                <label class="form-label" style="font-weight: 600; color: var(--primary); margin-bottom:0; display:flex; align-items:center; gap:0.5rem; width:100%;">
-                  <i data-lucide="brain-circuit" style="width:18px;height:18px"></i> Ketik Tema / Materi Pembelajaran
+              <label class="form-label" style="font-weight: 700; color: #7c3aed; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="brain-circuit" style="width:18px;height:18px"></i> Perintah untuk AI
+              </label>
+              <div style="background: #f5f3ff; padding: 5px; border-radius: 12px; border: 1px solid #c4b5fd; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <textarea id="aiPromptInput" class="form-input" rows="3" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Contoh: 'Buatkan 5 soal PG dan 2 essay PJOK kelas 7 tentang sepak bola'&#10;&#10;Anda bisa mengirim perintah berkali-kali. Hasilnya akan ditambahkan ke naskah di bawah."></textarea>
+              </div>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px; width:100%; margin-top:0.75rem;">
+                <button type="button" class="btn btn-sm btn-outline" style="padding: 0.5rem; font-size: 0.85rem; color: #059669; border-color: #059669; display: flex; align-items: center; justify-content: center; gap: 6px; width:100%;" onclick="generateCeritaAI()">
+                  <i data-lucide="book-open" style="width:14px;height:14px;"></i> Buat Teks Cerita
+                </button>
+                <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color:white; border:none; padding: 0.5rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(139,92,246,0.3); width:100%;" onclick="generateSoalAI()">
+                  <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Generate Pakai AI
+                </button>
+              </div>
+            </div>
+
+            <!-- KOTAK HASIL NASKAH SOAL -->
+            <div class="form-group" style="margin-top: 1.25rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:0.5rem;">
+                <label class="form-label" style="font-weight: 700; color: #1e293b; margin-bottom:0; display:flex; align-items:center; gap:0.5rem;">
+                  <i data-lucide="file-text" style="width:18px;height:18px; color:#10b981;"></i> Naskah Soal Hasil Generate
                 </label>
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px; width:100%;">
-                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.5rem; font-size: 0.85rem; color: #059669; border-color: #059669; display: flex; align-items: center; justify-content: center; gap: 6px; width:100%;" onclick="generateCeritaAI()">
-                    <i data-lucide="book-open" style="width:14px;height:14px;"></i> Buat Teks Cerita
+                <div style="display:flex; gap:6px;">
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; color: #2563eb; border-color: #2563eb;" onclick="rapikanEjaanAI()">
+                    <i data-lucide="spell-check" style="width:13px;height:13px;"></i> Rapikan Ejaan
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.5rem; font-size: 0.85rem; color: #2563eb; border-color: #2563eb; display: flex; align-items: center; justify-content: center; gap: 6px; width:100%;" onclick="rapikanEjaanAI()">
-                    <i data-lucide="spell-check" style="width:14px;height:14px;"></i> Rapikan Ejaan AI
-                  </button>
-                  <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color:white; border:none; padding: 0.5rem; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 10px rgba(139,92,246,0.3); width:100%;" onclick="generateSoalAI()">
-                    <i data-lucide="sparkles" style="width:14px;height:14px;"></i> Generate Pakai AI
+                  <button type="button" class="btn btn-sm btn-outline" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; color: #ef4444; border-color: #ef4444;" onclick="resetAINaskah()">
+                    <i data-lucide="eraser" style="width:13px;height:13px;"></i> Reset Naskah
                   </button>
                 </div>
               </div>
-              <div style="background: var(--bg-lighter); padding: 5px; border-radius: 12px; border: 1px solid #c4b5fd; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;">
-                <textarea id="aiTextarea" class="form-input" rows="8" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Contoh perintah: 'Buatkan 10 soal pilihan ganda mata pelajaran PJOK untuk kelas 9 semester 2 kurikulum merdeka' atau cukup ketik materi 'Sistem Pencernaan Manusia' dan AI akan membuatkannya otomatis..."></textarea>
+              <div style="background: var(--bg-lighter); padding: 5px; border-radius: 12px; border: 1px solid #d1d5db; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s ease;">
+                <textarea id="aiTextarea" class="form-input" rows="10" style="border:none; box-shadow:none; background:transparent; resize:vertical; font-family: 'Inter', sans-serif; font-size:0.95rem; line-height: 1.7;" placeholder="Naskah soal akan muncul di sini setelah Anda klik 'Generate Pakai AI'.&#10;&#10;Setiap generate baru akan ditambahkan di bawah naskah yang sudah ada.&#10;Anda juga bisa mengedit naskah ini secara manual."></textarea>
               </div>
             </div>
 
@@ -2098,6 +2124,42 @@
           </thead>
           <tbody id="arsipAsesmenTbody">
             <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada arsip asesmen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: SAMPAH ASESMEN ========== -->
+    <section id="sectionSampahAsesmen" class="dash-section">
+      <div class="dash-section-header">
+        <h2><i data-lucide="trash-2" style="width:28px;height:28px;vertical-align:middle;margin-right:8px;color:#ef4444;"></i>Sampah Asesmen</h2>
+        <p style="color:var(--text-light);margin-top:4px;">Asesmen yang dihapus akan disimpan di sini selama <strong>30 hari</strong> sebelum dihapus otomatis secara permanen.</p>
+      </div>
+
+      <div class="dash-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <span style="font-size:.85rem;color:var(--text-light);" id="sampahAsesmenCount">0 item di sampah</span>
+        <button class="btn btn-sm" style="background:#ef4444; color:white; border:none; border-radius:8px; padding:0.5rem 1rem; font-weight:600;" onclick="kosongkanSampah()">
+          <i data-lucide="trash" style="width:14px;height:14px;"></i> Kosongkan Sampah
+        </button>
+      </div>
+
+      <div class="dash-table-container">
+        <table class="dash-table">
+          <thead>
+            <tr>
+              <th style="width:40px">No</th>
+              <th>Judul</th>
+              <th>Mapel</th>
+              <th>Kelas</th>
+              <th style="width:70px">Tipe</th>
+              <th>Status</th>
+              <th>Dihapus Pada</th>
+              <th>Sisa Hari</th>
+              <th style="width:160px;text-align:center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="sampahAsesmenTbody">
+            <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Sampah kosong. 🎉</td></tr>
           </tbody>
         </table>
       </div>
@@ -3591,7 +3653,7 @@
     <div id="galeriLightboxCaption" style="color:white;margin-top:1rem;font-size:1.05rem;text-align:center;max-width:80vw;line-height:1.5;"></div>
   </div>
 
-  <script src="app.js?v=20260502v4"></script>
+  <script src="app.js?v=20260505v3"></script>
 
   <!-- Dashboard Init -->
   <script>
