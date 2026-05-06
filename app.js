@@ -878,6 +878,7 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionBankSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadBankSoal(); }
     if (sectionId === 'sectionBuatSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadArsipAsesmen(); }
+    if (sectionId === 'sectionSampahAsesmen') { loadSampahAsesmen(); }
     if (sectionId === 'sectionJurnalMengajar') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadJurnalMengajar(); }
     if (sectionId === 'sectionLaporanJurnal') { loadLaporanJurnal(); }
     if (sectionId === 'sectionPenilaian') { 
@@ -2430,9 +2431,18 @@ async function loadProfilGuru() {
             document.getElementById('profilGuruAlamat').value = data.alamat || '';
 
             // Show photo if exists
+            var btnHapus = document.getElementById('btnHapusFotoProfil');
             if (data.foto_url) {
                 var preview = document.getElementById('profilGuruFotoPreview');
-                if (preview) preview.innerHTML = '<img src="' + data.foto_url + '" style="width:100%;height:100%;object-fit:cover;">';
+                // Tambahkan random string timestamp agar terhindar dari cache browser saat memuat
+                var separator = data.foto_url.includes('?') ? '&' : '?';
+                var noCacheUrl = data.foto_url + separator + 't=' + new Date().getTime();
+                if (preview) preview.innerHTML = '<img src="' + noCacheUrl + '" style="width:100%;height:100%;object-fit:cover;">';
+                if (btnHapus) btnHapus.style.display = 'inline-flex';
+            } else {
+                var preview = document.getElementById('profilGuruFotoPreview');
+                if (preview) preview.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+                if (btnHapus) btnHapus.style.display = 'none';
             }
 
             if (statusEl) statusEl.innerHTML = '<div style="padding:10px 14px;background:rgba(16,185,129,0.1);color:#10b981;border-radius:8px;font-size:0.88rem;"><strong>✓ Data sudah terisi.</strong> Anda dapat memperbarui kapan saja.</div>';
@@ -2487,7 +2497,7 @@ async function saveProfilGuru() {
                 showToast('Ukuran foto melebihi 2MB!', 'warning');
                 return;
             }
-            var fileName = 'guru-foto/' + currentUser.id + '_' + Date.now() + '.' + file.name.split('.').pop();
+            var fileName = currentUser.id + '_' + Date.now() + '.' + file.name.split('.').pop();
             var { error: uploadError } = await supabaseClient.storage
                 .from('guru-foto')
                 .upload(fileName, file, { cacheControl: '3600', upsert: true });
@@ -2521,12 +2531,50 @@ async function saveProfilGuru() {
         }
 
         showToast('Data pribadi berhasil disimpan!', 'success');
+        
+        // Reset file input agar jika disave ulang tanpa pilih foto, tidak mengupload ulang
+        if (fileInput) fileInput.value = '';
+        
         loadProfilGuru();
     } catch(e) {
         showToast('Gagal menyimpan: ' + e.message, 'error');
     } finally {
         hideGlobalLoader();
     }
+}
+
+async function hapusProfilGuruFoto() {
+    if (!currentUser) return;
+    
+    showCustomConfirm('Hapus Foto Profil?', 'Foto profil Anda akan dihapus secara permanen.', 'Hapus Foto', async function() {
+        showGlobalLoader('Menghapus foto...');
+        try {
+            // Check if existing record
+            var { data: existing } = await supabaseClient
+                .from('guru_staff')
+                .select('id')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+
+            if (existing) {
+                var { error } = await supabaseClient.from('guru_staff').update({ foto_url: null }).eq('id', existing.id);
+                if (error) throw error;
+                showToast('Foto profil berhasil dihapus!', 'success');
+                
+                // Clear the file input in case they had something selected
+                var fileInput = document.getElementById('profilGuruFoto');
+                if (fileInput) fileInput.value = '';
+                
+                loadProfilGuru();
+            } else {
+                showToast('Anda belum memiliki profil tersimpan.', 'warning');
+            }
+        } catch(e) {
+            showToast('Gagal menghapus foto: ' + e.message, 'error');
+        } finally {
+            hideGlobalLoader();
+        }
+    });
 }
 
 // ============================================================
@@ -3304,7 +3352,7 @@ function deleteRapat(id, judul) {
 }
 
 // ============================================
-// pengeluaran dinas
+// Perjalanan Dinas (Agenda Dinas)
 // ============================================
 var perjadinList = [];
 
@@ -3313,11 +3361,11 @@ async function loadPerjadinData() {
     if (!tbody || !supabaseClient) return;
     tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
     try {
-        const { data, error } = await supabaseClient.from('pengeluaran_dinas').select('*').order('tanggal_berangkat', { ascending: false });
+        const { data, error } = await supabaseClient.from('perjalanan_dinas').select('*').order('tanggal_berangkat', { ascending: false });
         if (error) throw error;
         perjadinList = data || [];
         if (perjadinList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data pengeluaran dinas.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data perjalanan dinas.</td></tr>';
             return;
         }
         tbody.innerHTML = perjadinList.map(function(p, i) {
@@ -3360,7 +3408,7 @@ function openPerjadinModal(data) {
     document.getElementById('formPerjadinStatus').value = data ? (data.status||'Direncanakan') : 'Direncanakan';
     document.getElementById('formPerjadinKeperluan').value = data ? (data.keperluan||'') : '';
     document.getElementById('formPerjadinHasil').value = data ? (data.hasil_keterangan||'') : '';
-    document.getElementById('perjadinModalTitle').textContent = data ? 'Edit pengeluaran dinas' : 'Tambah pengeluaran dinas';
+    document.getElementById('perjadinModalTitle').textContent = data ? 'Edit Perjalanan Dinas' : 'Tambah Perjalanan Dinas';
     document.getElementById('perjadinModal').classList.add('active');
     if (window.lucide) lucide.createIcons();
 }
@@ -3382,13 +3430,13 @@ async function savePerjadin() {
     if (!obj.keperluan) { showToast('Keperluan wajib diisi!', 'warning'); return; }
     try {
         if (id) {
-            const { error } = await supabaseClient.from('pengeluaran_dinas').update(obj).eq('id', id);
+            const { error } = await supabaseClient.from('perjalanan_dinas').update(obj).eq('id', id);
             if (error) throw error;
-            showToast('Data pengeluaran dinas diperbarui!', 'success');
+            showToast('Data perjalanan dinas diperbarui!', 'success');
         } else {
-            const { error } = await supabaseClient.from('pengeluaran_dinas').insert([obj]);
+            const { error } = await supabaseClient.from('perjalanan_dinas').insert([obj]);
             if (error) throw error;
-            showToast('pengeluaran dinas berhasil ditambahkan!', 'success');
+            showToast('Perjalanan dinas berhasil ditambahkan!', 'success');
         }
         closePerjadinModal();
         loadPerjadinData();
@@ -3401,11 +3449,11 @@ function editPerjadin(id) {
 }
 
 function deletePerjadin(id, tujuan) {
-    showCustomConfirm('Hapus Data pengeluaran dinas?', 'Data pengeluaran dinas ke <strong>"' + tujuan + '"</strong> akan dihapus permanen.', 'Ya, Hapus', async function() {
+    showCustomConfirm('Hapus Data Perjalanan Dinas?', 'Data perjalanan dinas ke <strong>"' + tujuan + '"</strong> akan dihapus permanen.', 'Ya, Hapus', async function() {
         try {
-            const { error } = await supabaseClient.from('pengeluaran_dinas').delete().eq('id', id);
+            const { error } = await supabaseClient.from('perjalanan_dinas').delete().eq('id', id);
             if (error) throw error;
-            showToast('Data pengeluaran dinas dihapus!', 'success');
+            showToast('Data perjalanan dinas dihapus!', 'success');
             loadPerjadinData();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
@@ -5651,11 +5699,12 @@ async function loadAsesmenList() {
     if (!tbody || !supabaseClient) return;
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
     try {
-        var query = supabaseClient.from('asesmen').select('*').order('created_at', { ascending: false });
+        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).order('created_at', { ascending: false });
         const { data, error } = await query;
         if (error) throw error;
         asesmenList = (data || []).filter(function(a) { return !a.archived_at; });
         if (countEl) countEl.textContent = asesmenList.length + ' asesmen';
+        loadSampahCount();
         
         var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
         
@@ -6134,10 +6183,10 @@ function renderSoalCards() {
             var isOrLogic = rawKunciStr.indexOf('[OR]') === 0;
             var cleanKunciStr = isOrLogic ? rawKunciStr.substring(4) : rawKunciStr;
             
-            html += `<select class="form-input soal-metode-essay" style="margin-bottom: 0.8rem; font-size: 0.85rem;" onchange="collectSoalFromDOM()">
-                        <option value="AND" ${!isOrLogic ? 'selected' : ''}>Metode: Poin Parsial (Siswa wajib memuat SEMUA kata kunci)</option>
-                        <option value="OR" ${isOrLogic ? 'selected' : ''}>Metode: Benar Salah / Sinonim (Cukup muat SALAH SATU = Nilai Penuh)</option>
-                     </select>`;
+            html += '<select class="form-input soal-metode-essay" style="margin-bottom: 0.8rem; font-size: 0.85rem;" onchange="collectSoalFromDOM()">' +
+                    '<option value="AND" ' + (!isOrLogic ? 'selected' : '') + '>Metode: Poin Parsial (Siswa wajib memuat SEMUA kata kunci)</option>' +
+                    '<option value="OR" ' + (isOrLogic ? 'selected' : '') + '>Metode: Benar Salah / Sinonim (Cukup muat SALAH SATU = Nilai Penuh)</option>' +
+                    '</select>';
             
             var keywords = cleanKunciStr.split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k !== ''; });
             var rawKeys = cleanKunciStr.split(',');
@@ -6182,11 +6231,10 @@ async function saveDraftAsesmen(source) {
     var autoCloseBuilder = true;
     if (source === 'parse') {
         prefix = 'parse';
-        autoCloseBuilder = false;
     } else if (source === 'ai') {
         prefix = 'ai';
-        autoCloseBuilder = false;
-    } else if (source === false || source === undefined || source === 'manual') {
+    } else if (source === false || source === undefined || source === 'manual' || (source && source instanceof Event)) {
+        // Fallback untuk manual / event click standar
         prefix = 'builder';
         autoCloseBuilder = (source !== false);
     }
@@ -6194,12 +6242,16 @@ async function saveDraftAsesmen(source) {
     // For manual builder, collect from DOM cards
     if (prefix === 'builder') collectSoalFromDOM();
 
-    // For parse/ai source, parse soal from textarea
+    // For parse/ai source, parse soal from textarea + auto-sort
     if (prefix === 'parse' || prefix === 'ai') {
         var textareaId = prefix === 'parse' ? 'parseTextarea' : 'aiTextarea';
         var rawText = (document.getElementById(textareaId) || {}).value || '';
         if (rawText.trim()) {
-            asesmenBuilderSoalList = parseTextToSoalList(rawText);
+            var rawList = parseTextToSoalList(rawText);
+            // Auto-sort: semua PG dulu, kemudian semua Essay
+            var pgList = rawList.filter(function(s) { return s.tipe === 'pg'; });
+            var essayList = rawList.filter(function(s) { return s.tipe === 'essay'; });
+            asesmenBuilderSoalList = pgList.concat(essayList);
         }
     }
 
@@ -6275,8 +6327,10 @@ async function saveDraftAsesmen(source) {
         }
 
         showToast('Draft asesmen berhasil disimpan! (' + asesmenBuilderSoalList.length + ' soal)', 'success');
-        if (autoCloseBuilder !== false) {
+        // Tutup semua panel setelah simpan (kecuali dipanggil internal oleh publishToGoogleForm)
+        if (source !== false) {
             closeAsesmenBuilder();
+            closeAutoGenerateArea();
             resetAsesmenForms();
         }
         loadAsesmenList();
@@ -6284,52 +6338,196 @@ async function saveDraftAsesmen(source) {
     finally { hideGlobalLoader(); }
 }
 
-// --- Delete Asesmen ---
+// --- Delete Asesmen (Soft Delete → Sampah) ---
 async function deleteAsesmen(id) {
-    showCustomConfirm('Hapus Asesmen?', 'Asesmen ini akan <strong>dihapus permanen</strong> dari Dashboard, termasuk file Form dan Sheet-nya di Google Drive. Lanjutkan?', 'Ya, Hapus', async function() {
-        showGlobalLoader('Menghapus Asesmen...');
+    showCustomConfirm('Pindahkan ke Sampah?', 'Asesmen ini akan dipindahkan ke <strong>Sampah</strong>. Anda masih bisa memulihkannya dalam waktu 30 hari.<br><br>Setelah 30 hari, asesmen akan dihapus otomatis secara permanen.', 'Ya, Pindahkan', async function() {
+        showGlobalLoader('Memindahkan ke Sampah...');
         try {
-            // Get URL beforehand
-            const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
-            
-            // Delete from Google Drive if published
-            if (asm && (asm.google_form_url || asm.google_sheet_url)) {
-                var gasUrl = (document.getElementById('gasUrlInput') || {}).value;
-                if (gasUrl) {
-                    try {
-                        await fetch(gasUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({
-                                action: 'delete',
-                                formUrl: asm.google_form_url,
-                                sheetUrl: asm.google_sheet_url
-                            })
-                        });
-                    } catch(e) { console.warn('Gagal hapus drive', e); }
-                }
-            }
-
-            // Hapus gambar soal dari Supabase Storage
-            try {
-                const { data: soalData } = await supabaseClient.from('asesmen_soal').select('gambar_url').eq('asesmen_id', id);
-                if (soalData) {
-                    var filesToDelete = soalData
-                        .filter(function(s) { return s.gambar_url && s.gambar_url.indexOf('/soal-images/') > -1; })
-                        .map(function(s) { return s.gambar_url.split('/soal-images/').pop(); });
-                    if (filesToDelete.length > 0) {
-                        await supabaseClient.storage.from('soal-images').remove(filesToDelete);
-                    }
-                }
-            } catch(e) { console.warn('Gagal hapus gambar storage', e); }
-
-            // Delete soal from Supabase first (cascade should handle, but just in case)
-            await supabaseClient.from('asesmen_soal').delete().eq('asesmen_id', id);
-            // Delete asesmen from Supabase
-            await supabaseClient.from('asesmen').delete().eq('id', id);
-            showToast('Asesmen beserta wujud file-nya berhasil dihapus!', 'success');
+            const { error } = await supabaseClient.from('asesmen').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+            if (error) throw error;
+            showToast('Asesmen dipindahkan ke Sampah. Pulihkan dalam 30 hari.', 'success');
             closeAsesmenBuilder();
             loadAsesmenList();
+            loadSampahCount();
+        } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
+    });
+}
+
+// --- Sampah Asesmen Functions ---
+async function loadSampahCount() {
+    try {
+        const { data, error } = await supabaseClient.from('asesmen').select('id').not('deleted_at', 'is', null);
+        if (!error && data) {
+            var badge = document.getElementById('sampahBadgeSidebar');
+            if (badge) {
+                if (data.length > 0) {
+                    badge.textContent = data.length;
+                    badge.style.display = 'inline-flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+    } catch(e) { console.warn('loadSampahCount:', e); }
+}
+
+async function loadSampahAsesmen() {
+    var tbody = document.getElementById('sampahAsesmenTbody');
+    var countEl = document.getElementById('sampahAsesmenCount');
+    if (!tbody || !supabaseClient) return;
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    
+    try {
+        // Auto-purge: hapus permanen yang sudah > 30 hari
+        var cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 30);
+        var cutoffISO = cutoffDate.toISOString();
+        
+        const { data: expiredItems } = await supabaseClient.from('asesmen').select('id').not('deleted_at', 'is', null).lt('deleted_at', cutoffISO);
+        if (expiredItems && expiredItems.length > 0) {
+            for (var e = 0; e < expiredItems.length; e++) {
+                await executePermanentDelete(expiredItems[e].id);
+            }
+            if (expiredItems.length > 0) {
+                showToast(expiredItems.length + ' asesmen kedaluwarsa (>30 hari) telah dihapus otomatis.', 'info');
+            }
+        }
+        
+        // Load remaining trashed items
+        const { data, error } = await supabaseClient.from('asesmen').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false });
+        if (error) throw error;
+        
+        var sampahList = data || [];
+        if (countEl) countEl.textContent = sampahList.length + ' item di sampah';
+        loadSampahCount();
+        
+        if (sampahList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Sampah kosong. 🎉</td></tr>';
+            return;
+        }
+        
+        var now = new Date();
+        tbody.innerHTML = sampahList.map(function(a, i) {
+            var deletedDate = new Date(a.deleted_at);
+            var diffDays = Math.ceil((now - deletedDate) / (1000 * 60 * 60 * 24));
+            var sisaHari = Math.max(0, 30 - diffDays);
+            var statusBadge = a.status === 'terbit'
+                ? '<span class="badge-terbit">Terbit</span>'
+                : '<span class="badge-draft">Draft</span>';
+            var sisaBadge = sisaHari <= 7
+                ? '<span style="color:#ef4444;font-weight:700;">' + sisaHari + ' hari</span>'
+                : '<span style="color:#f59e0b;font-weight:600;">' + sisaHari + ' hari</span>';
+            
+            return '<tr>' +
+                '<td style="text-align:center;">' + (i+1) + '</td>' +
+                '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
+                '<td>' + (a.mata_pelajaran || '-') + '</td>' +
+                '<td>' + (a.kelas || '-') + '</td>' +
+                '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td style="font-size:0.82rem;">' + deletedDate.toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric'}) + '</td>' +
+                '<td>' + sisaBadge + '</td>' +
+                '<td><div style="display:flex;gap:.4rem;justify-content:center;">' +
+                    '<button class="btn-icon btn-icon-blue" onclick="restoreAsesmen(\'' + a.id + '\')" title="Pulihkan"><i data-lucide="rotate-ccw" style="width:14px;height:14px"></i></button>' +
+                    '<button class="btn-icon btn-icon-red" onclick="permanentDeleteAsesmen(\'' + a.id + '\')" title="Hapus Permanen"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>' +
+                '</div></td>' +
+                '</tr>';
+        }).join('');
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+    }
+}
+
+async function restoreAsesmen(id) {
+    showCustomConfirm('Pulihkan Asesmen?', 'Asesmen ini akan dikembalikan ke <strong>Riwayat Asesmen</strong> dengan status semula.', 'Ya, Pulihkan', async function() {
+        showGlobalLoader('Memulihkan asesmen...');
+        try {
+            const { error } = await supabaseClient.from('asesmen').update({ deleted_at: null }).eq('id', id);
+            if (error) throw error;
+            showToast('Asesmen berhasil dipulihkan ke Riwayat!', 'success');
+            loadSampahAsesmen();
+            loadAsesmenList();
+        } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
+    });
+}
+
+async function executePermanentDelete(id) {
+    try {
+        // Get URL beforehand
+        const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
+        
+        // Delete from Google Drive if published
+        if (asm && (asm.google_form_url || asm.google_sheet_url)) {
+            var gasUrl = (document.getElementById('gasUrlInput') || {}).value;
+            if (gasUrl) {
+                try {
+                    await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({
+                            action: 'delete',
+                            formUrl: asm.google_form_url,
+                            sheetUrl: asm.google_sheet_url
+                        })
+                    });
+                } catch(e) { console.warn('Gagal hapus drive', e); }
+            }
+        }
+
+        // Hapus gambar soal dari Supabase Storage
+        try {
+            const { data: soalData } = await supabaseClient.from('asesmen_soal').select('gambar_url').eq('asesmen_id', id);
+            if (soalData) {
+                var filesToDelete = soalData
+                    .filter(function(s) { return s.gambar_url && s.gambar_url.indexOf('/soal-images/') > -1; })
+                    .map(function(s) { return s.gambar_url.split('/soal-images/').pop(); });
+                if (filesToDelete.length > 0) {
+                    await supabaseClient.storage.from('soal-images').remove(filesToDelete);
+                }
+            }
+        } catch(e) { console.warn('Gagal hapus gambar storage', e); }
+
+        // Delete soal then asesmen
+        await supabaseClient.from('asesmen_soal').delete().eq('asesmen_id', id);
+        await supabaseClient.from('asesmen').delete().eq('id', id);
+    } catch(e) { console.warn('executePermanentDelete error:', e); }
+}
+
+async function permanentDeleteAsesmen(id) {
+    showCustomConfirm('Hapus Permanen?', 'Asesmen ini akan <strong>dihapus permanen</strong> dari database, termasuk file Form dan Sheet-nya di Google Drive.<br><br>⚠️ <strong>Tindakan ini TIDAK bisa dibatalkan!</strong>', 'Ya, Hapus Permanen', async function() {
+        showGlobalLoader('Menghapus permanen...');
+        try {
+            await executePermanentDelete(id);
+            showToast('Asesmen berhasil dihapus permanen!', 'success');
+            loadSampahAsesmen();
+        } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+        finally { hideGlobalLoader(); }
+    });
+}
+
+async function kosongkanSampah() {
+    var tbody = document.getElementById('sampahAsesmenTbody');
+    if (!tbody) return;
+    var rows = tbody.querySelectorAll('tr');
+    if (rows.length <= 1 && rows[0] && rows[0].querySelector('td[colspan]')) {
+        showToast('Sampah sudah kosong!', 'info');
+        return;
+    }
+    
+    showCustomConfirm('Kosongkan Semua Sampah?', 'Semua asesmen di sampah akan <strong>dihapus permanen</strong>.<br><br>⚠️ <strong>Tindakan ini TIDAK bisa dibatalkan!</strong>', 'Ya, Kosongkan', async function() {
+        showGlobalLoader('Mengosongkan sampah...');
+        try {
+            const { data: trashed } = await supabaseClient.from('asesmen').select('id').not('deleted_at', 'is', null);
+            if (trashed && trashed.length > 0) {
+                for (var i = 0; i < trashed.length; i++) {
+                    await executePermanentDelete(trashed[i].id);
+                }
+            }
+            showToast('Sampah berhasil dikosongkan!', 'success');
+            loadSampahAsesmen();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
     });
@@ -6373,7 +6571,7 @@ function resetAsesmenForms() {
     var pStatus = document.getElementById('parseStatusLabel'); if(pStatus) pStatus.innerHTML = '';
 
     // 3. Bersihkan area AI
-    var aiIds = ['aiJudul', 'aiMapel', 'aiKelas', 'aiWaktu', 'aiTanggal', 'aiTextarea'];
+    var aiIds = ['aiJudul', 'aiMapel', 'aiKelas', 'aiWaktu', 'aiTanggal', 'aiTextarea', 'aiPromptInput'];
     aiIds.forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.value = '';
@@ -6476,8 +6674,11 @@ function previewAutoGenerate(source) {
     
     document.getElementById(statusLabelId).innerHTML = 
         '<span style="color:var(--success)">✅ Membaca ' + rawList.length + ' soal (' + countPG + ' PG, ' + countEssay + ' Essay)</span>';
-        
-    asesmenBuilderSoalList = rawList;
+    
+    // Auto-sort: semua PG dulu, kemudian semua Essay
+    var pgList = rawList.filter(function(s) { return s.tipe === 'pg'; });
+    var essayList = rawList.filter(function(s) { return s.tipe === 'essay'; });
+    asesmenBuilderSoalList = pgList.concat(essayList);
     renderSoalCards();
     
     // Tampilkan manual builder untuk preview
@@ -6497,7 +6698,7 @@ function previewAutoGenerate(source) {
     
     document.getElementById('builderBobotPG').value = (document.getElementById(prefix + 'BobotPG') || {}).value || '2';
     document.getElementById('builderBobotEssay').value = (document.getElementById(prefix + 'BobotEssay') || {}).value || '0';
-    document.getElementById('builderWaktu').value = (document.getElementById(prefix + 'Waktu') || {}).value || '90';
+    document.getElementById('builderWaktu').value = (document.getElementById(prefix + 'Waktu') || {}).value || '';
     document.getElementById('builderTanggal').value = (document.getElementById(prefix + 'Tanggal') || {}).value || '';
     
     document.getElementById('builderAsesmenId').value = ''; // pastikan id kosong sbg rancangan baru
@@ -6688,6 +6889,7 @@ async function publishToGoogleForm() {
                 'success');
 
             closeAsesmenBuilder();
+            closeAutoGenerateArea();
             resetAsesmenForms();
             loadAsesmenList();
         } else {
@@ -8147,10 +8349,11 @@ async function generateBeritaAI() {
 }
 
 async function generateSoalAI() {
-    const area = document.getElementById('aiTextarea');
-    const text = area.value.trim();
+    var promptInput = document.getElementById('aiPromptInput');
+    var resultArea = document.getElementById('aiTextarea');
+    var text = promptInput ? promptInput.value.trim() : '';
     if (!text) {
-        if (typeof showToast === 'function') showToast("Ketikkan Topik atau Materi Pelajaran terlebih dahulu di kotak ini!", "error");
+        if (typeof showToast === 'function') showToast("Ketikkan perintah/topik di kotak 'Perintah untuk AI' terlebih dahulu!", "error");
         return;
     }
 
@@ -8171,9 +8374,25 @@ async function generateSoalAI() {
     btn.innerHTML = `<i data-lucide="loader" class="icon-spin" style="width:14px;height:14px;"></i> Menyusun...`;
     btn.disabled = true;
 
+    // Hitung nomor soal terakhir dari naskah yang sudah ada
+    var existingText = resultArea ? resultArea.value.trim() : '';
+    var lastNum = 0;
+    if (existingText) {
+        var numMatches = existingText.match(/^\s*(\d+)\s*\./gm);
+        if (numMatches) {
+            numMatches.forEach(function(m) {
+                var n = parseInt(m);
+                if (n > lastNum) lastNum = n;
+            });
+        }
+    }
+    var startNum = lastNum + 1;
+
     const systemMsg = `Kamu adalah Guru Ahli yang mahir membuat instrumen soal ujian standar sekolah (SMP/SMA).
 Tugasmu adalah membuatkan soal berdasarkan Topik/Materi yang diketik oleh pengguna.
 ${instruksiKesulitan}
+
+PENTING: Nomor soal HARUS DIMULAI DARI NOMOR ${startNum}. Jangan mulai dari 1 jika diminta mulai dari nomor lain.
 
 Kamu HARUS menuliskan soal dengan FORMAT YANG SANGAT KETAT di bawah ini, karena outputmu akan dibaca secara otomatis oleh program parser (Regex).
 
@@ -8203,12 +8422,17 @@ ATURAN BAHASA ARAB / AL-QUR'AN (JIKA DIMINTA):
 - Tuliskan teks Arab dengan rapi, misalnya: بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ.
 - Pertahankan struktur arah teks agar tidak rusak saat di-parse.`;
 
-    const prompt = `Buatkan soal ujian berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nPENTING: \n- Jika pengguna secara spesifik meminta jumlah soal tertentu (misal: "10 soal PG", "15 essay"), maka PATUHI JUMLAH TERSEBUT dengan presisi.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 5 soal Pilihan Ganda dan 2 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
+    const prompt = `Buatkan soal ujian berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nPENTING: \n- Nomor soal WAJIB dimulai dari nomor ${startNum}.\n- Jika pengguna secara spesifik meminta jumlah soal tertentu (misal: "10 soal PG", "15 essay"), maka PATUHI JUMLAH TERSEBUT dengan presisi.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 5 soal Pilihan Ganda dan 2 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
 
     const result = await fetchGroqAI(prompt, systemMsg);
     if (result) {
-        area.value = result;
-        if (typeof showToast === 'function') showToast(`Soal (${tingkatKesulitan}) berhasil dibuat AI! Silakan cek pratinjau.`, "success");
+        // Append ke naskah yang sudah ada
+        if (existingText) {
+            resultArea.value = existingText + '\n\n' + result;
+        } else {
+            resultArea.value = result;
+        }
+        if (typeof showToast === 'function') showToast(`Soal (${tingkatKesulitan}) berhasil ditambahkan! Total naskah bertambah. Silakan cek pratinjau.`, "success");
     }
 
     btn.innerHTML = oriText;
@@ -8217,10 +8441,11 @@ ATURAN BAHASA ARAB / AL-QUR'AN (JIKA DIMINTA):
 }
 
 async function generateCeritaAI() {
-    const area = document.getElementById('aiTextarea');
-    const text = area.value.trim();
+    var promptInput = document.getElementById('aiPromptInput');
+    var resultArea = document.getElementById('aiTextarea');
+    var text = promptInput ? promptInput.value.trim() : '';
     if (!text) {
-        if (typeof showToast === 'function') showToast("Ketikkan ide atau tema cerita terlebih dahulu!", "error");
+        if (typeof showToast === 'function') showToast("Ketikkan ide atau tema cerita terlebih dahulu di kotak 'Perintah untuk AI'!", "error");
         return;
     }
 
@@ -8234,8 +8459,13 @@ async function generateCeritaAI() {
 
     const result = await fetchGroqAI(prompt, systemMsg);
     if (result) {
-        area.value = result;
-        if (typeof showToast === 'function') showToast("Teks bacaan berhasil dibuat! Sekarang Anda bisa edit teksnya atau langsung klik 'Generate Pakai AI' untuk membuat soal dari teks ini.", "success");
+        var existing = resultArea ? resultArea.value.trim() : '';
+        if (existing) {
+            resultArea.value = existing + '\n\n' + result;
+        } else {
+            resultArea.value = result;
+        }
+        if (typeof showToast === 'function') showToast("Teks bacaan berhasil dibuat! Sekarang Anda bisa klik 'Generate Pakai AI' untuk membuat soal dari teks ini.", "success");
     }
 
     btn.innerHTML = oriText;
@@ -8278,125 +8508,14 @@ async function rapikanEjaanAI() {
     if (window.lucide) lucide.createIcons();
 }
 
-// ==============================================================================
-// KARTU SOAL MANUAL (UPLOAD GAMBAR MANUAL)
-// ==============================================================================
-
-function addSoalPGCard() {
-    const container = document.getElementById('soalCardsArea');
-    if(container.classList.contains('empty-state')) {
-        container.innerHTML = '';
-        container.classList.remove('empty-state');
-    }
-    
-    const cardId = 'soal-' + Date.now();
-    const cardHTML = `
-        <div class="card" id="${cardId}" style="margin-bottom:0.75rem; border-left:4px solid var(--primary); padding:1rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <h4 style="margin:0; font-size:0.95rem;">Pilihan Ganda</h4>
-                <button class="btn btn-sm" style="color:#ef4444; background:transparent; padding:2px 6px;" onclick="document.getElementById('${cardId}').remove()"><i data-lucide="trash" style="width:14px;height:14px;"></i></button>
-            </div>
-            
-            <div style="margin-bottom:0.5rem;">
-                <textarea class="form-input" rows="2" placeholder="Ketik pertanyaan di sini..." style="margin-bottom:0;"></textarea>
-            </div>
-            
-            <details style="margin-bottom:0.5rem;">
-                <summary style="font-size:0.8rem; font-weight:600; color:#64748b; cursor:pointer; display:flex; align-items:center; gap:5px; padding:6px 0;"><i data-lucide="image" style="width:13px;height:13px;"></i> Sisipkan Gambar (Opsional)</summary>
-                <div style="background:var(--bg-lighter); padding:0.6rem; border-radius:8px; margin-top:4px;">
-                    <input type="file" accept="image/*" class="form-input" style="font-size:0.8rem; padding:6px;" onchange="previewUploadedImage(this, '${cardId}')">
-                    <div id="img-result-${cardId}" style="margin-top:6px;"></div>
-                </div>
-            </details>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:0.5rem;">
-                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">A. <input type="text" class="form-input" placeholder="Opsi A" style="padding:6px 10px;"></div>
-                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">B. <input type="text" class="form-input" placeholder="Opsi B" style="padding:6px 10px;"></div>
-                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">C. <input type="text" class="form-input" placeholder="Opsi C" style="padding:6px 10px;"></div>
-                <div style="display:flex; align-items:center; gap:4px; font-size:0.9rem; font-weight:600;">D. <input type="text" class="form-input" placeholder="Opsi D" style="padding:6px 10px;"></div>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                <label style="font-size:0.8rem; font-weight:600; margin:0; white-space:nowrap;">Kunci Jawaban</label>
-                <select class="form-input" style="width:80px; padding:4px 8px; font-size:0.85rem;"><option>A</option><option>B</option><option>C</option><option>D</option></select>
-            </div>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', cardHTML);
-    if(window.lucide) lucide.createIcons();
+function resetAINaskah() {
+    showCustomConfirm('Reset Naskah?', 'Semua naskah soal di kotak hasil akan dihapus. Anda harus generate ulang dari awal. Lanjutkan?', 'Ya, Reset', function() {
+        var area = document.getElementById('aiTextarea');
+        if (area) area.value = '';
+        showToast('Naskah soal berhasil direset.', 'success');
+    });
 }
 
-function addSoalEssayCard() {
-    const container = document.getElementById('soalCardsArea');
-    if(container.classList.contains('empty-state')) {
-        container.innerHTML = '';
-        container.classList.remove('empty-state');
-    }
-    
-    const cardId = 'soal-' + Date.now();
-    const cardHTML = `
-        <div class="card" id="${cardId}" style="margin-bottom:0.75rem; border-left:4px solid var(--accent); padding:1rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-                <h4 style="margin:0; font-size:0.95rem;">Essay</h4>
-                <button class="btn btn-sm" style="color:#ef4444; background:transparent; padding:2px 6px;" onclick="document.getElementById('${cardId}').remove()"><i data-lucide="trash" style="width:14px;height:14px;"></i></button>
-            </div>
-            
-            <div style="margin-bottom:0.5rem;">
-                <textarea class="form-input" rows="2" placeholder="Ketik pertanyaan essay di sini..." style="margin-bottom:0;"></textarea>
-            </div>
-
-            <details style="margin-bottom:0.5rem;">
-                <summary style="font-size:0.8rem; font-weight:600; color:#64748b; cursor:pointer; display:flex; align-items:center; gap:5px; padding:6px 0;"><i data-lucide="image" style="width:13px;height:13px;"></i> Sisipkan Gambar (Opsional)</summary>
-                <div style="background:var(--bg-lighter); padding:0.6rem; border-radius:8px; margin-top:4px;">
-                    <input type="file" accept="image/*" class="form-input" style="font-size:0.8rem; padding:6px;" onchange="previewUploadedImage(this, '${cardId}')">
-                    <div id="img-result-${cardId}" style="margin-top:6px;"></div>
-                </div>
-            </details>
-            
-            <div>
-                <label style="font-size:0.8rem; font-weight:600; margin-bottom:4px; display:block;">Kunci/Pedoman Jawaban</label>
-                <textarea class="form-input" rows="2" placeholder="Masukkan kata kunci jawaban..." style="margin-bottom:0;"></textarea>
-            </div>
-        </div>
-    `;
-    container.insertAdjacentHTML('beforeend', cardHTML);
-    if(window.lucide) lucide.createIcons();
-}
-
-function previewUploadedImage(inputEl, cardId) {
-    const resultEl = document.getElementById('img-result-' + cardId);
-    if (!inputEl.files || !inputEl.files[0]) {
-        resultEl.innerHTML = '';
-        return;
-    }
-    const file = inputEl.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Ukuran gambar maksimal 5 MB!', 'warning');
-        inputEl.value = '';
-        resultEl.innerHTML = '';
-        return;
-    }
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        resultEl.innerHTML = `
-            <div style="position:relative; display:inline-block; margin-top:5px;">
-                <img src="${e.target.result}" style="max-width:100%; height:auto; border-radius:8px; border:1px solid var(--border-color); max-height:200px; object-fit:cover;" alt="Uploaded Image">
-                <button class="btn btn-sm btn-danger" style="position:absolute; top:5px; right:5px; padding:4px;" onclick="clearUploadedImage('${cardId}')" title="Hapus Gambar"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
-            </div>
-        `;
-        if(window.lucide) lucide.createIcons();
-    };
-    reader.readAsDataURL(file);
-}
-
-function clearUploadedImage(cardId) {
-    var resultEl = document.getElementById('img-result-' + cardId);
-    if (resultEl) resultEl.innerHTML = '';
-    var card = document.getElementById(cardId);
-    if (card) {
-        var fileInput = card.querySelector('input[type="file"]');
-        if (fileInput) fileInput.value = '';
-    }
-}
 
 /* ============================================================
    MODUL MANAJEMEN KEUANGAN BENDAHARA
