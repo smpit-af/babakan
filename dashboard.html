@@ -3662,6 +3662,29 @@
       if (typeof initDashboard === 'function') initDashboard();
     });
   </script>
+  <!-- ========== API KEY MODAL ========== -->
+  <div class="modal-overlay" id="apiKeyModal">
+    <div class="modal" style="max-width:500px;position:relative;">
+      <button class="modal-close" onclick="closeApiKeyModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <div class="modal-logo" style="background:rgba(234,179,8,.12);color:#eab308;"><i data-lucide="key" style="width:26px;height:26px"></i></div>
+        <h3>Perbarui API Key AI</h3>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">API Key Llama-3 (Groq) tidak valid atau kedaluwarsa. Silakan masukkan API Key baru.</p>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label">API Key Groq *</label>
+          <input type="text" id="inputApiKeyBaru" class="form-input" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxx" />
+          <p style="font-size: 0.85rem; color:var(--text-light); margin-top: 0.5rem;">Dapatkan secara gratis di <a href="https://console.groq.com/keys" target="_blank" style="color:var(--primary);text-decoration:none;">console.groq.com</a></p>
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:right; border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
+        <button class="btn btn-outline" onclick="closeApiKeyModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveApiKeyBaru()"><i data-lucide="save" style="width:16px;height:16px;"></i> Simpan Key</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== GLOBAL LOADER ========== -->
   <div class="modal-overlay" id="globalLoader" style="z-index:99999; flex-direction:column; justify-content: center !important; align-items: center !important; background:rgba(0,0,0,0.8);">
     <div style="background:transparent; color:white; text-align:center; padding:2rem; display:flex; flex-direction:column; align-items:center; gap:0.75rem;">
