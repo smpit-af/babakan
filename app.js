@@ -104,6 +104,32 @@ function showGlobalLoader(text) {
         if (window.lucide) lucide.createIcons();
     }
 }
+
+// ============================================================
+// API KEY MODAL LOGIC
+// ============================================================
+function closeApiKeyModal() {
+    const modal = document.getElementById('apiKeyModal');
+    if (modal) modal.classList.remove('active');
+    const input = document.getElementById('inputApiKeyBaru');
+    if (input) input.value = '';
+}
+
+function saveApiKeyBaru() {
+    const input = document.getElementById('inputApiKeyBaru');
+    if (!input) return;
+    const newKey = input.value.trim();
+    if (newKey) {
+        localStorage.setItem('GROQ_API_KEY', newKey);
+        closeApiKeyModal();
+        if (typeof showToast === 'function') showToast("API Key baru disimpan. Silakan coba tekan tombol AI lagi.", "success");
+        else alert("API Key baru disimpan. Silakan coba tekan tombol AI lagi.");
+    } else {
+        if (typeof showToast === 'function') showToast("API Key tidak boleh kosong!", "error");
+        else alert("API Key tidak boleh kosong!");
+    }
+}
+
 function hideGlobalLoader() {
     var loader = document.getElementById('globalLoader');
     if (loader) loader.classList.remove('active');
@@ -8061,7 +8087,7 @@ async function sendAiMessage() {
 
     try {
         // Menggunakan Groq API (Llama 3) yang super cepat dan gratis dengan kuota besar
-        const GROQ_API_KEY = "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";
+        let GROQ_API_KEY = localStorage.getItem('GROQ_API_KEY') || "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";
         const url = "https://api.groq.com/openai/v1/chat/completions";
         
         const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
@@ -8175,6 +8201,15 @@ INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplika
 
         if (!res.ok) {
             const errData = await res.json();
+            if (res.status === 401 || (errData.error && errData.error.message.includes('Invalid API Key'))) {
+                if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                    const modal = document.getElementById('apiKeyModal');
+                    if (modal) modal.classList.add('active');
+                } else {
+                    if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
+                    else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+                }
+            }
             throw new Error(errData.error?.message || "Gagal menghubungi server AI Groq");
         }
 
@@ -8260,7 +8295,7 @@ INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplika
 // ==============================================================================
 
 async function fetchGroqAI(prompt, systemMsg) {
-    const GROQ_API_KEY = "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";
+    let GROQ_API_KEY = localStorage.getItem('GROQ_API_KEY') || "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";
     const url = "https://api.groq.com/openai/v1/chat/completions";
     
     try {
@@ -8280,7 +8315,19 @@ async function fetchGroqAI(prompt, systemMsg) {
             })
         });
 
-        if (!res.ok) throw new Error("Gagal memanggil API Groq");
+        if (!res.ok) {
+            const errData = await res.json();
+            if (res.status === 401 || (errData.error && errData.error.message.includes('Invalid API Key'))) {
+                if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                    const modal = document.getElementById('apiKeyModal');
+                    if (modal) modal.classList.add('active');
+                } else {
+                    if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
+                    else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+                }
+            }
+            throw new Error(errData.error?.message || "Gagal memanggil API Groq");
+        }
         const data = await res.json();
         return data.choices[0].message.content.trim();
     } catch (e) {
