@@ -994,6 +994,76 @@
           </div>
         </div>
       </div>
+
+      <!-- AI Configuration Card -->
+      <div class="card" id="aiConfigCard" style="margin-top:2rem; border: none; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border-radius: 20px; overflow: hidden; padding: 0;">
+        <!-- Header Gradient Background -->
+        <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 2.5rem; color: white; position: relative; overflow: hidden;">
+          <!-- Aksen Lingkaran Background -->
+          <div style="position: absolute; width: 300px; height: 300px; background: rgba(255,255,255,0.03); border-radius: 50%; right: -50px; top: -100px;"></div>
+          <div style="position: absolute; width: 150px; height: 150px; background: rgba(255,255,255,0.02); border-radius: 50%; right: 150px; bottom: -50px;"></div>
+
+          <div style="display: flex; align-items: center; gap: 1.25rem; position: relative; z-index: 10;">
+            <div style="background: rgba(255,255,255,0.1); padding: 14px; border-radius: 14px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);">
+              <i data-lucide="brain-circuit" style="width:36px;height:36px; color: #fde047;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Integrasi Artificial Intelligence</h3>
+              <p style="margin: 0.4rem 0 0 0; color: #ede9fe; font-size: 1rem; line-height:1.4;">Hubungkan model bahasa besar (Groq LLaMA) untuk asisten pintar dan pembuatan soal otomatis.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Body Form -->
+        <div style="padding: 3rem 2.5rem; background: #ffffff;">
+          <div class="form-group" style="margin-bottom: 2.5rem;">
+            <label class="form-label" style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 1rem; display: block;">
+              Groq API Key (LLaMA Model) <span style="color: #ef4444">*</span>
+            </label>
+            
+            <div style="position: relative; display: flex; align-items: center;">
+              <div style="position: absolute; left: 18px; color: #94a3b8; display: flex;">
+                <i data-lucide="key" style="width:22px;height:22px"></i>
+              </div>
+              <input type="password" id="aiApiKeyInput" class="form-input" style="padding-left: 54px; padding-right: 54px; font-family: 'Fira Code', 'Courier M', monospace; font-size: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; height: 60px; border-radius: 12px; transition: all 0.25s; width: 100%; box-sizing: border-box;" placeholder="gsk_..." onfocus="this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 4px rgba(139, 92, 246, 0.15)'" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" />
+              <button type="button" onclick="toggleApiKeyVisibility()" style="position: absolute; right: 18px; color: #94a3b8; background: none; border: none; cursor: pointer; display: flex; padding: 0;">
+                <i data-lucide="eye" id="eyeIconApiKey" style="width:22px;height:22px"></i>
+              </button>
+            </div>
+
+            <script>
+              function toggleApiKeyVisibility() {
+                const input = document.getElementById('aiApiKeyInput');
+                const icon = document.getElementById('eyeIconApiKey');
+                if (input.type === 'password') {
+                  input.type = 'text';
+                  if (icon) icon.setAttribute('data-lucide', 'eye-off');
+                } else {
+                  input.type = 'password';
+                  if (icon) icon.setAttribute('data-lucide', 'eye');
+                }
+                if (window.lucide) lucide.createIcons();
+              }
+            </script>
+
+            <div style="background: #fdf4ff; border: 1px solid #fbcfe8; border-radius: 12px; padding: 1.25rem; margin-top: 1.5rem; display: flex; gap: 1rem; align-items: flex-start;">
+              <div style="background: #fce7f3; padding: 8px; border-radius: 50%; display: flex; flex-shrink: 0;">
+                <i data-lucide="info" style="width:20px;height:20px; color: #db2777;"></i>
+              </div>
+              <div style="font-size: 0.9rem; color: #be185d; line-height: 1.6;">
+                <strong>Pengelolaan Terpusat:</strong> API Key ini disimpan secara aman di database utama sekolah (bukan per-perangkat). Hanya Administrator dan tim Kurikulum yang dapat mengubah sandi ini. Guru dan siswa dapat langsung menikmati fitur AI tanpa perlu setup mandiri.
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tombol Aksi -->
+          <div style="display: flex; justify-content: flex-end; align-items: center; border-top: 1px dashed #e2e8f0; padding-top: 2rem;">
+            <button class="btn" onclick="saveApiKeyBaru()" style="background:linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color:white; border:none; height: 56px; padding: 0 3rem; font-size: 1.05rem; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.25); transition: all 0.2s; display: flex; align-items: center; gap: 0.75rem;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(139, 92, 246, 0.35)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(139, 92, 246, 0.25)'">
+              <i data-lucide="save" style="width:22px;height:22px"></i> Simpan API Key AI
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- SECTION BANK SOAL -->
