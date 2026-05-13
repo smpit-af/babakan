@@ -968,6 +968,7 @@ window.showSection = function (sectionId, linkEl) {
     }
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
+    if (sectionId === 'sectionSoalUjian') { loadSoalUjian(); }
     if (sectionId === 'sectionIntegrasiGoogle') {
         if (typeof loadAsesmenConfig === 'function') loadAsesmenConfig();
         if (typeof loadAIConfig === 'function') loadAIConfig();
@@ -1901,20 +1902,41 @@ async function renderInactiveAccounts() {
 async function approveUser(userId) {
     var rs = document.getElementById('role_' + userId);
     if (!rs || !rs.value) { showToast('Pilih role terlebih dahulu!', 'warning'); return; }
+    
+    if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyetujui akun & mengaktifkan login...');
+    
     try {
-        const { error } = await supabaseClient.from('profiles').update({ role: rs.value }).eq('id', userId);
+        // 1. Update role via RPC (bypass RLS)
+        const { error } = await supabaseClient.rpc('approve_user_role', { 
+            target_user_id: userId, 
+            new_role: rs.value 
+        });
         if (error) throw error;
         
-        // Auto-confirm email user via RPC agar langsung bisa login
+        // 2. Auto-confirm email user via RPC agar langsung bisa login
+        var emailConfirmed = false;
         try {
-            await supabaseClient.rpc('confirm_user_email', { target_user_id: userId });
+            const { error: rpcError } = await supabaseClient.rpc('confirm_user_email', { target_user_id: userId });
+            if (rpcError) {
+                console.error('RPC confirm_user_email gagal:', rpcError);
+                showToast('⚠️ Role berhasil diubah, tetapi aktivasi email GAGAL: ' + rpcError.message, 'warning');
+            } else {
+                emailConfirmed = true;
+            }
         } catch(e) {
-            console.warn('Gagal mengkonfirmasi email secara otomatis:', e);
+            console.error('Exception saat confirm_user_email:', e);
         }
 
-        showToast('Akun berhasil disetujui!', 'success');
-        renderPendingAccounts(); renderActiveAccounts(); loadStats();
+        if (emailConfirmed) {
+            showToast('✅ Akun berhasil disetujui & diaktifkan! Pengguna sudah bisa login.', 'success');
+        } else {
+            showToast('✅ Role berhasil diubah ke ' + rs.value + '!', 'success');
+        }
+        await renderPendingAccounts();
+        await renderActiveAccounts();
+        loadStats();
     } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
+    finally { if (typeof hideGlobalLoader === 'function') hideGlobalLoader(); }
 }
 
 function deactivateUser(userId, name) {
@@ -5803,7 +5825,24 @@ async function loadAsesmenList() {
                         '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>' +
                         '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
                 } else {
+                    // Status terbit — tombol kirim ke ujian (admin only) + gerigi status (admin only, hanya jika sudah dikirim)
+                    var sendBtn = '';
+                    var ujianBtn = '';
+                    var isAdmin = currentRole === 'admin';
+                    if (a.google_form_url && isAdmin) {
+                        if (a.ujian_sent_at) {
+                            // Sudah dikirim → tombol tarik/unsend
+                            sendBtn = '<button class="btn-icon" style="background:rgba(239,68,68,.1);color:#ef4444;" onclick="unsendFromUjian(\'' + a.id + '\')" title="Tarik dari Soal Ujian"><i data-lucide="undo-2" style="width:14px;height:14px"></i></button>';
+                            // Tampilkan tombol gerigi untuk aktif/nonaktif
+                            var gearColor = a.ujian_aktif === true ? 'background:rgba(5,150,105,.12);color:#059669;' : a.ujian_aktif === false ? 'background:rgba(100,116,139,.12);color:#64748b;' : 'background:rgba(124,58,237,.08);color:#7c3aed;';
+                            ujianBtn = '<button class="btn-icon" style="' + gearColor + '" onclick="openUjianSettingsModal(\'' + a.id + '\')" title="Kelola Status Ujian"><i data-lucide="settings" style="width:14px;height:14px"></i></button>';
+                        } else {
+                            // Belum dikirim → tombol kirim
+                            sendBtn = '<button class="btn-icon" style="background:rgba(16,185,129,.1);color:#10b981;" onclick="sendToSoalUjian(\'' + a.id + '\')" title="Kirim ke Soal Ujian"><i data-lucide="send" style="width:14px;height:14px"></i></button>';
+                        }
+                    }
                     aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
+                        sendBtn + ujianBtn +
                         '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
                         '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
                 }
@@ -5825,6 +5864,211 @@ async function loadAsesmenList() {
         if (window.lucide) lucide.createIcons();
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+    }
+}
+
+// ============================================================
+// SOAL UJIAN — Kelola Link Ujian dari Asesmen Terbit
+// ============================================================
+
+// --- Kirim asesmen ke menu Soal Ujian (status awal: pending / "-") ---
+async function sendToSoalUjian(asesmenId) {
+    showCustomConfirm(
+        'Kirim ke Soal Ujian?',
+        'Soal akan muncul di menu <strong>Soal Ujian</strong> dengan status <strong>belum aktif (—)</strong>.<br>Anda bisa mengaktifkannya nanti via tombol ⚙️.',
+        'Ya, Kirim',
+        async function() {
+            if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengirim ke Soal Ujian...');
+            try {
+                const { error } = await supabaseClient.rpc('send_to_ujian', { target_asesmen_id: asesmenId });
+                if (error) throw error;
+                showToast('✅ Soal berhasil dikirim ke menu Soal Ujian!', 'success');
+                loadAsesmenList();
+            } catch(e) {
+                showToast('Gagal: ' + e.message, 'error');
+            } finally {
+                if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            }
+        }
+    );
+}
+
+// --- Tarik asesmen dari menu Soal Ujian (hapus dari tampilan) ---
+async function unsendFromUjian(asesmenId) {
+    showCustomConfirm(
+        'Tarik dari Soal Ujian?',
+        'Soal ini akan <strong>dihapus dari menu Soal Ujian</strong> dan tidak akan tampil di tabel aktif maupun kadaluarsa.<br>Data asesmen tetap aman.',
+        'Ya, Tarik',
+        async function() {
+            if (typeof showGlobalLoader === 'function') showGlobalLoader('Menarik dari Soal Ujian...');
+            try {
+                const { error } = await supabaseClient.rpc('unsend_from_ujian', { target_asesmen_id: asesmenId });
+                if (error) throw error;
+                showToast('✅ Soal berhasil ditarik dari menu Soal Ujian.', 'success');
+                loadAsesmenList();
+            } catch(e) {
+                showToast('Gagal: ' + e.message, 'error');
+            } finally {
+                if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            }
+        }
+    );
+}
+
+// --- Modal: Kelola status aktif/nonaktif ujian ---
+function openUjianSettingsModal(asesmenId) {
+    var a = asesmenList.find(function(x) { return x.id === asesmenId; });
+    if (!a) { showToast('Data asesmen tidak ditemukan.', 'error'); return; }
+
+    document.getElementById('ujianModalAsesmenId').value = asesmenId;
+    document.getElementById('ujianModalSubtitle').textContent = a.judul || '';
+
+    var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+    var statusText = a.ujian_aktif === true ? '<span style="color:#059669;font-weight:700;">🟢 Aktif</span>'
+        : a.ujian_aktif === false ? '<span style="color:#ef4444;font-weight:700;">🔴 Nonaktif</span>'
+        : '<span style="color:#94a3b8;font-weight:600;">— Belum diaktifkan</span>';
+
+    document.getElementById('ujianModalInfo').innerHTML =
+        '<div style="display:grid;grid-template-columns:auto 1fr;gap:.3rem .6rem;font-size:.82rem;">' +
+        '<span style="color:#64748b;">Mapel:</span><span style="font-weight:600;">' + (a.mata_pelajaran || '-') + '</span>' +
+        '<span style="color:#64748b;">Kelas:</span><span>' + (a.kelas || '-') + '</span>' +
+        '<span style="color:#64748b;">Tipe:</span><span>' + (a.tipe_ujian || '-') + '</span>' +
+        '<span style="color:#64748b;">Tanggal:</span><span>' + tgl + '</span>' +
+        '<span style="color:#64748b;">Status:</span><span>' + statusText + '</span>' +
+        '</div>';
+
+    // Set radio default
+    if (a.ujian_aktif === false) {
+        document.getElementById('ujianRadioNonaktif').checked = true;
+    } else {
+        document.getElementById('ujianRadioAktif').checked = true;
+    }
+    updateUjianRadioStyle();
+
+    document.getElementById('ujianSettingsModal').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeUjianSettingsModal() {
+    document.getElementById('ujianSettingsModal').classList.remove('active');
+}
+
+function updateUjianRadioStyle() {
+    var aktifLabel = document.getElementById('ujianRadioAktifLabel');
+    var nonaktifLabel = document.getElementById('ujianRadioNonaktifLabel');
+    var isAktif = document.getElementById('ujianRadioAktif').checked;
+
+    if (aktifLabel) aktifLabel.style.borderColor = isAktif ? '#059669' : '#e2e8f0';
+    if (aktifLabel) aktifLabel.style.background = isAktif ? 'rgba(5,150,105,.05)' : '';
+    if (nonaktifLabel) nonaktifLabel.style.borderColor = !isAktif ? '#ef4444' : '#e2e8f0';
+    if (nonaktifLabel) nonaktifLabel.style.background = !isAktif ? 'rgba(239,68,68,.05)' : '';
+}
+
+// --- Simpan status aktif/nonaktif ---
+async function saveUjianSettings() {
+    var asesmenId = document.getElementById('ujianModalAsesmenId').value;
+    var isAktif = document.getElementById('ujianRadioAktif').checked;
+
+    if (!asesmenId) { showToast('ID asesmen tidak valid.', 'error'); return; }
+
+    if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan status ujian...');
+
+    try {
+        const { error } = await supabaseClient.rpc('update_ujian_status', {
+            target_asesmen_id: asesmenId,
+            is_aktif: isAktif
+        });
+        if (error) throw error;
+
+        showToast('✅ Status ujian berhasil di' + (isAktif ? 'aktifkan' : 'nonaktifkan') + '!', 'success');
+        closeUjianSettingsModal();
+        loadAsesmenList();
+    } catch(e) {
+        showToast('Gagal: ' + e.message, 'error');
+    } finally {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+    }
+}
+
+// --- Load data untuk menu Soal Ujian ---
+async function loadSoalUjian() {
+    var tbodyAktif = document.getElementById('ujianAktifTbody');
+    var tbodyNonaktif = document.getElementById('ujianNonaktifTbody');
+    if (!tbodyAktif || !tbodyNonaktif || !supabaseClient) return;
+
+    tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    tbodyNonaktif.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+
+    try {
+        // Ambil asesmen yang sudah dikirim ke ujian (ujian_sent_at IS NOT NULL)
+        const { data, error } = await supabaseClient
+            .from('asesmen')
+            .select('*')
+            .not('ujian_sent_at', 'is', null)
+            .is('deleted_at', null)
+            .order('ujian_sent_at', { ascending: false });
+
+        if (error) throw error;
+        var list = data || [];
+
+        // Aktif = ujian_aktif === true, Pending = ujian_aktif === null → tampil di tabel aktif dengan status "-"
+        var aktifList = list.filter(function(a) { return a.ujian_aktif === true || a.ujian_aktif === null; });
+        var nonaktifList = list.filter(function(a) { return a.ujian_aktif === false; });
+
+        // Render Tabel Aktif (termasuk pending)
+        if (aktifList.length === 0) {
+            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada soal ujian. Admin dapat mengirim soal dari menu <strong>Buat Soal Asesmen</strong>.</td></tr>';
+        } else {
+            tbodyAktif.innerHTML = aktifList.map(function(a, i) {
+                var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                var isPending = a.ujian_aktif === null;
+                var linkBtn, statusBadge;
+                if (isPending) {
+                    linkBtn = '<span style="color:#94a3b8;font-size:.82rem;">Belum diaktifkan</span>';
+                    statusBadge = '<span class="badge" style="background:rgba(148,163,184,.12);color:#94a3b8;font-size:.75rem;">—</span>';
+                } else {
+                    linkBtn = a.google_form_url
+                        ? '<a href="' + a.google_form_url + '" target="_blank" class="btn btn-sm" style="background:linear-gradient(135deg,#059669,#047857);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;"><i data-lucide="external-link" style="width:13px;height:13px"></i> Kerjakan Sekarang</a>'
+                        : '<span style="color:var(--text-light);font-size:.82rem;">Link belum tersedia</span>';
+                    statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Aktif</span>';
+                }
+                return '<tr>' +
+                    '<td style="text-align:center;">' + (i + 1) + '</td>' +
+                    '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
+                    '<td>' + (a.mata_pelajaran || '-') + '</td>' +
+                    '<td>' + (a.kelas || '-') + '</td>' +
+                    '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                    '<td>' + tgl + '</td>' +
+                    '<td style="text-align:center;">' + (a.waktu_menit || '-') + '</td>' +
+                    '<td>' + linkBtn + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        // Render Tabel Nonaktif/Kadaluarsa
+        if (nonaktifList.length === 0) {
+            tbodyNonaktif.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada ujian kadaluarsa.</td></tr>';
+        } else {
+            tbodyNonaktif.innerHTML = nonaktifList.map(function(a, i) {
+                var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                return '<tr style="opacity:.6;">' +
+                    '<td style="text-align:center;">' + (i + 1) + '</td>' +
+                    '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
+                    '<td>' + (a.mata_pelajaran || '-') + '</td>' +
+                    '<td>' + (a.kelas || '-') + '</td>' +
+                    '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                    '<td>' + tgl + '</td>' +
+                    '<td><span style="color:var(--text-light);font-size:.82rem;text-decoration:line-through;">Link dinonaktifkan</span></td>' +
+                    '<td><span class="badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">Kadaluarsa</span></td>' +
+                    '</tr>';
+            }).join('');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+        tbodyNonaktif.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
     }
 }
 
