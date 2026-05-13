@@ -115,21 +115,45 @@ function closeApiKeyModal() {
     if (input) input.value = '';
 }
 
-function saveApiKeyBaru() {
-    const input = document.getElementById('inputApiKeyBaru');
+async function saveApiKeyBaru() {
+    const input = document.getElementById('aiApiKeyInput') || document.getElementById('inputApiKeyBaru');
     if (!input) return;
     const newKey = input.value.trim();
     if (newKey) {
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan API Key...');
+        try {
+            if (supabaseClient) {
+                await supabaseClient.from('system_settings').upsert({ key: 'groq_api_key', value: newKey });
+            }
+        } catch(e) { console.warn('Gagal menyimpan API key ke DB:', e); }
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+
         localStorage.setItem('GROQ_API_KEY', newKey);
-        closeApiKeyModal();
-        if (typeof showToast === 'function') showToast("API Key baru disimpan. Silakan coba tekan tombol AI lagi.", "success");
-        else alert("API Key baru disimpan. Silakan coba tekan tombol AI lagi.");
+        closeApiKeyModal(); // Keep if modal still used somewhere
+        if (typeof showToast === 'function') showToast("API Key AI berhasil disimpan dan diperbarui.", "success");
+        else alert("API Key AI berhasil disimpan dan diperbarui.");
     } else {
         if (typeof showToast === 'function') showToast("API Key tidak boleh kosong!", "error");
         else alert("API Key tidak boleh kosong!");
     }
 }
 
+async function loadAIConfig() {
+    var input = document.getElementById('aiApiKeyInput');
+    if (!input) return;
+    try {
+        if (supabaseClient) {
+            const { data, error } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+            if (data && data.value) {
+                input.value = data.value;
+            } else {
+                input.value = localStorage.getItem('GROQ_API_KEY') || '';
+            }
+        }
+    } catch(e) {
+        console.warn('Gagal memuat API Key AI:', e);
+    }
+}
 function hideGlobalLoader() {
     var loader = document.getElementById('globalLoader');
     if (loader) loader.classList.remove('active');
@@ -944,6 +968,10 @@ window.showSection = function (sectionId, linkEl) {
     }
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
+    if (sectionId === 'sectionIntegrasiGoogle') {
+        if (typeof loadAsesmenConfig === 'function') loadAsesmenConfig();
+        if (typeof loadAIConfig === 'function') loadAIConfig();
+    }
     if (sectionId === 'sectionLaporanNilai') {
         (async function() {
             await loadActiveYear();
@@ -1876,6 +1904,14 @@ async function approveUser(userId) {
     try {
         const { error } = await supabaseClient.from('profiles').update({ role: rs.value }).eq('id', userId);
         if (error) throw error;
+        
+        // Auto-confirm email user via RPC agar langsung bisa login
+        try {
+            await supabaseClient.rpc('confirm_user_email', { target_user_id: userId });
+        } catch(e) {
+            console.warn('Gagal mengkonfirmasi email secara otomatis:', e);
+        }
+
         showToast('Akun berhasil disetujui!', 'success');
         renderPendingAccounts(); renderActiveAccounts(); loadStats();
     } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
@@ -8086,8 +8122,16 @@ async function sendAiMessage() {
     chatBody.scrollTop = chatBody.scrollHeight;
 
     try {
-        // Menggunakan Groq API (Llama 3) yang super cepat dan gratis dengan kuota besar
-        let GROQ_API_KEY = localStorage.getItem('GROQ_API_KEY') || "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";
+        // Ambil dari DB dulu agar Tersinkronisasi, fallback ke localStorage
+        let dbKey = null;
+        try {
+            if (supabaseClient) {
+                const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+                if (data && data.value) dbKey = data.value;
+            }
+        } catch(e) {}
+        
+        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
         const url = "https://api.groq.com/openai/v1/chat/completions";
         
         const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
@@ -8295,7 +8339,15 @@ INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplika
 // ==============================================================================
 
 async function fetchGroqAI(prompt, systemMsg) {
-    let GROQ_API_KEY = localStorage.getItem('GROQ_API_KEY') || "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";
+    let dbKey = null;
+    try {
+        if (supabaseClient) {
+            const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+            if (data && data.value) dbKey = data.value;
+        }
+    } catch(e) {}
+    
+    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
     const url = "https://api.groq.com/openai/v1/chat/completions";
     
     try {
