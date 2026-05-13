@@ -129,6 +129,10 @@
           <span>Sampah Asesmen</span>
           <span class="sidebar-badge" id="sampahBadgeSidebar" style="display:none; background:#ef4444;">0</span>
         </a>
+        <a href="#" class="sidebar-link admin-kurikulum-only" onclick="showSection('sectionSoalUjian',this)">
+          <i data-lucide="clipboard-list" style="width:18px;height:18px"></i>
+          <span>Soal Ujian</span>
+        </a>
         <a href="#" class="sidebar-link role-akademik" onclick="showSection('sectionJurnalMengajar',this)">
           <i data-lucide="notebook-pen" style="width:18px;height:18px"></i>
           <span>Jurnal Mengajar</span>
@@ -2132,6 +2136,78 @@
         </div>
       </div>
     </section>
+    <!-- ========== SECTION: SOAL UJIAN ========== -->
+    <section id="sectionSoalUjian" class="dash-section">
+      <div class="dash-section-header">
+        <h2>Soal Ujian</h2>
+        <p>Kelola link soal ujian yang sudah diterbitkan ke Google Form. Aktifkan atau nonaktifkan link ujian kapan saja.</p>
+      </div>
+
+      <!-- Tabel Ujian Aktif -->
+      <div class="card" style="margin-bottom:2rem; border: none; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border-radius: 20px; overflow: hidden; padding: 0;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 1.5rem 2rem; color: white; display: flex; align-items: center; gap: 1rem;">
+          <div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 12px;">
+            <i data-lucide="circle-check-big" style="width:26px;height:26px; color: #a7f3d0;"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: white;">Ujian Aktif</h3>
+            <p style="margin: 0.2rem 0 0 0; color: #a7f3d0; font-size: 0.88rem;">Link soal berikut sedang aktif dan dapat diakses.</p>
+          </div>
+        </div>
+        <div style="padding: 1.5rem; overflow-x:auto;">
+          <table class="dash-table" id="ujianAktifTable">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th>Judul Asesmen</th>
+                <th>Mata Pelajaran</th>
+                <th>Kelas</th>
+                <th>Tipe</th>
+                <th>Tanggal Ujian</th>
+                <th>Waktu (Menit)</th>
+                <th>Link Soal</th>
+                <th style="width:100px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ujianAktifTbody">
+              <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabel Ujian Kadaluarsa / Nonaktif -->
+      <div class="card" style="border: none; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border-radius: 20px; overflow: hidden; padding: 0;">
+        <div style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 1.5rem 2rem; color: white; display: flex; align-items: center; gap: 1rem;">
+          <div style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 12px;">
+            <i data-lucide="clock" style="width:26px;height:26px; color: #cbd5e1;"></i>
+          </div>
+          <div>
+            <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: white;">Ujian Kadaluarsa / Nonaktif</h3>
+            <p style="margin: 0.2rem 0 0 0; color: #cbd5e1; font-size: 0.88rem;">Link soal berikut sudah dinonaktifkan. Untuk mengaktifkan kembali, hubungi admin.</p>
+          </div>
+        </div>
+        <div style="padding: 1.5rem; overflow-x:auto;">
+          <table class="dash-table" id="ujianNonaktifTable">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th>Judul Asesmen</th>
+                <th>Mata Pelajaran</th>
+                <th>Kelas</th>
+                <th>Tipe</th>
+                <th>Tanggal Ujian</th>
+                <th>Link Soal</th>
+                <th style="width:100px;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ujianNonaktifTbody">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <!-- ========== SECTION: ARSIP ASESMEN ========== -->
     <section id="sectionArsipAsesmen" class="dash-section">
@@ -3786,6 +3862,52 @@
       <button class="ai-chat-send" onclick="sendAiMessage()">
         <i data-lucide="send" style="width: 16px; height: 16px; margin-left: -2px;"></i>
       </button>
+    </div>
+  </div>
+
+  <!-- Modal Kelola Soal Ujian -->
+  <div class="modal-overlay" id="ujianSettingsModal" style="background:rgba(15,23,42,.5);">
+    <div class="modal-content" style="max-width:400px; border-radius:16px; overflow:hidden; padding:0; background:#ffffff; box-shadow:0 25px 50px rgba(0,0,0,.25);">
+      <div style="background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%); padding: 1.25rem 1.5rem; color: white;">
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <div style="background:rgba(255,255,255,.15);padding:8px;border-radius:10px;">
+            <i data-lucide="settings" style="width:22px;height:22px;color:#e9d5ff;"></i>
+          </div>
+          <div>
+            <h3 style="margin:0;font-size:1.1rem;font-weight:800;">Kelola Status Ujian</h3>
+            <p id="ujianModalSubtitle" style="margin:.2rem 0 0;color:#e9d5ff;font-size:.8rem;"></p>
+          </div>
+        </div>
+      </div>
+      <div style="padding:1.25rem 1.5rem; background:#ffffff;">
+        <input type="hidden" id="ujianModalAsesmenId" />
+        <div id="ujianModalInfo" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.85rem;margin-bottom:1.25rem;font-size:.85rem;color:#334155;"></div>
+
+        <label class="form-label" style="font-weight:700;font-size:.92rem;color:#1e293b;margin-bottom:.6rem;display:block;">Pilih Status</label>
+        <div style="display:flex;gap:.6rem;margin-bottom:1.25rem;">
+          <label style="flex:1;display:flex;align-items:center;gap:.5rem;padding:.75rem;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .2s;" id="ujianRadioAktifLabel">
+            <input type="radio" name="ujianStatusRadio" value="aktif" id="ujianRadioAktif" onchange="updateUjianRadioStyle()" />
+            <div>
+              <div style="font-weight:700;color:#059669;font-size:.88rem;">🟢 Aktifkan</div>
+              <div style="font-size:.72rem;color:#64748b;">Link bisa diakses</div>
+            </div>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:.5rem;padding:.75rem;border:2px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:all .2s;" id="ujianRadioNonaktifLabel">
+            <input type="radio" name="ujianStatusRadio" value="nonaktif" id="ujianRadioNonaktif" onchange="updateUjianRadioStyle()" />
+            <div>
+              <div style="font-weight:700;color:#ef4444;font-size:.88rem;">🔴 Nonaktifkan</div>
+              <div style="font-size:.72rem;color:#64748b;">Link kadaluarsa</div>
+            </div>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:.6rem;justify-content:flex-end;border-top:1px solid #e2e8f0;padding-top:1rem;">
+          <button class="btn btn-outline" onclick="closeUjianSettingsModal()" style="padding:.5rem 1.2rem;border-radius:8px;font-size:.88rem;">Batal</button>
+          <button class="btn" onclick="saveUjianSettings()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);color:white;border:none;padding:.5rem 1.2rem;border-radius:8px;font-weight:700;font-size:.88rem;">
+            <i data-lucide="save" style="width:14px;height:14px;"></i> Simpan
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
