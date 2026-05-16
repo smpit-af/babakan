@@ -747,10 +747,10 @@ async function initDashboard() {
 
         // Apply role-based visibility
         applyRoleVisibility();
+        loadStats();
 
         // Load data for admin/kurikulum
         if (['admin', 'kurikulum'].includes(currentRole)) {
-            loadStats();
             renderPendingAccounts();
             renderActiveAccounts();
             renderInactiveAccounts();
@@ -806,10 +806,28 @@ function applyRoleVisibility() {
         el.style.display = isAdminKurikulum ? '' : 'none';
     });
 
+    // Soal Ujian (Admin, Kurikulum, Siswa)
+    var isRoleUjian = ['admin', 'kurikulum', 'siswa'].includes(role);
+    document.querySelectorAll('.role-ujian').forEach(function (el) {
+        el.style.display = isRoleUjian ? '' : 'none';
+    });
+
     // Akademik & Asesmen
     var isAkademik = ['admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah'].includes(role);
     document.querySelectorAll('.role-akademik').forEach(function (el) {
         el.style.display = isAkademik ? '' : 'none';
+    });
+
+    // Input Penilaian
+    var isPenilaian = ['admin', 'kurikulum', 'wali_kelas', 'guru_mapel', 'operator_sekolah'].includes(role);
+    document.querySelectorAll('.role-penilaian').forEach(function (el) {
+        el.style.display = isPenilaian ? '' : 'none';
+    });
+
+    // Group Akademik (Wrapper)
+    var showAkademikGroup = isAkademik || isRoleUjian;
+    document.querySelectorAll('.group-akademik').forEach(function (el) {
+        el.style.display = showAkademikGroup ? '' : 'none';
     });
 
     // Data Induk & Operasional Sekolah
@@ -969,6 +987,10 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionBuatSoal') { loadAsesmenConfig(); loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
     if (sectionId === 'sectionSoalUjian') { loadSoalUjian(); }
+    if (sectionId === 'sectionCetakKartuUjian') { 
+        populateKelasNameDropdown('kartuKelasSelect', ''); 
+        loadPanitiaLocal();
+    }
     if (sectionId === 'sectionIntegrasiGoogle') {
         if (typeof loadAsesmenConfig === 'function') loadAsesmenConfig();
         if (typeof loadAIConfig === 'function') loadAIConfig();
@@ -2776,6 +2798,59 @@ function deleteGuru(id, nama) {
 // DATA INDUK SISWA
 // ============================================================
 var siswaList = [];
+var siswaFotoBase64 = ''; // Temporary holder for compressed photo
+
+// Kompres gambar sebelum disimpan ke database (Base64)
+function compressImage(file, maxWidth, maxHeight, quality) {
+    return new Promise(function(resolve) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var img = new Image();
+            img.onload = function() {
+                var canvas = document.createElement('canvas');
+                var width = img.width;
+                var height = img.height;
+                
+                // Hitung rasio
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                if (height > maxHeight) {
+                    width = Math.round((width * maxHeight) / height);
+                    height = maxHeight;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                var dataUrl = canvas.toDataURL('image/jpeg', quality || 0.6);
+                resolve(dataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function previewSiswaFoto(input) {
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            // Set langsung agar tersedia saat user klik Simpan
+            siswaFotoBase64 = e.target.result;
+            document.getElementById('formSiswaFotoImg').src = e.target.result;
+            document.getElementById('formSiswaFotoPreview').style.display = 'block';
+            // Kompres di background (ganti dengan versi ringan)
+            compressImage(file, 200, 250, 0.6).then(function(compressed) {
+                siswaFotoBase64 = compressed;
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+}
 
 function populateKelasDropdown(selectId, selectedVal) {
     var sel = document.getElementById(selectId);
@@ -2845,7 +2920,7 @@ function filterSiswaTable() {
 
     if (!tbody) return;
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada data siswa yang cocok.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="17" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada data siswa yang cocok.</td></tr>';
         if (window.lucide) lucide.createIcons();
         return;
     }
@@ -2858,7 +2933,8 @@ function filterSiswaTable() {
             s.status === 'Pindah' ? '<span class="role-badge" style="background:rgba(245,158,11,.1);color:#f59e0b;">Pindah</span>' :
             s.status === 'Lulus' ? '<span class="role-badge" style="background:rgba(124,58,237,.1);color:#7c3aed;">Lulus</span>' :
             '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">' + (s.status||'-') + '</span>';
-        return '<tr><td>' + (i+1) + '</td><td>' + (s.asal_sekolah||'-') + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah||'-') + '</td><td>' + (s.nik_ayah||'-') + '</td><td>' + (s.nama_ibu||'-') + '</td><td>' + (s.nik_ibu||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+        var fotoTd = s.foto ? '<img src="' + s.foto + '" style="width:36px;height:45px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:45px;border-radius:4px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;border:1px dashed #cbd5e1;">-</div>';
+        return '<tr><td>' + (i+1) + '</td><td style="text-align:center;">' + fotoTd + '</td><td>' + (s.asal_sekolah||'-') + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah||'-') + '</td><td>' + (s.nik_ayah||'-') + '</td><td>' + (s.nama_ibu||'-') + '</td><td>' + (s.nik_ibu||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
                 '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
     }).join('');
@@ -2880,6 +2956,9 @@ function openSiswaModal() {
     document.getElementById('formSiswaEmail').value = '';
     document.getElementById('formSiswaAlamat').value = '';
     document.getElementById('formSiswaStatus').value = 'Aktif';
+    siswaFotoBase64 = '';
+    document.getElementById('formSiswaFoto').value = '';
+    document.getElementById('formSiswaFotoPreview').style.display = 'none';
     populateKelasDropdown('formSiswaKelas', '');
     document.getElementById('siswaModalTitle').textContent = 'Tambah Siswa';
     document.getElementById('siswaModal').classList.add('active');
@@ -2903,6 +2982,15 @@ function editSiswa(id) {
     document.getElementById('formSiswaEmail').value = s.email || '';
     document.getElementById('formSiswaAlamat').value = s.alamat || '';
     document.getElementById('formSiswaStatus').value = s.status || 'Aktif';
+    // Handle foto
+    siswaFotoBase64 = s.foto || '';
+    document.getElementById('formSiswaFoto').value = '';
+    if (s.foto) {
+        document.getElementById('formSiswaFotoImg').src = s.foto;
+        document.getElementById('formSiswaFotoPreview').style.display = 'block';
+    } else {
+        document.getElementById('formSiswaFotoPreview').style.display = 'none';
+    }
     populateKelasDropdown('formSiswaKelas', s.kelas_id || '');
     document.getElementById('siswaModalTitle').textContent = 'Edit Siswa';
     document.getElementById('siswaModal').classList.add('active');
@@ -2925,6 +3013,10 @@ async function saveSiswa() {
         email: document.getElementById('formSiswaEmail').value.trim() || null,
         alamat: document.getElementById('formSiswaAlamat').value.trim() || null
     };
+    // Sertakan foto (Base64) jika ada yang baru di-upload
+    if (siswaFotoBase64) {
+        obj.foto = siswaFotoBase64;
+    }
     if (!obj.nama_lengkap) { showToast('Nama siswa wajib diisi!', 'warning'); return; }
     try {
         if (id) {
@@ -5781,9 +5873,9 @@ async function loadAsesmenList() {
     var tbody = document.getElementById('asesmenTableBody');
     var countEl = document.getElementById('asesmenCount');
     if (!tbody || !supabaseClient) return;
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
     try {
-        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).order('created_at', { ascending: false });
+        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).order('tanggal_pelaksanaan', { ascending: true, nullsFirst: false });
         const { data, error } = await query;
         if (error) throw error;
         asesmenList = (data || []).filter(function(a) { return !a.archived_at; });
@@ -5793,7 +5885,7 @@ async function loadAsesmenList() {
         var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
         
         if (asesmenList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada asesmen. Klik "Buat Asesmen Baru" untuk mulai.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada asesmen. Klik "Buat Asesmen Baru" untuk mulai.</td></tr>';
             return;
         }
         // count soal per asesmen
@@ -5849,12 +5941,14 @@ async function loadAsesmenList() {
             } else {
                 aksiHtml = '<span style="color:var(--text-light);font-size:0.8rem;font-style:italic;">Hanya pemilik</span>';
             }
+            var tglUjian = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
             return '<tr>' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
                 '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
                 '<td>' + (a.mata_pelajaran || '-') + '</td>' +
                 '<td>' + (a.kelas || '-') + '</td>' +
                 '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                '<td style="font-size:.82rem;white-space:nowrap;">' + tglUjian + '</td>' +
                 '<td style="text-align:center;">' + jumlahSoal + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' + linkHtml + '</td>' +
@@ -5863,7 +5957,7 @@ async function loadAsesmenList() {
         }).join('');
         if (window.lucide) lucide.createIcons();
     } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
     }
 }
 
@@ -6017,7 +6111,7 @@ async function loadSoalUjian() {
 
         // Render Tabel Aktif (termasuk pending)
         if (aktifList.length === 0) {
-            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada soal ujian. Admin dapat mengirim soal dari menu <strong>Buat Soal Asesmen</strong>.</td></tr>';
+            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada soal ujian yang aktif, silahkan hubungi admin</td></tr>';
         } else {
             tbodyAktif.innerHTML = aktifList.map(function(a, i) {
                 var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
@@ -6077,6 +6171,7 @@ async function openAsesmenBuilder(existingId) {
     document.getElementById('asesmenBuilderArea').style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
+    var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
     asesmenBuilderSoalList = [];
 
     // populate dropdowns
@@ -6155,6 +6250,7 @@ function openParseArea() {
     document.getElementById('asesmenParseArea').style.display = 'block';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
+    var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
     
     populateMapelNameDropdown('parseMapel', '');
     populateKelasNameDropdown('parseKelas', '');
@@ -6175,6 +6271,7 @@ function openAIArea() {
     document.getElementById('asesmenAIGenerateArea').style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
+    var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
     
     populateMapelNameDropdown('aiMapel', '');
     populateKelasNameDropdown('aiKelas', '');
@@ -6189,6 +6286,97 @@ function openAIArea() {
 
 function closeAIArea() {
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
+}
+
+// --- Google Form Link Area (Paste link dari guru) ---
+function openGoogleFormLinkArea() {
+    document.getElementById('asesmenGFormLinkArea').style.display = 'block';
+    document.getElementById('asesmenBuilderArea').style.display = 'none';
+    document.getElementById('asesmenParseArea').style.display = 'none';
+    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
+
+    populateMapelNameDropdown('gformMapel', '');
+    populateKelasNameDropdown('gformKelas', '');
+    var lblYear = document.getElementById('lblActiveYear');
+    var gformTahun = document.getElementById('gformTahun');
+    if (lblYear && gformTahun) {
+        var yearVal = lblYear.textContent;
+        gformTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
+    }
+    // Reset form fields
+    document.getElementById('gformJudul').value = '';
+    document.getElementById('gformTipe').value = 'PH';
+    document.getElementById('gformSemester').value = 'Ganjil';
+    document.getElementById('gformWaktu').value = '';
+    document.getElementById('gformTanggal').value = '';
+    document.getElementById('gformLink').value = '';
+
+    document.getElementById('asesmenGFormLinkArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeGoogleFormLinkArea() {
+    document.getElementById('asesmenGFormLinkArea').style.display = 'none';
+}
+
+async function saveGoogleFormLink() {
+    var judul = (document.getElementById('gformJudul') || {}).value || '';
+    var tipe = (document.getElementById('gformTipe') || {}).value || 'PH';
+    var mapel = (document.getElementById('gformMapel') || {}).value || '';
+    var kelas = (document.getElementById('gformKelas') || {}).value || '';
+    var tahun = (document.getElementById('gformTahun') || {}).value || '';
+    var semester = (document.getElementById('gformSemester') || {}).value || 'Ganjil';
+    var waktu = (document.getElementById('gformWaktu') || {}).value || '';
+    var tanggal = (document.getElementById('gformTanggal') || {}).value || '';
+    var link = (document.getElementById('gformLink') || {}).value || '';
+
+    // Validasi
+    if (!judul.trim()) { showToast('Judul Asesmen wajib diisi!', 'warning'); return; }
+    if (!mapel) { showToast('Mata Pelajaran wajib dipilih!', 'warning'); return; }
+    if (!kelas) { showToast('Kelas wajib dipilih!', 'warning'); return; }
+    if (!waktu) { showToast('Waktu pengerjaan wajib diisi!', 'warning'); return; }
+    if (!tanggal) { showToast('Tanggal ujian wajib diisi!', 'warning'); return; }
+    if (!link.trim()) { showToast('Link Google Form wajib diisi!', 'warning'); return; }
+
+    // Validasi format URL Google Form
+    var linkLower = link.trim().toLowerCase();
+    if (linkLower.indexOf('docs.google.com/forms') === -1 && linkLower.indexOf('forms.gle') === -1 && linkLower.indexOf('google.com') === -1) {
+        showToast('Link yang dimasukkan bukan URL Google Form yang valid!', 'warning');
+        return;
+    }
+
+    try {
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan link Google Form...');
+
+        var payload = {
+            judul: judul.trim(),
+            mata_pelajaran: mapel,
+            kelas: kelas,
+            tipe_ujian: tipe,
+            tahun_pelajaran: tahun || null,
+            semester: semester,
+            waktu_menit: parseInt(waktu) || 0,
+            tanggal_pelaksanaan: tanggal,
+            google_form_url: link.trim(),
+            status: 'terbit',
+            bobot_pg: 0,
+            bobot_essay: 0,
+            published_at: new Date().toISOString(),
+            created_by: currentUser ? currentUser.id : null,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabaseClient.from('asesmen').insert([payload]).select('id').single();
+        if (error) throw error;
+
+        showToast('✅ Link Google Form berhasil disimpan dan akan tampil di Riwayat Asesmen!', 'success');
+        closeGoogleFormLinkArea();
+        loadAsesmenList();
+    } catch(e) {
+        showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+    }
 }
 
 async function editAsesmenDraft(id) {
@@ -9976,4 +10164,455 @@ if(originalShowSectionKeuangan) {
         if(sectionId === 'sectionPengeluaranDinas') { fetchPengeluaranDinas().then(() => renderPengeluaranDinasTable()); }
         if(sectionId === 'sectionLaporanKeuangan') { Promise.all([fetchKeuanganData(), fetchPengeluaranDinas()]).then(() => switchLaporanTab('universal')); }
     };
+}
+
+// =========================================================================
+// FITUR CETAK KARTU UJIAN
+// =========================================================================
+
+var dataSiswaCetak = [];
+
+async function loadSiswaCetakKartu() {
+    var kelasName = document.getElementById('kartuKelasSelect').value;
+    var tbody = document.getElementById('kartuSiswaTbody');
+    var container = document.getElementById('kartuTableContainer');
+    
+    if (!kelasName) {
+        container.style.display = 'none';
+        dataSiswaCetak = [];
+        return;
+    }
+    
+    container.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat data siswa...</td></tr>';
+    
+    try {
+        // Cari id kelas dari master_kelas berdasarkan namanya
+        const { data: kelasData, error: kelasErr } = await supabaseClient.from('master_kelas').select('id').eq('nama_kelas', kelasName).single();
+        if (kelasErr) throw kelasErr;
+        
+        // Ambil siswa di kelas tersebut (Aktif)
+        const { data: siswaData, error: siswaErr } = await supabaseClient.from('siswa').select('id, nama_lengkap, jenis_kelamin, nisn, foto').eq('kelas_id', kelasData.id).eq('status', 'Aktif');
+        if (siswaErr) throw siswaErr;
+        
+        var listSiswa = siswaData || [];
+        // Sort alphabetical
+        listSiswa.sort((a, b) => (a.nama_lengkap || '').localeCompare(b.nama_lengkap || ''));
+        
+        dataSiswaCetak = listSiswa.map((s, index) => {
+            var num = (index + 1).toString().padStart(3, '0');
+            return {
+                ...s,
+                nomorPeserta: num // Default urut dari 001
+            };
+        });
+        
+        renderTabelCetakKartu();
+        
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--danger)">Gagal memuat siswa: ' + e.message + '</td></tr>';
+    }
+}
+
+function renderTabelCetakKartu() {
+    var tbody = document.getElementById('kartuSiswaTbody');
+    if (dataSiswaCetak.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa aktif di kelas ini.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = dataSiswaCetak.map((s, i) => {
+        return `
+            <tr>
+                <td style="text-align:center;">${i+1}</td>
+                <td style="font-weight:600;">${s.nama_lengkap || '-'}</td>
+                <td style="text-align:center;">${s.jenis_kelamin || '-'}</td>
+                <td>
+                    <input type="text" class="form-input" id="nomorPeserta_${s.id}" value="${s.nomorPeserta}" onchange="updateNomorPeserta('${s.id}', this.value)" style="height:35px; padding:0.3rem 0.6rem; max-width:150px; font-weight:700; font-family:monospace; font-size:1rem; text-align:center; color:#1e293b;" />
+                </td>
+                <td style="text-align:center;">
+                    <button class="btn btn-outline" onclick="cetakSatuKartu('${s.id}')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-color:#0ea5e9; color:#0ea5e9;">
+                        <i data-lucide="printer" style="width:14px;height:14px;"></i> Cetak
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    if (window.lucide) lucide.createIcons();
+}
+
+function updateNomorPeserta(id, val) {
+    var siswa = dataSiswaCetak.find(s => s.id === id);
+    if(siswa) siswa.nomorPeserta = val;
+}
+
+function acakNomorPeserta() {
+    if (dataSiswaCetak.length === 0) return;
+    
+    // Extract current numbers
+    var numbers = dataSiswaCetak.map(s => s.nomorPeserta);
+    
+    // Fisher-Yates shuffle
+    for (let i = numbers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+    }
+    
+    // Assign back
+    dataSiswaCetak.forEach((s, i) => {
+        s.nomorPeserta = numbers[i];
+    });
+    
+    renderTabelCetakKartu();
+    showToast('Nomor peserta berhasil diacak!', 'success');
+}
+
+var kartuTtdBase64 = '';
+
+// Kosongkan input form saat halaman pertama kali diload/direfresh
+document.addEventListener('DOMContentLoaded', function() {
+    var el = document.getElementById('kartuKetuaPanitia');
+    if(el) el.value = '';
+    localStorage.removeItem('kartuKetuaPanitia'); // Bersihkan sisa data sebelumnya
+});
+
+function handleTtdUpload(input) {
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            kartuTtdBase64 = e.target.result;
+            var preview = document.getElementById('ttdPreview');
+            preview.src = kartuTtdBase64;
+            document.getElementById('ttdPreviewContainer').style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        kartuTtdBase64 = '';
+        document.getElementById('ttdPreviewContainer').style.display = 'none';
+    }
+}
+
+function buildKartuHTML(siswa) {
+    var judul = document.getElementById('kartuJudul').value || 'KARTU PESERTA UJIAN';
+    var kelasName = document.getElementById('kartuKelasSelect').value || '-';
+    var namaPanitia = document.getElementById('kartuKetuaPanitia').value || '______________________';
+    var ruangUjian = document.getElementById('kartuRuang') ? document.getElementById('kartuRuang').value : '01';
+    var today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    
+    var fotoImgHTML = siswa.foto ? `<img src="${siswa.foto}" alt="Foto" />` : `Pas Foto<br>3x4`;
+    var ttdHTML = kartuTtdBase64 ? `<img src="${kartuTtdBase64}" class="kartu-signature-img" /><br>` : `<br><br><br>`;
+
+    return `
+        <div class="kartu-ujian" style="position:relative; z-index:1; overflow:hidden;">
+            <div class="kartu-watermark" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:65%; height:65%; background:url('img/logo.png') no-repeat center center; background-size:contain; opacity:0.06; z-index:-1; pointer-events:none;"></div>
+            <div class="kartu-header">
+                <img src="img/logo.png" alt="Logo" class="kartu-logo" style="margin-left: 15px;" onerror="this.src='https://ui-avatars.com/api/?name=SMP&background=random'" />
+                <div class="kartu-header-text">
+                    <h4>PANITIA PELAKSANAAN UJIAN SEKOLAH</h4>
+                    <h3>SMP IT AL FATHONAH BABAKAN</h3>
+                </div>
+            </div>
+            
+            <div class="kartu-title" style="margin-bottom: -2px;">KARTU PESERTA</div>
+            <div class="kartu-subtitle" style="margin-top: 0;">${judul}</div>
+            
+            <div class="kartu-body" style="padding-left: 20px;">
+                <div class="kartu-foto-box">${fotoImgHTML}</div>
+                <div class="kartu-data">
+                    <table>
+                        <tr><td style="width:75px;">No Peserta</td><td style="width:5px;">:</td><td><span style="font-weight:bold; font-family:monospace; font-size:14px;">${siswa.nomorPeserta}</span></td></tr>
+                        <tr><td>Nama</td><td>:</td><td><span style="font-weight:bold;">${siswa.nama_lengkap || '-'}</span></td></tr>
+                        <tr><td>Kelas</td><td>:</td><td>${kelasName}</td></tr>
+                        <tr><td>NISN</td><td>:</td><td>${siswa.nisn || '-'}</td></tr>
+                        <tr><td>Ruang</td><td>:</td><td>${ruangUjian || '01'}</td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="kartu-footer-container" style="padding-right: 20px;">
+                <div class="kartu-ttd-area">
+                    <div style="margin-bottom:1px;">Babakan, ${today}</div>
+                    <div style="margin-bottom:1px;">Ketua Panitia,</div>
+                    <div style="display:flex; justify-content:center; align-items:center; min-height:35px;">
+                        ${ttdHTML}
+                    </div>
+                    <div class="kartu-nama-panitia">${namaPanitia}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// =========================================================================
+// JADWAL UJIAN (untuk belakang kartu)
+// =========================================================================
+var jadwalUjianDays = [];
+
+function tambahJadwalHari() {
+    jadwalUjianDays.push({ hari: '', hariRaw: '', sesi: [{ waktu: '', mapel: '', pengawas: '' }] });
+    renderJadwalForm();
+}
+
+function hapusJadwalHari(dayIdx) {
+    jadwalUjianDays.splice(dayIdx, 1);
+    renderJadwalForm();
+}
+
+function tambahJadwalSesi(dayIdx) {
+    jadwalUjianDays[dayIdx].sesi.push({ waktu: '', mapel: '', pengawas: '' });
+    renderJadwalForm();
+}
+
+function hapusJadwalSesi(dayIdx, sesiIdx) {
+    jadwalUjianDays[dayIdx].sesi.splice(sesiIdx, 1);
+    renderJadwalForm();
+}
+
+function updateJadwalHari(dayIdx, val) {
+    if (jadwalUjianDays[dayIdx]) {
+        jadwalUjianDays[dayIdx].hariRaw = val;
+        if (val) {
+            var dateObj = new Date(val);
+            // Format to Indonesian locale, e.g. "Senin, 18 Mei 2026"
+            var hariStr = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            jadwalUjianDays[dayIdx].hari = hariStr;
+        } else {
+            jadwalUjianDays[dayIdx].hari = '';
+        }
+        renderJadwalForm(); // Re-render to show the formatted text preview
+    }
+}
+
+function updateJadwalSesi(dayIdx, sesiIdx, field, val) {
+    if (jadwalUjianDays[dayIdx] && jadwalUjianDays[dayIdx].sesi[sesiIdx]) {
+        jadwalUjianDays[dayIdx].sesi[sesiIdx][field] = val;
+    }
+}
+
+function hapusSemuaJadwal() {
+    jadwalUjianDays = [];
+    renderJadwalForm();
+    showToast('Jadwal ujian dikosongkan.', 'info');
+}
+
+function renderJadwalForm() {
+    var container = document.getElementById('jadwalContainer');
+    if (!container) return;
+    
+    if (jadwalUjianDays.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:1.5rem; color:#94a3b8; font-size:0.9rem; border:1px dashed #e2e8f0; border-radius:8px;">Belum ada jadwal. Klik "Tambah Hari Ujian" untuk memulai.</div>';
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+    
+    var html = '';
+    jadwalUjianDays.forEach(function(day, dIdx) {
+        html += `<div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f8fafc;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
+                <div style="flex-grow:1; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <label style="font-weight:600; font-size:0.9rem; color:#334155; margin:0; min-width:100px;">Pilih Tanggal:</label>
+                    <input type="date" class="form-input" style="height:34px; max-width:200px;" value="${day.hariRaw || ''}" onchange="updateJadwalHari(${dIdx}, this.value)" />
+                    <span style="font-size:0.85rem; font-weight:600; color:#2563eb; margin-left:8px;">${day.hari || ''}</span>
+                </div>
+                <button class="btn-icon btn-icon-red" onclick="hapusJadwalHari(${dIdx})" title="Hapus Hari Ini">
+                    <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                </button>
+            </div>
+            
+            <div style="padding-left:1rem; border-left:2px solid #e2e8f0;">
+                <table style="width:100%; border-collapse:collapse; margin-bottom:0.5rem;">
+                    <thead>
+                        <tr style="font-size:0.8rem; color:#64748b;">
+                            <th style="text-align:left; padding-bottom:4px; width:120px;">Waktu</th>
+                            <th style="text-align:left; padding-bottom:4px;">Mata Pelajaran (Isi "ISTIRAHAT" jika perlu)</th>
+                            <th style="text-align:left; padding-bottom:4px;">Pengawas</th>
+                            <th style="text-align:center; padding-bottom:4px; width:40px;">Hapus</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+        
+        day.sesi.forEach(function(s, sIdx) {
+            html += `
+                        <tr>
+                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.waktu}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'waktu', this.value)" placeholder="07:30-09:30" /></td>
+                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.mapel}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'mapel', this.value)" placeholder="Nama Mapel / Istirahat" /></td>
+                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.pengawas}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'pengawas', this.value)" placeholder="Kosongkan jika istirahat" /></td>
+                            <td style="padding-bottom:4px; text-align:center;">
+                                <button class="btn-icon btn-icon-red" onclick="hapusJadwalSesi(${dIdx}, ${sIdx})" style="width:24px;height:24px;padding:0;">
+                                    <i data-lucide="x" style="width:12px;height:12px;"></i>
+                                </button>
+                            </td>
+                        </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+                <button class="btn btn-outline" style="font-size:0.8rem; padding:0.25rem 0.5rem;" onclick="tambahJadwalSesi(${dIdx})">
+                    <i data-lucide="plus" style="width:12px;height:12px;"></i> Tambah Sesi
+                </button>
+            </div>
+        </div>`;
+    });
+    
+    container.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+}
+
+function buildJadwalHTML(siswa) {
+    var judul = document.getElementById('kartuJudul').value || 'JADWAL UJIAN';
+    
+    var tableRows = '';
+    var no = 1;
+    
+    // Validasi data: Hanya masukkan hari yang memiliki minimal 1 sesi valid
+    var validDays = jadwalUjianDays.filter(function(day) {
+        return day.hari.trim() !== '' || day.sesi.some(s => s.waktu || s.mapel);
+    });
+    
+    if (validDays.length === 0) {
+        tableRows = '<tr><td colspan="5" style="text-align:center; padding:8px; color:#94a3b8;">Jadwal belum diisi</td></tr>';
+    } else {
+        validDays.forEach(function(day) {
+            var sesiValid = day.sesi.filter(s => s.waktu || s.mapel || s.pengawas);
+            if (sesiValid.length === 0) return;
+            
+            // Gunakan rowspan untuk hari
+            tableRows += '<tr>';
+            tableRows += '<td rowspan="' + sesiValid.length + '" style="border: 1px solid #1e293b; padding: 1px; text-align:center; vertical-align:middle; font-weight:600;">' + no + '</td>';
+            tableRows += '<td rowspan="' + sesiValid.length + '" style="border: 1px solid #1e293b; padding: 1px; vertical-align:middle; font-weight:600;">' + (day.hari || '-') + '</td>';
+            
+            sesiValid.forEach(function(s, idx) {
+                if (idx > 0) tableRows += '<tr>'; // Buka row baru untuk sesi ke-2 dst
+                
+                var waktuText = s.waktu ? s.waktu : '-';
+                var mapelText = s.mapel ? s.mapel : '-';
+                var pengawasText = s.pengawas ? s.pengawas : '';
+                
+                // Jika mapel mengandung kata ISTIRAHAT, gabungkan kolom
+                if (mapelText.toUpperCase().includes('ISTIRAHAT')) {
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center;">' + waktuText + '</td>';
+                    tableRows += '<td colspan="2" style="border: 1px solid #1e293b; padding: 1px; text-align:center; font-style:italic; font-weight:bold; background:#f1f5f9;">' + mapelText + '</td>';
+                } else {
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center;">' + waktuText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px;">' + mapelText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px;">' + pengawasText + '</td>';
+                }
+                
+                tableRows += '</tr>';
+            });
+            no++;
+        });
+    }
+
+    return `
+        <div class="kartu-ujian" style="display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding: 10px;">
+            <div class="kartu-jadwal" style="width: 100%;">
+                <div class="jadwal-title" style="margin-top:0; margin-bottom:6px; font-size:10px; text-align:center; font-weight:800; color:var(--primary-dark);">JADWAL ${judul}</div>
+            <table class="jadwal-table" style="width: 100%; border-collapse: collapse; font-size: 6.5px; line-height: 1.1;">
+                <thead>
+                    <tr>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:15px; text-align:center;">No</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:70px;">Hari/Tanggal</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:55px; text-align:center;">Waktu</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Mata Pelajaran</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:55px; text-align:center;">Pengawas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${tableRows}
+                </tbody>
+            </table>
+            </div>
+        </div>
+    `;
+}
+
+// =========================================================================
+// PRINT FUNCTIONS
+// =========================================================================
+
+function preparePrint(htmlContent) {
+    var printArea = document.getElementById('printAreaKartu');
+    printArea.innerHTML = htmlContent;
+    
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => { printArea.innerHTML = ''; }, 500);
+    }, 400);
+}
+
+function cetakSatuKartu(siswaId) {
+    var siswa = dataSiswaCetak.find(s => s.id === siswaId);
+    if(!siswa) return;
+    
+    var html = buildKartuHTML(siswa);
+    preparePrint(html);
+}
+
+function cetakSemuaKartu() {
+    if (dataSiswaCetak.length === 0) {
+        showToast('Tidak ada siswa untuk dicetak!', 'warning');
+        return;
+    }
+    
+    // Cetak semua kartu depan
+    var htmlDepan = '';
+    dataSiswaCetak.forEach(siswa => {
+        htmlDepan += buildKartuHTML(siswa);
+    });
+    
+    preparePrint(htmlDepan);
+}
+
+function cetakSemuaJadwal() {
+    if (dataSiswaCetak.length === 0) {
+        showToast('Tidak ada siswa untuk dicetak!', 'warning');
+        return;
+    }
+    
+    // Cetak semua kartu belakang
+    var htmlBelakang = '';
+    dataSiswaCetak.forEach(siswa => {
+        htmlBelakang += buildJadwalHTML(siswa);
+    });
+    
+    preparePrint(htmlBelakang);
+}
+
+function buildNomorMejaHTML(nomor, judul, tahun) {
+    var formattedNo = String(nomor).padStart(3, '0');
+    return `
+        <div class="kartu-meja">
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; border-bottom: 2px solid #1e3a5f; padding-bottom: 6px; margin-bottom: 4px; padding-right: 12px;">
+                <img src="img/logo.png" style="width:55px; height:55px; margin-right:4px;" onerror="this.src='https://ui-avatars.com/api/?name=SMP&background=random'" />
+                <div style="text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: #1e3a5f; margin-bottom: 2px;">NOMOR PESERTA ${judul.toUpperCase()}</div>
+                    <div style="font-size: 14px; font-weight: 900; color: #b45309; margin-bottom: 2px;">SMP IT AL FATHONAH BABAKAN</div>
+                    <div style="font-size: 11px; font-weight: 600; color: #475569;">TAHUN PELAJARAN ${tahun}</div>
+                </div>
+            </div>
+            <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; margin-top: -10px;">
+                <div style="font-size: 75px; font-weight: 900; color: #0f172a; letter-spacing: 2px;">${formattedNo}</div>
+            </div>
+        </div>
+    `;
+}
+
+function cetakNomorMeja() {
+    var qtyInput = document.getElementById('kartuJumlahMeja');
+    var jumlah = qtyInput ? (parseInt(qtyInput.value) || 30) : 30;
+    var judulInput = document.getElementById('kartuJudul');
+    var judul = judulInput ? (judulInput.value || 'UJIAN SEKOLAH') : 'UJIAN SEKOLAH';
+    var lblYear = document.getElementById('lblActiveYear');
+    var tahun = lblYear ? lblYear.textContent : '2026/2027';
+    
+    var htmlContent = '';
+    for (var i = 1; i <= jumlah; i++) {
+        htmlContent += buildNomorMejaHTML(i, judul, tahun);
+    }
+    
+    preparePrint(htmlContent);
 }
