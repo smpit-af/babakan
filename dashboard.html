@@ -426,6 +426,7 @@
           <table class="dash-table" style="font-size:.9rem;">
             <thead><tr>
               <th style="width:40px">No</th>
+              <th style="width:50px;text-align:center;">Foto</th>
               <th>NISN</th>
               <th>Nama</th>
               <th>JK</th>
@@ -1013,7 +1014,7 @@
             <i data-lucide="users" style="width:20px;height:20px; color:#10b981;"></i> Daftar Peserta
           </h3>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-            <input type="number" id="kartuJumlahMeja" class="form-input" style="width: 70px; padding: 0.4rem;" value="30" title="Jumlah Nomor Meja" min="1" />
+            <input type="number" id="kartuJumlahMeja" class="form-input" style="width: 70px; padding: 0.4rem;" placeholder="Jml" title="Jumlah Nomor Meja" min="1" />
             <button class="btn btn-outline" onclick="cetakNomorMeja()" style="font-weight:600; font-size:0.85rem; padding:0.5rem 1rem; color:#10b981; border-color:#10b981;" title="Cetak nomor tempat duduk peserta">
               <i data-lucide="printer" style="width:16px;height:16px;"></i> Cetak Meja
             </button>
@@ -3985,6 +3986,19 @@
           </select>
           <p style="font-size:0.8rem;color:var(--text-light);margin-top:4px;">Jika ditautkan, data ini akan muncul di menu "Profil Saya" pengguna tersebut.</p>
         </div>
+        <div style="display:flex; gap:15px; margin-bottom:1.5rem; align-items:center;">
+          <div id="formGuruFotoPreview" style="width:80px;height:80px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,0.1);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <div>
+            <label class="btn btn-outline" style="cursor:pointer; padding:0.4rem 1rem; font-size:0.85rem;">
+              <i data-lucide="camera" style="width:14px;height:14px;"></i> Pilih Foto
+              <input type="file" id="formGuruFoto" accept="image/*" style="display:none;" onchange="autoUploadGuruFotoAdmin(this)" />
+            </label>
+            <input type="hidden" id="formGuruFotoUrl" />
+            <p style="font-size:0.75rem;color:var(--text-light);margin-top:5px;">Maks. 5MB. Akan langsung diunggah.</p>
+          </div>
+        </div>
         <div class="grid-responsive">
           <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formGuruNama" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formGuruJK" class="form-input"><option value="">Pilih</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
@@ -5098,15 +5112,16 @@
       .kartu-footer-container {
         position: absolute;
         bottom: 6px;
-        right: 8px;
+        left: 14px;
+        right: 14px;
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
         align-items: flex-end;
       }
       
       .kartu-foto-box {
-        width: 50px;
-        height: 65px;
+        width: 56px;
+        height: 74px;
         border: 1px solid #94a3b8;
         border-radius: 4px;
         display: flex;
@@ -5118,8 +5133,8 @@
         overflow: hidden;
         background: #f8fafc;
         text-align: center;
-        margin-right: 8px;
-        margin-top: 3px;
+        margin-right: 12px;
+        margin-top: 0px;
       }
       .kartu-foto-box img {
         width: 100%;
@@ -5147,6 +5162,15 @@
         font-weight: 700;
         text-decoration: underline;
         font-size: 11px;
+      }
+      
+      .kartu-notes {
+        font-size: 8px;
+        color: #475569;
+        line-height: 1.3;
+        text-align: left;
+        margin-bottom: 2px;
+        white-space: nowrap;
       }
     }
   </style>

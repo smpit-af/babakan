@@ -93,6 +93,24 @@ function showToast(message, type) {
 function dismissToast(t) { t.classList.add('toast-hide'); t.addEventListener('animationend', function () { t.remove(); }); }
 
 // ============================================================
+// IMGBB GLOBAL UPLOADER HELPER
+// ============================================================
+const IMGBB_API_KEY = "60f358ee68fb1d063c7ced2e14a15c93";
+
+async function uploadToImgBB(file) {
+    var formData = new FormData();
+    formData.append('image', file);
+    
+    var res = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
+        method: 'POST',
+        body: formData
+    });
+    var data = await res.json();
+    if (!data.success) throw new Error('Gagal upload ke ImgBB: ' + (data.error ? data.error.message : ''));
+    return data.data.url;
+}
+
+// ============================================================
 // GLOBAL LOADER OVERLAY
 // ============================================================
 function showGlobalLoader(text) {
@@ -1222,12 +1240,7 @@ async function saveBerita() {
         showGlobalLoader('Mengupload gambar berita...');
         try {
             var file = fileInput.files[0];
-            var ext = file.name.split('.').pop().toLowerCase();
-            var fileName = 'berita_' + Date.now() + '.' + ext;
-            var { error: uploadErr } = await supabaseClient.storage.from('konten-images').upload(fileName, file, { upsert: true });
-            if (uploadErr) throw uploadErr;
-            var { data: urlData } = supabaseClient.storage.from('konten-images').getPublicUrl(fileName);
-            payload.gambar_url = urlData.publicUrl;
+            payload.gambar_url = await uploadToImgBB(file);
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     }
 
@@ -1538,12 +1551,7 @@ async function saveEskul() {
         showGlobalLoader('Mengupload gambar eskul...');
         try {
             var file = fileInput.files[0];
-            var ext = file.name.split('.').pop().toLowerCase();
-            var fileName = 'eskul_' + Date.now() + '.' + ext;
-            var { error: uploadErr } = await supabaseClient.storage.from('konten-images').upload(fileName, file, { upsert: true });
-            if (uploadErr) throw uploadErr;
-            var { data: urlData } = supabaseClient.storage.from('konten-images').getPublicUrl(fileName);
-            payload.gambar_url = urlData.publicUrl;
+            payload.gambar_url = await uploadToImgBB(file);
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     } else if (!id) {
         showToast('Gambar wajib diupload!', 'warning'); return;
@@ -1648,12 +1656,7 @@ async function saveSarpras() {
         showGlobalLoader('Mengupload gambar sarpras...');
         try {
             var file = fileInput.files[0];
-            var ext = file.name.split('.').pop().toLowerCase();
-            var fileName = 'sarpras_' + Date.now() + '.' + ext;
-            var { error: uploadErr } = await supabaseClient.storage.from('konten-images').upload(fileName, file, { upsert: true });
-            if (uploadErr) throw uploadErr;
-            var { data: urlData } = supabaseClient.storage.from('konten-images').getPublicUrl(fileName);
-            payload.gambar_url = urlData.publicUrl;
+            payload.gambar_url = await uploadToImgBB(file);
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     } else if (!id) {
         showToast('Gambar wajib diupload!', 'warning'); return;
@@ -1754,12 +1757,13 @@ async function loadDashSiswa() {
         });
 
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada data siswa.</td></tr>';
             if (countEl) countEl.textContent = '0 siswa';
             return;
         }
         if (countEl) countEl.textContent = list.length + ' siswa';
         tbody.innerHTML = list.map(function(s, i) {
+            var fotoHtml = s.foto ? '<img src="' + s.foto + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid #e2e8f0;">' : '<div style="width:32px;height:32px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:11px;font-weight:bold;">' + (s.nama_lengkap ? s.nama_lengkap.charAt(0).toUpperCase() : '?') + '</div>';
             var kelas = s.master_kelas ? s.master_kelas.nama_kelas : '-';
             var mondokBadge = s.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;font-size:.75rem;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">Tidak</span>';
             var statusBadge = s.status === 'Aktif' ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;font-size:.75rem;">Aktif</span>' :
@@ -1768,6 +1772,7 @@ async function loadDashSiswa() {
                 '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">' + (s.status||'-') + '</span>';
             return '<tr>' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
+                '<td style="text-align:center;"><div style="display:flex;justify-content:center;">' + fotoHtml + '</div></td>' +
                 '<td>' + (s.nisn||'-') + '</td>' +
                 '<td style="font-weight:500;">' + (s.nama_lengkap||'-') + '</td>' +
                 '<td>' + (s.jenis_kelamin||'-') + '</td>' +
@@ -1776,7 +1781,7 @@ async function loadDashSiswa() {
                 '<td>' + statusBadge + '</td>' +
                 '</tr>';
         }).join('');
-    } catch(e) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:1.5rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>'; }
+    } catch(e) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:1.5rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>'; }
 }
 
 // ============================================================
@@ -2626,15 +2631,87 @@ var guruList = [];
 // PROFIL GURU — Self-service data pribadi
 // ============================================================
 
-function previewProfilGuruFoto(input) {
+async function previewProfilGuruFoto(input) {
     var preview = document.getElementById('profilGuruFotoPreview');
     if (!preview) return;
     if (input.files && input.files[0]) {
+        var file = input.files[0];
+
+        // Tampilkan preview sementara
         var reader = new FileReader();
         reader.onload = function(e) {
             preview.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
         };
-        reader.readAsDataURL(input.files[0]);
+        reader.readAsDataURL(file);
+
+        // Auto Upload Langsung ke ImgBB
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto profil...');
+        try {
+            var url = await uploadToImgBB(file);
+            
+            if (currentUser && currentUser.id) {
+                // Cari data guru
+                var { data: existing } = await supabaseClient.from('guru_staff').select('id').eq('user_id', currentUser.id).maybeSingle();
+                if (existing) {
+                    await supabaseClient.from('guru_staff').update({ foto_url: url }).eq('id', existing.id);
+                } else {
+                    var email = document.getElementById('profilGuruEmail')?.value || currentUser.email;
+                    var { data: existingByEmail } = await supabaseClient.from('guru_staff').select('id').eq('email', email).maybeSingle();
+                    if (existingByEmail) {
+                         await supabaseClient.from('guru_staff').update({ foto_url: url, user_id: currentUser.id }).eq('id', existingByEmail.id);
+                    } else {
+                         await supabaseClient.from('guru_staff').insert([{
+                             user_id: currentUser.id,
+                             nama_lengkap: document.getElementById('userName')?.textContent || 'Guru Baru',
+                             email: email,
+                             foto_url: url,
+                             status: 'Aktif'
+                         }]);
+                    }
+                }
+            }
+            
+            showToast('Foto profil berhasil diunggah & disimpan!', 'success');
+            var btnHapus = document.getElementById('btnHapusFotoProfil');
+            if (btnHapus) btnHapus.style.display = 'inline-flex';
+        } catch(e) {
+            showToast('Gagal unggah foto: ' + e.message, 'error');
+            loadProfilGuru(); 
+        } finally {
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            input.value = ''; 
+        }
+    }
+}
+
+async function autoUploadGuruFotoAdmin(input) {
+    var preview = document.getElementById('formGuruFotoPreview');
+    var urlField = document.getElementById('formGuruFotoUrl');
+    if (!preview || !urlField) return;
+    if (input.files && input.files[0]) {
+        var file = input.files[0];
+
+        // Preview
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">';
+        };
+        reader.readAsDataURL(file);
+
+        // Upload
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto...');
+        try {
+            var url = await uploadToImgBB(file);
+            urlField.value = url;
+            showToast('Foto berhasil diunggah!', 'success');
+        } catch(e) {
+            showToast('Gagal unggah foto: ' + e.message, 'error');
+            urlField.value = '';
+            preview.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+        } finally {
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            input.value = '';
+        }
     }
 }
 
@@ -2743,23 +2820,8 @@ async function saveProfilGuru() {
             status: 'Aktif'
         };
 
-        // Handle photo upload
-        var fileInput = document.getElementById('profilGuruFoto');
-        if (fileInput && fileInput.files && fileInput.files.length > 0) {
-            var file = fileInput.files[0];
-            if (file.size > 2 * 1024 * 1024) {
-                hideGlobalLoader();
-                showToast('Ukuran foto melebihi 2MB!', 'warning');
-                return;
-            }
-            var fileName = currentUser.id + '_' + Date.now() + '.' + file.name.split('.').pop();
-            var { error: uploadError } = await supabaseClient.storage
-                .from('guru-foto')
-                .upload(fileName, file, { cacheControl: '3600', upsert: true });
-            if (uploadError) throw uploadError;
-            var publicUrlResult = supabaseClient.storage.from('guru-foto').getPublicUrl(fileName);
-            obj.foto_url = publicUrlResult.data.publicUrl;
-        }
+        // Note: Foto profil kini di-upload otomatis saat dipilih (lihat autoUploadProfilGuruFoto).
+        // Jadi kita tidak perlu menangani fileInput lagi di sini.
 
         // Check if existing record
         var { data: existing } = await supabaseClient
@@ -2893,20 +2955,51 @@ async function editGuru(id) {
     document.getElementById('formGuruNIK').value = g.nik || '';
     document.getElementById('formGuruHP').value = g.nomor_hp || '';
     document.getElementById('formGuruEmail').value = g.email || '';
-    populateMapelDropdown('formGuruMapel', g.mata_pelajaran || '');
-    populateMapelDropdown('formGuruMapel2', g.mata_pelajaran_2 || '');
-    populateMapelDropdown('formGuruMapel3', g.mata_pelajaran_3 || '');
-    document.getElementById('formGuruSertifikasi').value = g.sertifikasi || '';
-    document.getElementById('formGuruAlamat').value = g.alamat || '';
-    document.getElementById('formGuruStatus').value = g.status || 'Aktif';
-    document.getElementById('guruModalTitle').textContent = 'Edit Guru';
-    await loadGuruAkunDropdown(g.user_id || '');
-    document.getElementById('guruModal').classList.add('active');
+    showGlobalLoader('Memuat data...');
+    try {
+        const { data, error } = await supabaseClient.from('guru_staff').select('*').eq('id', id).single();
+        if (error) throw error;
+        document.getElementById('guruModalTitle').textContent = 'Edit Guru';
+        document.getElementById('formGuruId').value = data.id;
+        document.getElementById('formGuruUserId').value = data.user_id || '';
+        document.getElementById('formGuruNama').value = data.nama_lengkap || '';
+        document.getElementById('formGuruJK').value = data.jenis_kelamin || '';
+        document.getElementById('formGuruJabatan').value = data.jabatan || '';
+        document.getElementById('formGuruJabatanTambahan').value = data.jabatan_tambahan || '';
+        document.getElementById('formGuruNIK').value = data.nik || '';
+        document.getElementById('formGuruHP').value = data.nomor_hp || '';
+        document.getElementById('formGuruEmail').value = data.email || '';
+        populateMapelDropdown('formGuruMapel', data.mata_pelajaran || '');
+        populateMapelDropdown('formGuruMapel2', data.mata_pelajaran_2 || '');
+        populateMapelDropdown('formGuruMapel3', data.mata_pelajaran_3 || '');
+        document.getElementById('formGuruSertifikasi').value = data.sertifikasi || '';
+        document.getElementById('formGuruAlamat').value = data.alamat || '';
+        document.getElementById('formGuruStatus').value = data.status || 'Aktif';
+
+        // Set foto form
+        document.getElementById('formGuruFoto').value = '';
+        document.getElementById('formGuruFotoUrl').value = data.foto_url || '';
+        if (data.foto_url) {
+            document.getElementById('formGuruFotoPreview').innerHTML = '<img src="' + data.foto_url + '" style="width:100%;height:100%;object-fit:cover;">';
+        } else {
+            document.getElementById('formGuruFotoPreview').innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
+        }
+
+        await loadGuruAkunDropdown(data.user_id);
+        
+        hideGlobalLoader();
+        document.getElementById('guruModal').classList.add('active');
+    } catch(e) {
+        hideGlobalLoader();
+        showToast('Gagal memuat: ' + e.message, 'error');
+    }
 }
 
 async function saveGuru() {
     var id = document.getElementById('formGuruId').value;
     var userIdField = document.getElementById('formGuruUserId');
+    var fotoUrlField = document.getElementById('formGuruFotoUrl');
+    
     var obj = {
         nama_lengkap: document.getElementById('formGuruNama').value.trim(),
         jenis_kelamin: document.getElementById('formGuruJK').value || null,
@@ -2915,14 +3008,16 @@ async function saveGuru() {
         nik: document.getElementById('formGuruNIK').value.trim() || null,
         nomor_hp: document.getElementById('formGuruHP').value.trim() || null,
         email: document.getElementById('formGuruEmail').value.trim() || null,
-        mata_pelajaran: document.getElementById('formGuruMapel').value.trim() || null,
-        mata_pelajaran_2: document.getElementById('formGuruMapel2').value.trim() || null,
-        mata_pelajaran_3: document.getElementById('formGuruMapel3').value.trim() || null,
+        mata_pelajaran: document.getElementById('formGuruMapel').value || null,
+        mata_pelajaran_2: document.getElementById('formGuruMapel2').value || null,
+        mata_pelajaran_3: document.getElementById('formGuruMapel3').value || null,
         sertifikasi: document.getElementById('formGuruSertifikasi').value || null,
         alamat: document.getElementById('formGuruAlamat').value.trim() || null,
         status: document.getElementById('formGuruStatus').value,
-        user_id: (userIdField && userIdField.value) ? userIdField.value : null
+        user_id: (userIdField && userIdField.value) ? userIdField.value : null,
+        foto_url: (fotoUrlField && fotoUrlField.value) ? fotoUrlField.value : null
     };
+    
     if (!obj.nama_lengkap) { showToast('Nama guru wajib diisi!', 'warning'); return; }
     try {
         if (id) {
@@ -2989,7 +3084,8 @@ function deleteGuru(id, nama) {
 // DATA INDUK SISWA
 // ============================================================
 var siswaList = [];
-var siswaFotoBase64 = ''; // Temporary holder for compressed photo
+var siswaFotoFile = null; // Temporary holder for uploaded photo file
+
 
 // Kompres gambar sebelum disimpan ke database (Base64)
 function compressImage(file, maxWidth, maxHeight, quality) {
@@ -3027,19 +3123,13 @@ function compressImage(file, maxWidth, maxHeight, quality) {
 
 function previewSiswaFoto(input) {
     if (input.files && input.files[0]) {
-        var file = input.files[0];
+        siswaFotoFile = input.files[0];
         var reader = new FileReader();
         reader.onload = function(e) {
-            // Set langsung agar tersedia saat user klik Simpan
-            siswaFotoBase64 = e.target.result;
             document.getElementById('formSiswaFotoImg').src = e.target.result;
             document.getElementById('formSiswaFotoPreview').style.display = 'block';
-            // Kompres di background (ganti dengan versi ringan)
-            compressImage(file, 200, 250, 0.6).then(function(compressed) {
-                siswaFotoBase64 = compressed;
-            });
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(siswaFotoFile);
     }
 }
 
@@ -3147,7 +3237,7 @@ function openSiswaModal() {
     document.getElementById('formSiswaEmail').value = '';
     document.getElementById('formSiswaAlamat').value = '';
     document.getElementById('formSiswaStatus').value = 'Aktif';
-    siswaFotoBase64 = '';
+    siswaFotoFile = null;
     document.getElementById('formSiswaFoto').value = '';
     document.getElementById('formSiswaFotoPreview').style.display = 'none';
     populateKelasDropdown('formSiswaKelas', '');
@@ -3174,7 +3264,7 @@ function editSiswa(id) {
     document.getElementById('formSiswaAlamat').value = s.alamat || '';
     document.getElementById('formSiswaStatus').value = s.status || 'Aktif';
     // Handle foto
-    siswaFotoBase64 = s.foto || '';
+    siswaFotoFile = null;
     document.getElementById('formSiswaFoto').value = '';
     if (s.foto) {
         document.getElementById('formSiswaFotoImg').src = s.foto;
@@ -3204,11 +3294,20 @@ async function saveSiswa() {
         email: document.getElementById('formSiswaEmail').value.trim() || null,
         alamat: document.getElementById('formSiswaAlamat').value.trim() || null
     };
-    // Sertakan foto (Base64) jika ada yang baru di-upload
-    if (siswaFotoBase64) {
-        obj.foto = siswaFotoBase64;
+    if (siswaFotoFile) {
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto siswa...');
+        try {
+            obj.foto = await uploadToImgBB(siswaFotoFile);
+        } catch(e) {
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            showToast('Gagal upload foto: ' + e.message, 'error');
+            return;
+        }
     }
     if (!obj.nama_lengkap) { showToast('Nama siswa wajib diisi!', 'warning'); return; }
+    
+    if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan data siswa...');
+    
     try {
         if (id) {
             obj.status = document.getElementById('formSiswaStatus').value || 'Aktif';
@@ -3222,7 +3321,11 @@ async function saveSiswa() {
         showToast('Data siswa berhasil disimpan!', 'success');
         closeSiswaModal();
         loadSiswaData();
-    } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
+    } catch(e) { 
+        showToast('Gagal: ' + e.message, 'error'); 
+    } finally {
+        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+    }
 }
 
 function deleteSiswa(id, nama) {
@@ -6773,12 +6876,7 @@ async function handleSoalImageUpload(idx, inputEl) {
     
     showGlobalLoader('Mengupload gambar soal...');
     try {
-        var fileName = 'soal_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        var { data, error } = await supabaseClient.storage.from('soal-images').upload(fileName, file, { upsert: true });
-        if (error) throw error;
-        
-        var { data: urlData } = supabaseClient.storage.from('soal-images').getPublicUrl(fileName);
-        var publicUrl = urlData.publicUrl;
+        var publicUrl = await uploadToImgBB(file);
         
         collectSoalFromDOM();
         asesmenBuilderSoalList[idx].gambar_url = publicUrl;
@@ -8323,9 +8421,7 @@ document.addEventListener('DOMContentLoaded', initTestimonial);
 // MODUL RUANG DISKUSI (FORUM) & AI CHAT
 // ==============================================================================
 
-// Konfigurasi ImgBB API Key
-// Anda harus mendaftar di https://api.imgbb.com/ untuk mendapatkan API Key gratis.
-const IMGBB_API_KEY = "60f358ee68fb1d063c7ced2e14a15c93"; 
+// Konfigurasi ImgBB API Key dipindahkan ke atas
 
 // Konfigurasi Google Apps Script URL untuk AI Chat (Gemini Proxy)
 const GAS_AI_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyJYNNxg_m89JVoJcnMHJRhyBnZsbpWxugeP8R0M_ahrbF7Iys1DWkhM_XsoyUUkCL_/exec";
@@ -9964,7 +10060,7 @@ function hapusTTDBendahara() {
     showToast('Tanda tangan dihapus.', 'success');
 }
 
-function simpanPengaturanKwitansi() {
+async function simpanPengaturanKwitansi() {
     let nama = document.getElementById('inputNamaBendahara').value.trim();
     
     let settings = getKwitansiSettings();
@@ -9973,18 +10069,19 @@ function simpanPengaturanKwitansi() {
     // Check if new file uploaded
     let fileInput = document.getElementById('inputTTDBendahara');
     if(fileInput.files && fileInput.files[0]) {
-        let reader = new FileReader();
+        var file = fileInput.files[0];
+        var reader = new FileReader();
         reader.onload = function(e) {
             settings.ttdBase64 = e.target.result;
             localStorage.setItem('kwitansi_settings', JSON.stringify(settings));
             closePengaturanKwitansi();
             showToast('Pengaturan bendahara berhasil disimpan!', 'success');
         };
-        reader.readAsDataURL(fileInput.files[0]);
+        reader.readAsDataURL(file);
     } else {
         localStorage.setItem('kwitansi_settings', JSON.stringify(settings));
         closePengaturanKwitansi();
-        showToast('Pengaturan kwitansi berhasil disimpan!', 'success');
+        showToast('Pengaturan bendahara berhasil disimpan!', 'success');
     }
 }
 
@@ -11313,14 +11410,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function handleTtdUpload(input) {
     if (input.files && input.files[0]) {
+        var file = input.files[0];
         var reader = new FileReader();
         reader.onload = function(e) {
             kartuTtdBase64 = e.target.result;
             var preview = document.getElementById('ttdPreview');
             preview.src = kartuTtdBase64;
             document.getElementById('ttdPreviewContainer').style.display = 'block';
-        }
-        reader.readAsDataURL(input.files[0]);
+        };
+        reader.readAsDataURL(file);
     } else {
         kartuTtdBase64 = '';
         document.getElementById('ttdPreviewContainer').style.display = 'none';
@@ -11351,20 +11449,23 @@ function buildKartuHTML(siswa) {
             <div class="kartu-title" style="margin-bottom: -2px;">KARTU PESERTA</div>
             <div class="kartu-subtitle" style="margin-top: 0;">${judul}</div>
             
-            <div class="kartu-body" style="padding-left: 20px;">
+            <div class="kartu-body" style="padding-left: 10px;">
                 <div class="kartu-foto-box">${fotoImgHTML}</div>
                 <div class="kartu-data">
                     <table>
                         <tr><td style="width:75px;">No Peserta</td><td style="width:5px;">:</td><td><span style="font-weight:bold; font-family:monospace; font-size:14px;">${siswa.nomorPeserta}</span></td></tr>
                         <tr><td>Nama</td><td>:</td><td><span style="font-weight:bold;">${siswa.nama_lengkap || '-'}</span></td></tr>
                         <tr><td>Kelas</td><td>:</td><td>${kelasName}</td></tr>
-                        <tr><td>NISN</td><td>:</td><td>${siswa.nisn || '-'}</td></tr>
                         <tr><td>Ruang</td><td>:</td><td>${ruangUjian || '01'}</td></tr>
                     </table>
                 </div>
             </div>
             
-            <div class="kartu-footer-container" style="padding-right: 20px;">
+            <div class="kartu-footer-container">
+                <div class="kartu-notes">
+                    <b>Perhatian!</b><br>
+                    * Wajib dibawa selama ujian berlangsung.
+                </div>
                 <div class="kartu-ttd-area">
                     <div style="margin-bottom:1px;">Babakan, ${today}</div>
                     <div style="margin-bottom:1px;">Ketua Panitia,</div>
@@ -12297,14 +12398,7 @@ async function uploadHeroImage(file, heroId, mode) {
     if (!file) return;
     showGlobalLoader('Mengupload gambar ' + mode + '...');
     try {
-        var ext = file.name.split('.').pop().toLowerCase();
-        var fileName = 'hero_' + heroId + '_' + mode + '_' + Date.now() + '.' + ext;
-
-        var { error: uploadErr } = await supabaseClient.storage.from('konten-images').upload(fileName, file, { upsert: true });
-        if (uploadErr) throw uploadErr;
-
-        var { data: urlData } = supabaseClient.storage.from('konten-images').getPublicUrl(fileName);
-        var publicUrl = urlData.publicUrl;
+        var publicUrl = await uploadToImgBB(file);
 
         var updatePayload = {};
         if (mode === 'desktop') updatePayload.gambar_desktop = publicUrl;
