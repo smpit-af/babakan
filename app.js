@@ -11430,6 +11430,7 @@ function buildKartuHTML(siswa) {
     var kelasName = document.getElementById('kartuKelasSelect').value || '-';
     var namaPanitia = document.getElementById('kartuKetuaPanitia').value || '______________________';
     var ruangUjian = document.getElementById('kartuRuang') ? document.getElementById('kartuRuang').value : '01';
+    var masaBerlaku = document.getElementById('kartuMasaBerlaku') ? document.getElementById('kartuMasaBerlaku').value : '';
     var today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     
     var fotoImgHTML = siswa.foto ? `<img src="${siswa.foto}" alt="Foto" />` : `Pas Foto<br>3x4`;
@@ -11465,6 +11466,7 @@ function buildKartuHTML(siswa) {
                 <div class="kartu-notes">
                     <b>Perhatian!</b><br>
                     * Wajib dibawa selama ujian berlangsung.
+                    ${masaBerlaku ? `<br>* Berlaku : ${masaBerlaku}` : ''}
                 </div>
                 <div class="kartu-ttd-area">
                     <div style="margin-bottom:1px;">Babakan, ${today}</div>
