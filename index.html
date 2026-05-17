@@ -829,15 +829,8 @@
       });
 
       // ===== HERO BACKGROUND SLIDESHOW =====
-      var slides = document.querySelectorAll('.hero-slide');
-      var currentSlide = 0;
-      if (slides.length > 1) {
-        setInterval(function () {
-          slides[currentSlide].classList.remove('active');
-          currentSlide = (currentSlide + 1) % slides.length;
-          slides[currentSlide].classList.add('active');
-        }, 5000);
-      }
+      // Slider interval is now initialized inside app.js -> loadHeroPublic()
+      // to ensure it works after Supabase loads the images.
     });
 
     // ===== GLOBAL NAV FUNCTIONS =====

@@ -12548,11 +12548,35 @@ function hapusTestimoni(id) {
 // ============================================================
 // 8. PUBLIC LOADING: Hero, Visi Misi, Testimoni (Landing Page)
 // ============================================================
+window.heroSliderInterval = null;
+function initHeroSlider() {
+    if (window.heroSliderInterval) clearInterval(window.heroSliderInterval);
+    var slides = document.querySelectorAll('.hero-slide');
+    if (!slides || slides.length === 0) return;
+    
+    var currentSlide = 0;
+    slides.forEach(function(s, i) {
+        if(i === 0) s.classList.add('active');
+        else s.classList.remove('active');
+    });
+
+    if (slides.length > 1) {
+        window.heroSliderInterval = setInterval(function () {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (currentSlide + 1) % slides.length;
+            slides[currentSlide].classList.add('active');
+        }, 5000);
+    }
+}
+
 async function loadHeroPublic() {
     try {
         const { data, error } = await supabaseClient.from('konten_hero').select('*').order('urutan');
         if (error) throw error;
-        if (!data || data.length === 0) return;
+        if (!data || data.length === 0) {
+            initHeroSlider();
+            return;
+        }
 
         var container = document.getElementById('heroSlideshow');
         if (!container) return;
@@ -12573,7 +12597,11 @@ async function loadHeroPublic() {
                 if (mobileUrl) slide.style.backgroundImage = "url('" + mobileUrl + "')";
             });
         }
-    } catch(e) { console.log('Hero public fallback to static'); }
+        initHeroSlider();
+    } catch(e) { 
+        console.log('Hero public fallback to static');
+        initHeroSlider();
+    }
 }
 
 async function loadVisiMisiPublic() {
