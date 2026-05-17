@@ -1058,13 +1058,40 @@
         <div id="jadwalContainer">
           <!-- Rows will be added dynamically -->
         </div>
-        <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
           <button class="btn btn-outline" onclick="tambahJadwalHari()" style="font-size:0.85rem; padding:0.45rem 1rem;">
             <i data-lucide="plus" style="width:14px;height:14px;"></i> Tambah Hari Ujian
+          </button>
+          <button class="btn btn-primary" onclick="simpanJadwalAsesmen()" style="font-size:0.85rem; padding:0.45rem 1rem;">
+            <i data-lucide="save" style="width:14px;height:14px;"></i> Simpan Jadwal
           </button>
           <button class="btn btn-outline" onclick="hapusSemuaJadwal()" style="font-size:0.85rem; padding:0.45rem 1rem; border-color:#ef4444; color:#ef4444;">
             <i data-lucide="trash-2" style="width:14px;height:14px;"></i> Hapus Semua
           </button>
+        </div>
+      </div>
+
+      <!-- RIWAYAT JADWAL ASESMEN -->
+      <div class="card" style="margin-top: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem; display:flex; align-items:center; gap:0.5rem;">
+          <i data-lucide="history" style="width:20px;height:20px; color:#8b5cf6;"></i> Riwayat Jadwal Asesmen
+        </h3>
+        <p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">Jadwal yang pernah disimpan. Klik "Gunakan" untuk memuat kembali jadwal tersebut.</p>
+        <div style="overflow-x:auto;">
+          <table class="dash-table">
+            <thead>
+              <tr>
+                <th style="width:40px; text-align:center;">No</th>
+                <th>Nama Jadwal</th>
+                <th style="width:90px; text-align:center;">Jumlah Hari</th>
+                <th style="width:110px;">Disimpan</th>
+                <th style="width:180px; text-align:center; white-space:nowrap;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="riwayatJadwalTbody">
+              <tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada jadwal tersimpan.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>

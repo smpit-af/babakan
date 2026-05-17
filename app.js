@@ -93,21 +93,76 @@ function showToast(message, type) {
 function dismissToast(t) { t.classList.add('toast-hide'); t.addEventListener('animationend', function () { t.remove(); }); }
 
 // ============================================================
-// IMGBB GLOBAL UPLOADER HELPER
+// GOOGLE DRIVE UPLOADER VIA GOOGLE APPS SCRIPT
 // ============================================================
-const IMGBB_API_KEY = "60f358ee68fb1d063c7ced2e14a15c93";
+var _cachedGasUrl = null;
 
-async function uploadToImgBB(file) {
-    var formData = new FormData();
-    formData.append('image', file);
-    
-    var res = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
-        method: 'POST',
-        body: formData
+async function _getGasUrl() {
+    if (_cachedGasUrl) return _cachedGasUrl;
+    // Coba ambil dari input field di DOM (sudah dimuat saat halaman soal asesmen dibuka)
+    var inputEl = document.getElementById('gasUrlInput');
+    if (inputEl && inputEl.value && inputEl.value.trim()) {
+        _cachedGasUrl = inputEl.value.trim();
+        return _cachedGasUrl;
+    }
+    // Fallback: ambil dari database
+    if (supabaseClient) {
+        try {
+            var { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'gas_web_app_url').maybeSingle();
+            if (data && data.value) {
+                _cachedGasUrl = data.value;
+                return _cachedGasUrl;
+            }
+        } catch(e) { console.warn('Gagal memuat GAS URL:', e); }
+    }
+    throw new Error('URL Google Apps Script belum dikonfigurasi. Buka menu Buat Soal Asesmen > Konfigurasi untuk mengisi URL.');
+}
+
+/**
+ * Upload file gambar ke Google Drive via Google Apps Script.
+ * @param {File|Blob} file - File gambar yang akan diupload
+ * @param {string} folder - Nama subfolder di Google Drive (siswa, guru, berita, eskul, sarpras, hero, soal, galeri, forum)
+ * @returns {Promise<string>} URL thumbnail gambar dari Google Drive
+ */
+async function uploadToGoogleDrive(file, folder) {
+    var gasUrl = await _getGasUrl();
+
+    // Konversi file ke base64
+    var base64 = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function() {
+            // Ambil bagian base64 saja (hilangkan prefix "data:image/...;base64,")
+            var result = reader.result;
+            var base64Data = result.split(',')[1];
+            resolve(base64Data);
+        };
+        reader.onerror = function() { reject(new Error('Gagal membaca file.')); };
+        reader.readAsDataURL(file);
     });
+
+    // Kirim ke Google Apps Script
+    var res = await fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+            action: 'upload_image',
+            folder: folder || 'lainnya',
+            fileName: (folder || 'img') + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) + '.' + (file.type === 'image/png' ? 'png' : 'jpg'),
+            mimeType: file.type || 'image/jpeg',
+            base64: base64
+        })
+    });
+
     var data = await res.json();
-    if (!data.success) throw new Error('Gagal upload ke ImgBB: ' + (data.error ? data.error.message : ''));
-    return data.data.url;
+    if (data.status !== 'success') {
+        throw new Error(data.message || 'Gagal upload ke Google Drive');
+    }
+    return data.url;
+}
+
+// Backward compatibility alias — agar kode lama yang memanggil uploadToImgBB tetap berfungsi
+async function uploadToImgBB(file) {
+    return await uploadToGoogleDrive(file, 'lainnya');
 }
 
 // ============================================================
@@ -235,6 +290,37 @@ function showCustomConfirm(title, message, confirmText, onConfirm) {
         closeNotifModal();
         if (typeof onConfirm === 'function') onConfirm();
     };
+}
+
+function showCustomPrompt(title, message, placeholder, defaultValue, onConfirm) {
+    var overlay = document.getElementById('notifModal');
+    var iconEl = document.getElementById('notifIcon');
+    var titleEl = document.getElementById('notifTitle');
+    var msgEl = document.getElementById('notifMessage');
+    var actionsEl = document.getElementById('notifActions');
+    if (!overlay) { var val = prompt(message, defaultValue || ''); if (val) onConfirm(val); return; }
+
+    iconEl.innerHTML = '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    iconEl.style.background = 'rgba(59,130,246,.1)';
+    titleEl.textContent = title;
+    titleEl.style.color = '#3b82f6';
+    msgEl.innerHTML = message + '<div style="margin-top:1rem;"><input type="text" id="customPromptInput" class="form-input" placeholder="' + (placeholder || '') + '" value="' + (defaultValue || '') + '" style="width:100%;font-size:1rem;" /></div>';
+    actionsEl.innerHTML = '<button class="btn btn-outline" onclick="closeNotifModal()" style="min-width:100px;">Batal</button>' +
+        '<button class="btn btn-primary" id="notifConfirmBtn" style="min-width:100px;">Simpan</button>';
+
+    overlay.classList.add('active');
+    setTimeout(function() { var inp = document.getElementById('customPromptInput'); if (inp) { inp.focus(); inp.select(); } }, 200);
+
+    document.getElementById('notifConfirmBtn').onclick = function () {
+        var val = (document.getElementById('customPromptInput') || {}).value;
+        if (!val || !val.trim()) { showToast('Nama tidak boleh kosong.', 'warning'); return; }
+        closeNotifModal();
+        if (typeof onConfirm === 'function') onConfirm(val.trim());
+    };
+
+    // Allow Enter key to submit
+    var inp = document.getElementById('customPromptInput');
+    if (inp) inp.onkeydown = function(e) { if (e.key === 'Enter') document.getElementById('notifConfirmBtn').click(); };
 }
 
 // ============================================================
@@ -1012,7 +1098,10 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionSoalUjian') { loadSoalUjian(); }
     if (sectionId === 'sectionCetakKartuUjian') { 
         populateKelasNameDropdown('kartuKelasSelect', ''); 
-        loadPanitiaLocal();
+        if (typeof loadPanitiaLocal === 'function') loadPanitiaLocal();
+        loadMasterMapel();
+        loadGuruData();
+        renderRiwayatJadwal();
     }
     if (sectionId === 'sectionIntegrasiGoogle') {
         if (typeof loadAsesmenConfig === 'function') loadAsesmenConfig();
@@ -1240,7 +1329,7 @@ async function saveBerita() {
         showGlobalLoader('Mengupload gambar berita...');
         try {
             var file = fileInput.files[0];
-            payload.gambar_url = await uploadToImgBB(file);
+            payload.gambar_url = await uploadToGoogleDrive(file, 'berita');
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     }
 
@@ -1551,7 +1640,7 @@ async function saveEskul() {
         showGlobalLoader('Mengupload gambar eskul...');
         try {
             var file = fileInput.files[0];
-            payload.gambar_url = await uploadToImgBB(file);
+            payload.gambar_url = await uploadToGoogleDrive(file, 'eskul');
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     } else if (!id) {
         showToast('Gambar wajib diupload!', 'warning'); return;
@@ -1656,7 +1745,7 @@ async function saveSarpras() {
         showGlobalLoader('Mengupload gambar sarpras...');
         try {
             var file = fileInput.files[0];
-            payload.gambar_url = await uploadToImgBB(file);
+            payload.gambar_url = await uploadToGoogleDrive(file, 'sarpras');
         } catch(e) { hideGlobalLoader(); showToast('Gagal upload gambar: ' + e.message, 'error'); return; }
     } else if (!id) {
         showToast('Gambar wajib diupload!', 'warning'); return;
@@ -2644,10 +2733,10 @@ async function previewProfilGuruFoto(input) {
         };
         reader.readAsDataURL(file);
 
-        // Auto Upload Langsung ke ImgBB
+        // Auto Upload Langsung ke Google Drive
         if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto profil...');
         try {
-            var url = await uploadToImgBB(file);
+            var url = await uploadToGoogleDrive(file, 'guru');
             
             if (currentUser && currentUser.id) {
                 // Cari data guru
@@ -2701,7 +2790,7 @@ async function autoUploadGuruFotoAdmin(input) {
         // Upload
         if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto...');
         try {
-            var url = await uploadToImgBB(file);
+            var url = await uploadToGoogleDrive(file, 'guru');
             urlField.value = url;
             showToast('Foto berhasil diunggah!', 'success');
         } catch(e) {
@@ -3297,7 +3386,7 @@ async function saveSiswa() {
     if (siswaFotoFile) {
         if (typeof showGlobalLoader === 'function') showGlobalLoader('Mengunggah foto siswa...');
         try {
-            obj.foto = await uploadToImgBB(siswaFotoFile);
+            obj.foto = await uploadToGoogleDrive(siswaFotoFile, 'siswa');
         } catch(e) {
             if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
             showToast('Gagal upload foto: ' + e.message, 'error');
@@ -6876,7 +6965,7 @@ async function handleSoalImageUpload(idx, inputEl) {
     
     showGlobalLoader('Mengupload gambar soal...');
     try {
-        var publicUrl = await uploadToImgBB(file);
+        var publicUrl = await uploadToGoogleDrive(file, 'soal');
         
         collectSoalFromDOM();
         asesmenBuilderSoalList[idx].gambar_url = publicUrl;
@@ -8150,7 +8239,7 @@ async function handleUploadGaleri() {
         }
     }
 
-    showGlobalLoader('Mengunggah ' + files.length + ' Foto ke ImgBB... Mohon jangan tutup halaman!');
+    showGlobalLoader('Mengunggah ' + files.length + ' Foto ke Google Drive... Mohon jangan tutup halaman!');
     
     try {
         for (var i = 0; i < files.length; i++) {
@@ -8165,19 +8254,8 @@ async function handleUploadGaleri() {
                 }
             });
             
-            // Upload ke ImgBB
-            var formData = new FormData();
-            formData.append('image', compressedBlob, 'galeri_' + Date.now() + '.jpg');
-            
-            var imgbbRes = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
-                method: 'POST',
-                body: formData
-            });
-            var imgbbData = await imgbbRes.json();
-            
-            if (!imgbbData.success) throw new Error('Gagal upload gambar ke ImgBB');
-            
-            var publicUrl = imgbbData.data.url;
+            // Upload ke Google Drive
+            var publicUrl = await uploadToGoogleDrive(compressedBlob, 'galeri');
             
             // Insert to database
             var rowToInsert = {
@@ -8212,7 +8290,7 @@ async function deleteGaleri(id, url) {
     showCustomConfirm('Hapus Foto Permanen?', 'Foto akan dihapus permanen dari Database. Lanjutkan?', 'Ya, Hapus', async function() {
         showGlobalLoader('Menghapus foto...');
         try {
-            // Delete from database only (gambar di ImgBB tidak bisa dihapus via API)
+            // Delete from database only (gambar di Google Drive dikelola manual via folder)
             await supabaseClient.from('galeri').delete().eq('id', id);
             
             showToast('Foto berhasil dihapus!', 'success');
@@ -8421,7 +8499,7 @@ document.addEventListener('DOMContentLoaded', initTestimonial);
 // MODUL RUANG DISKUSI (FORUM) & AI CHAT
 // ==============================================================================
 
-// Konfigurasi ImgBB API Key dipindahkan ke atas
+// Upload gambar sekarang menggunakan Google Drive via Google Apps Script
 
 // Konfigurasi Google Apps Script URL untuk AI Chat (Gemini Proxy)
 const GAS_AI_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyJYNNxg_m89JVoJcnMHJRhyBnZsbpWxugeP8R0M_ahrbF7Iys1DWkhM_XsoyUUkCL_/exec";
@@ -8510,28 +8588,15 @@ async function submitForumPost() {
     try {
         let imageUrl = null;
 
-        // 1. Upload Gambar ke ImgBB jika ada
+        // 1. Upload Gambar ke Google Drive jika ada
         if (selectedForumImageFile) {
             // Kompres gambar terlebih dahulu (ditingkatkan resolusi dan kualitasnya)
             const compressedBlob = await new Promise((resolve) => {
                 compressImage(selectedForumImageFile, 1920, 1920, 0.85, resolve);
             });
 
-            // Siapkan FormData untuk ImgBB
-            const formData = new FormData();
-            formData.append('image', compressedBlob, 'forum_image.jpg');
-
-            const imgbbRes = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_API_KEY, {
-                method: 'POST',
-                body: formData
-            });
-            const imgbbData = await imgbbRes.json();
-            
-            if (imgbbData.success) {
-                imageUrl = imgbbData.data.url;
-            } else {
-                throw new Error("Gagal mengunggah gambar ke ImgBB.");
-            }
+            // Upload ke Google Drive
+            imageUrl = await uploadToGoogleDrive(compressedBlob, 'forum');
         }
 
         // 2. Simpan Data ke Supabase
@@ -11487,7 +11552,19 @@ function buildKartuHTML(siswa) {
 var jadwalUjianDays = [];
 
 function tambahJadwalHari() {
-    jadwalUjianDays.push({ hari: '', hariRaw: '', sesi: [{ waktu: '', mapel: '', pengawas: '' }] });
+    var newSesi = [{ waktu: '', mapel: '', pengawas: '' }];
+    
+    // Jika sudah ada hari sebelumnya, copy waktu sesi-nya
+    if (jadwalUjianDays.length > 0) {
+        var prevDay = jadwalUjianDays[jadwalUjianDays.length - 1];
+        if (prevDay.sesi && prevDay.sesi.length > 0) {
+            newSesi = prevDay.sesi.map(function(s) {
+                return { waktu: s.waktu || '', mapel: '', pengawas: '' };
+            });
+        }
+    }
+    
+    jadwalUjianDays.push({ hari: '', hariRaw: '', sesi: newSesi });
     renderJadwalForm();
 }
 
@@ -11533,6 +11610,122 @@ function hapusSemuaJadwal() {
     showToast('Jadwal ujian dikosongkan.', 'info');
 }
 
+// =========================================================================
+// SIMPAN / MUAT RIWAYAT JADWAL ASESMEN (localStorage)
+// =========================================================================
+var JADWAL_STORAGE_KEY = 'riwayatJadwalAsesmen';
+
+function _getRiwayatJadwal() {
+    try {
+        var data = localStorage.getItem(JADWAL_STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch(e) { return []; }
+}
+
+function _saveRiwayatJadwal(list) {
+    localStorage.setItem(JADWAL_STORAGE_KEY, JSON.stringify(list));
+}
+
+function simpanJadwalAsesmen() {
+    if (jadwalUjianDays.length === 0) {
+        showToast('Belum ada jadwal untuk disimpan. Tambah hari ujian terlebih dahulu.', 'warning');
+        return;
+    }
+    
+    showCustomPrompt(
+        'Simpan Jadwal Asesmen',
+        'Masukkan nama untuk jadwal ini agar mudah ditemukan di riwayat.',
+        'Contoh: STS Genap 2026, SAS Ganjil 2026',
+        '',
+        function(namaJadwal) {
+            var riwayat = _getRiwayatJadwal();
+            riwayat.push({
+                id: Date.now().toString(),
+                nama: namaJadwal,
+                tanggalSimpan: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+                jumlahHari: jadwalUjianDays.length,
+                data: JSON.parse(JSON.stringify(jadwalUjianDays))
+            });
+            _saveRiwayatJadwal(riwayat);
+            renderRiwayatJadwal();
+            showToast('Jadwal "' + namaJadwal + '" berhasil disimpan!', 'success');
+        }
+    );
+}
+
+function muatJadwalAsesmen(id) {
+    var riwayat = _getRiwayatJadwal();
+    var item = riwayat.find(function(r) { return r.id === id; });
+    if (!item) { showToast('Jadwal tidak ditemukan.', 'error'); return; }
+    
+    jadwalUjianDays = JSON.parse(JSON.stringify(item.data)); // deep copy
+    renderJadwalForm();
+    showToast('Jadwal "' + item.nama + '" berhasil dimuat!', 'success');
+    
+    // Scroll ke form jadwal
+    var container = document.getElementById('jadwalContainer');
+    if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function editNamaJadwal(id) {
+    var riwayat = _getRiwayatJadwal();
+    var item = riwayat.find(function(r) { return r.id === id; });
+    if (!item) return;
+    
+    showCustomPrompt(
+        'Ubah Nama Jadwal',
+        'Masukkan nama baru untuk jadwal ini.',
+        'Nama jadwal baru',
+        item.nama,
+        function(namaBaru) {
+            item.nama = namaBaru;
+            _saveRiwayatJadwal(riwayat);
+            renderRiwayatJadwal();
+            showToast('Nama jadwal berhasil diubah.', 'success');
+        }
+    );
+}
+
+function hapusJadwalAsesmen(id) {
+    if (!confirm('Hapus jadwal ini dari riwayat?')) return;
+    
+    var riwayat = _getRiwayatJadwal();
+    riwayat = riwayat.filter(function(r) { return r.id !== id; });
+    _saveRiwayatJadwal(riwayat);
+    renderRiwayatJadwal();
+    showToast('Jadwal berhasil dihapus dari riwayat.', 'success');
+}
+
+function renderRiwayatJadwal() {
+    var tbody = document.getElementById('riwayatJadwalTbody');
+    if (!tbody) return;
+    
+    var riwayat = _getRiwayatJadwal();
+    
+    if (riwayat.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-light)">Belum ada jadwal tersimpan.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = riwayat.map(function(r, i) {
+        return '<tr>' +
+            '<td style="text-align:center;">' + (i + 1) + '</td>' +
+            '<td style="font-weight:600;">' + r.nama + '</td>' +
+            '<td style="text-align:center;">' + r.jumlahHari + ' hari</td>' +
+            '<td>' + r.tanggalSimpan + '</td>' +
+            '<td style="text-align:center; white-space:nowrap;">' +
+                '<div style="display:inline-flex;gap:4px;align-items:center;">' +
+                    '<button class="btn btn-primary" onclick="muatJadwalAsesmen(\'' + r.id + '\')" style="padding:0.3rem 0.6rem;font-size:0.78rem;white-space:nowrap;" title="Muat jadwal ini"><i data-lucide="upload" style="width:12px;height:12px;"></i> Gunakan</button>' +
+                    '<button class="btn btn-outline" onclick="editNamaJadwal(\'' + r.id + '\')" style="padding:0.3rem 0.45rem;font-size:0.78rem;" title="Edit nama"><i data-lucide="pencil" style="width:12px;height:12px;"></i></button>' +
+                    '<button class="btn btn-outline" onclick="hapusJadwalAsesmen(\'' + r.id + '\')" style="padding:0.3rem 0.45rem;font-size:0.78rem;color:#ef4444;border-color:#ef4444;" title="Hapus"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>' +
+                '</div>' +
+            '</td>' +
+        '</tr>';
+    }).join('');
+    
+    if (window.lucide) lucide.createIcons();
+}
+
 function renderJadwalForm() {
     var container = document.getElementById('jadwalContainer');
     if (!container) return;
@@ -11560,24 +11753,46 @@ function renderJadwalForm() {
             <div style="padding-left:1rem; border-left:2px solid #e2e8f0;">
                 <table style="width:100%; border-collapse:collapse; margin-bottom:0.5rem;">
                     <thead>
-                        <tr style="font-size:0.8rem; color:#64748b;">
-                            <th style="text-align:left; padding-bottom:4px; width:120px;">Waktu</th>
-                            <th style="text-align:left; padding-bottom:4px;">Mata Pelajaran (Isi "ISTIRAHAT" jika perlu)</th>
-                            <th style="text-align:left; padding-bottom:4px;">Pengawas</th>
-                            <th style="text-align:center; padding-bottom:4px; width:40px;">Hapus</th>
+                        <tr style="font-size:0.85rem; color:#64748b;">
+                            <th style="text-align:left; padding-bottom:6px; width:130px;">Waktu</th>
+                            <th style="text-align:left; padding-bottom:6px;">Mata Pelajaran</th>
+                            <th style="text-align:left; padding-bottom:6px;">Pengawas</th>
+                            <th style="text-align:center; padding-bottom:6px; width:40px;">Hapus</th>
                         </tr>
                     </thead>
                     <tbody>`;
         
+        // Bangun opsi dropdown Mata Pelajaran dari master data
+        var mapelOptions = '<option value="">-- Pilih Mapel --</option>';
+        mapelOptions += '<option value="ISTIRAHAT"' + ('ISTIRAHAT' === '___' ? '' : '') + '>☕ ISTIRAHAT</option>';
+        if (typeof masterMapelList !== 'undefined' && masterMapelList.length > 0) {
+            masterMapelList.forEach(function(m) {
+                mapelOptions += '<option value="' + m.nama_mapel + '">' + m.nama_mapel + '</option>';
+            });
+        }
+
+        // Bangun opsi dropdown Pengawas dari data guru
+        var pengawasOptions = '<option value="">-- Pilih Pengawas --</option>';
+        if (typeof guruList !== 'undefined' && guruList.length > 0) {
+            guruList.filter(function(g) { return g.status === 'Aktif'; }).forEach(function(g) {
+                pengawasOptions += '<option value="' + g.nama_lengkap + '">' + g.nama_lengkap + '</option>';
+            });
+        }
+
         day.sesi.forEach(function(s, sIdx) {
+            // Set selected option untuk mapel
+            var mapelOpts = mapelOptions.replace('value="' + s.mapel + '"', 'value="' + s.mapel + '" selected');
+            // Set selected option untuk pengawas
+            var pengawasOpts = pengawasOptions.replace('value="' + s.pengawas + '"', 'value="' + s.pengawas + '" selected');
+
             html += `
                         <tr>
-                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.waktu}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'waktu', this.value)" placeholder="07:30-09:30" /></td>
-                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.mapel}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'mapel', this.value)" placeholder="Nama Mapel / Istirahat" /></td>
-                            <td style="padding-right:4px; padding-bottom:4px;"><input type="text" class="form-input" style="height:32px; font-size:0.8rem;" value="${s.pengawas}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'pengawas', this.value)" placeholder="Kosongkan jika istirahat" /></td>
-                            <td style="padding-bottom:4px; text-align:center;">
-                                <button class="btn-icon btn-icon-red" onclick="hapusJadwalSesi(${dIdx}, ${sIdx})" style="width:24px;height:24px;padding:0;">
-                                    <i data-lucide="x" style="width:12px;height:12px;"></i>
+                            <td style="padding-right:6px; padding-bottom:6px; width:130px;"><input type="text" class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" value="${s.waktu}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'waktu', this.value)" placeholder="07:30-09:30" /></td>
+                            <td style="padding-right:6px; padding-bottom:6px;"><select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'mapel', this.value)">${mapelOpts}</select></td>
+                            <td style="padding-right:6px; padding-bottom:6px;"><select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'pengawas', this.value)">${pengawasOpts}</select></td>
+                            <td style="padding-bottom:6px; text-align:center;">
+                                <button class="btn-icon btn-icon-red" onclick="hapusJadwalSesi(${dIdx}, ${sIdx})" style="width:28px;height:28px;padding:0;">
+                                    <i data-lucide="x" style="width:14px;height:14px;"></i>
                                 </button>
                             </td>
                         </tr>
@@ -11630,12 +11845,12 @@ function buildJadwalHTML(siswa) {
                 
                 // Jika mapel mengandung kata ISTIRAHAT, gabungkan kolom
                 if (mapelText.toUpperCase().includes('ISTIRAHAT')) {
-                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center;">' + waktuText + '</td>';
-                    tableRows += '<td colspan="2" style="border: 1px solid #1e293b; padding: 1px; text-align:center; font-style:italic; font-weight:bold; background:#f1f5f9;">' + mapelText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center; overflow:hidden;">' + waktuText + '</td>';
+                    tableRows += '<td colspan="2" style="border: 1px solid #1e293b; padding: 1px; text-align:center; font-style:italic; font-weight:bold; background:#f1f5f9; overflow:hidden;">' + mapelText + '</td>';
                 } else {
-                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center;">' + waktuText + '</td>';
-                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px;">' + mapelText + '</td>';
-                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px;">' + pengawasText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center; overflow:hidden;">' + waktuText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + mapelText + '</td>';
+                    tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + pengawasText + '</td>';
                 }
                 
                 tableRows += '</tr>';
@@ -11645,17 +11860,17 @@ function buildJadwalHTML(siswa) {
     }
 
     return `
-        <div class="kartu-ujian" style="display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding: 10px;">
+        <div class="kartu-ujian" style="display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding: 8px 10px;">
             <div class="kartu-jadwal" style="width: 100%;">
-                <div class="jadwal-title" style="margin-top:0; margin-bottom:6px; font-size:10px; text-align:center; font-weight:800; color:var(--primary-dark);">JADWAL ${judul}</div>
-            <table class="jadwal-table" style="width: 100%; border-collapse: collapse; font-size: 6.5px; line-height: 1.1;">
+                <div class="jadwal-title" style="margin-top:0; margin-bottom:4px; font-size:9px; text-align:center; font-weight:800; color:var(--primary-dark);">JADWAL ${judul}</div>
+            <table class="jadwal-table" style="width: 100%; border-collapse: collapse; font-size: 6px; line-height: 1.05; table-layout: fixed;">
                 <thead>
                     <tr>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:15px; text-align:center;">No</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:70px;">Hari/Tanggal</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:55px; text-align:center;">Waktu</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Mata Pelajaran</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:55px; text-align:center;">Pengawas</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:12px; text-align:center;">No</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:58px;">Hari/Tanggal</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:44px; text-align:center;">Waktu</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:68px; text-align:center;">Mata Pelajaran</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Pengawas</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -11711,10 +11926,29 @@ function cetakSemuaJadwal() {
     }
     
     // Cetak semua kartu belakang
-    var htmlBelakang = '';
+    // PENTING: Urutan kartu di-mirror per baris (tukar kolom 1 ↔ 2)
+    // agar presisi saat kertas dibalik untuk cetak bolak-balik manual.
+    // Depan: [1][2] → Belakang (kertas dibalik): [2][1]
+    //        [3][4]                                [4][3]
+    
+    var jadwalCards = [];
     dataSiswaCetak.forEach(siswa => {
-        htmlBelakang += buildJadwalHTML(siswa);
+        jadwalCards.push(buildJadwalHTML(siswa));
     });
+    
+    // Tukar setiap pasangan (per baris 2 kolom)
+    var htmlBelakang = '';
+    for (var i = 0; i < jadwalCards.length; i += 2) {
+        if (i + 1 < jadwalCards.length) {
+            // Tukar: kartu kanan dulu, baru kiri
+            htmlBelakang += jadwalCards[i + 1];
+            htmlBelakang += jadwalCards[i];
+        } else {
+            // Kartu ganjil (terakhir sendirian) — taruh di kolom kanan
+            htmlBelakang += '<div class="kartu-ujian" style="visibility:hidden;"></div>';
+            htmlBelakang += jadwalCards[i];
+        }
+    }
     
     preparePrint(htmlBelakang);
 }
@@ -12400,7 +12634,7 @@ async function uploadHeroImage(file, heroId, mode) {
     if (!file) return;
     showGlobalLoader('Mengupload gambar ' + mode + '...');
     try {
-        var publicUrl = await uploadToImgBB(file);
+        var publicUrl = await uploadToGoogleDrive(file, 'hero');
 
         var updatePayload = {};
         if (mode === 'desktop') updatePayload.gambar_desktop = publicUrl;
