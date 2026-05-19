@@ -5099,6 +5099,25 @@ body.dark-mode .toast-info {
   animation: sectionFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
+/* 5. Universal Tabs Responsive */
+@media (max-width: 600px) {
+  .universal-tabs {
+    flex-direction: column !important;
+  }
+  .universal-tabs button {
+    width: 100% !important;
+    flex: unset !important;
+    text-align: center;
+  }
+  .arsip-filters {
+    flex-direction: column !important;
+  }
+  .arsip-filters select, .arsip-filters input {
+    width: 100% !important;
+    flex: unset !important;
+  }
+}
+
 /* ============================================
    PRINT STYLES (F4 - 210mm x 330mm)
    ============================================ */
