@@ -5221,3 +5221,62 @@ body.dark-mode .toast-info {
     text-align: center;
   }
 }
+
+/* =========================================================
+   RESPONSIVE LAYOUT — PENILAIAN & ASESMEN (MOBILE)
+   ========================================================= */
+
+.flex-responsive-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.modal-footer-responsive {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  /* Filter form pada penilaian & asesmen: stack vertikal */
+  .form-row-spmb {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+  }
+  .form-row-spmb .form-group {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+  .form-row-spmb .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Header + tombol aksi: stack vertikal */
+  .flex-responsive-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .flex-responsive-header h3 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+  .modal-footer-responsive {
+    flex-direction: column;
+    width: 100%;
+  }
+  .modal-footer-responsive .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Tabel penilaian: input lebih kecil di mobile */
+  #tableInputPenilaian .form-input {
+    width: 55px !important;
+    font-size: 0.8rem;
+    padding: 3px 4px !important;
+  }
+}

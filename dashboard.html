@@ -144,6 +144,10 @@
           <i data-lucide="archive" style="width:18px;height:18px"></i>
           <span>Arsip Asesmen</span>
         </a>
+        <a href="#" class="sidebar-link role-akademik" onclick="showSection('sectionHasilAsesmen',this)">
+          <i data-lucide="bar-chart-2" style="width:18px;height:18px"></i>
+          <span>Hasil & Analisis Asesmen</span>
+        </a>
         <a href="#" class="sidebar-link role-akademik" onclick="showSection('sectionSampahAsesmen',this)">
           <i data-lucide="trash-2" style="width:18px;height:18px"></i>
           <span>Sampah Asesmen</span>
@@ -161,6 +165,10 @@
             <i data-lucide="edit-3"></i>
             <span>Input Penilaian (STS/SAS/SAJ/SAT)</span>
           </a>
+        <a href="#" class="sidebar-link role-siswa-only" onclick="showSection('sectionHasilUjianSaya', this)">
+          <i data-lucide="clipboard-check" style="width:18px;height:18px"></i>
+          <span>Hasil Ujian Saya</span>
+        </a>
       </div>
 
       <div class="sidebar-nav-group admin-kurikulum-only">
@@ -1339,12 +1347,55 @@
         </div>
         <div style="overflow-x:auto;">
           <table class="dash-table" id="tableInputPenilaian">
-            <thead><tr><th style="width:40px;">No</th><th>Nama Siswa</th><th>Kelas</th><th style="width:90px;text-align:center;">KKM</th><th style="width:90px;text-align:center;">Nilai STS</th><th style="width:90px;text-align:center;">Nilai SAS</th><th style="width:90px;text-align:center;">Nilai SAJ</th><th style="width:90px;text-align:center;">Nilai SAT</th><th style="width:80px;text-align:center;">Rata-Rata</th><th style="width:100px;text-align:center;">Keterangan</th><th style="width:70px;text-align:center;">Riwayat</th></tr></thead>
+            <thead><tr id="penilaianTableHeader"></tr></thead>
             <tbody id="penilaianTableBody"><tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Silakan pilih Kelas terlebih dahulu lalu klik Tampilkan Siswa.</td></tr></tbody>
           </table>
         </div>
       </div>
     </section>
+
+    <!-- ======================= SECTION: HASIL UJIAN SAYA (SISWA) ======================= -->
+    <section id="sectionHasilUjianSaya" class="dash-section">
+      <div class="dash-header">
+        <h2>📊 Hasil Ujian Saya</h2>
+        <p class="dash-subtitle">Lihat hasil ujian yang sudah dipublikasikan oleh guru.</p>
+      </div>
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="form-row-spmb" style="align-items:flex-end;">
+          <div class="form-group" style="margin-bottom:0;"><label class="form-label">Semester</label><select id="filterHasilUjianSemester" class="form-input" onchange="loadHasilUjianSaya()"><option value="">Semua Semester</option><option value="Ganjil">Ganjil</option><option value="Genap">Genap</option></select></div>
+        </div>
+      </div>
+      <div id="hasilUjianSayaContainer">
+        <div class="card" style="text-align:center;padding:3rem;color:var(--text-light);">
+          <i data-lucide="loader" class="icon-spin" style="width:32px;height:32px;margin:0 auto 1rem;display:block;"></i>
+          <p>Memuat hasil ujian...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODAL: HUBUNGKAN AKUN SISWA -->
+    <div class="modal-overlay" id="linkSiswaModal">
+      <div class="modal" style="max-width:500px;position:relative;">
+        <button class="modal-close" onclick="document.getElementById('linkSiswaModal').classList.remove('active')"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+        <div class="modal-header"><h3>🔗 Hubungkan Akun ke Data Siswa</h3></div>
+        <div class="modal-body">
+          <p style="margin-bottom:1rem;color:var(--text-light);font-size:0.9rem;">Pilih nama siswa dari Data Induk yang sesuai dengan akun ini:</p>
+          <div class="form-group">
+            <label class="form-label">Akun Email</label>
+            <input type="text" id="linkSiswaEmail" class="form-input" readonly style="background:var(--bg-lighter);" />
+          </div>
+          <div class="form-group" id="linkSiswaSearchGroup">
+            <label class="form-label">Cari Nama Siswa</label>
+            <input type="text" id="linkSiswaSearch" class="form-input" placeholder="Ketik nama siswa..." oninput="filterLinkSiswaList(this.value)" />
+          </div>
+          <div id="linkSiswaResults" style="max-height:250px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;"></div>
+          <input type="hidden" id="linkSiswaUserId" />
+        </div>
+        <div class="modal-footer" style="text-align:right;">
+          <button class="btn btn-outline" onclick="document.getElementById('linkSiswaModal').classList.remove('active')">Batal</button>
+        </div>
+      </div>
+    </div>
 
     <!-- SECTION LAPORAN NILAI SISWA -->
     <section id="sectionLaporanNilai" class="dash-section">
@@ -2827,6 +2878,91 @@
             <tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada arsip asesmen.</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: HASIL & ANALISIS ASESMEN ========== -->
+    <section id="sectionHasilAsesmen" class="dash-section">
+      <div class="dash-section-header">
+        <h2>Hasil & Analisis Asesmen (Google Form)</h2>
+        <p>Tarik hasil koreksi otomatis dari Spreadsheet Google Form untuk melihat analisis detail dan sinkronisasi ke buku nilai Rapor Resmi.</p>
+      </div>
+
+      <!-- Filter Panel -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="form-row-spmb" style="align-items:flex-end;">
+          <div class="form-group" style="margin-bottom:0;flex:1;min-width:250px;">
+            <label class="form-label">Link Spreadsheet Hasil Koreksi</label>
+            <input type="text" id="hasilAsesmenLink" class="form-input" placeholder="Paste URL Spreadsheet di sini (Pastikan setting 'Siapa saja yang memiliki link')">
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Tahun Aktif</label>
+            <input type="text" id="hasilAsesmenTahun" class="form-input" readonly style="background:var(--bg-lighter);" />
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Semester</label>
+            <select id="hasilAsesmenSemester" class="form-input" onchange="updateHasilAsesmenTipe()">
+              <option value="Ganjil">Ganjil</option>
+              <option value="Genap">Genap</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Kelas</label>
+            <select id="hasilAsesmenKelas" class="form-input" onchange="updateHasilAsesmenTipe()">
+              <option value="">Memuat...</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Mapel</label>
+            <select id="hasilAsesmenMapel" class="form-input">
+              <option value="">Memuat...</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="loadDataHasilAsesmen()" id="btnTarikHasilAsesmen" style="height:42px;">
+            <i data-lucide="download" style="width:16px;height:16px;"></i> Tarik Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Panel -->
+      <div id="hasilAsesmenPanel" class="card" style="display:none; position:relative;">
+        <div class="flex-responsive-header" style="margin-bottom:1rem;">
+          <div>
+            <h3 style="margin-bottom:0.25rem;">Pratinjau Hasil Asesmen</h3>
+            <span style="font-size:0.85rem;color:var(--text-light);" id="hasilAsesmenStats">Mencocokkan data...</span>
+          </div>
+          <div class="modal-footer-responsive">
+            <select id="hasilAsesmenTipe" class="form-input" style="padding:0.4rem 0.8rem; height:auto; font-size:0.85rem; min-width:100px;">
+              <!-- Options akan diisi oleh fungsi updateHasilAsesmenTipe() -->
+            </select>
+            <button class="btn btn-success" onclick="sinkronisasiKeNilaiResmi()" id="btnSinkronHasil">
+              <i data-lucide="upload-cloud" style="width:16px;height:16px;"></i> Simpan ke Nilai Rapor
+            </button>
+            <button class="btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border:none;" onclick="publikasikanHasilKeSiswa()" id="btnPublikasikanSiswa">
+              <i data-lucide="megaphone" style="width:16px;height:16px;"></i> Publikasikan ke Siswa
+            </button>
+          </div>
+        </div>
+
+        <div class="dash-table-container">
+          <table class="dash-table" style="font-size:0.85rem;">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th>Siswa (Database)</th>
+                <th>Siswa (Google Form)</th>
+                <th style="text-align:center;">Benar PG</th>
+                <th style="text-align:center;">Total Poin PG</th>
+                <th style="text-align:center;">Poin Essay</th>
+                <th style="text-align:center;">Nilai Akhir Keseluruhan</th>
+                <th style="width:100px;text-align:center;">Status Cocok</th>
+              </tr>
+            </thead>
+            <tbody id="hasilAsesmenTbody">
+              <tr><td colspan="8" style="text-align:center;padding:2rem;">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 

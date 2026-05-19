@@ -969,6 +969,12 @@ function applyRoleVisibility() {
         el.style.display = isNonSiswa ? '' : 'none';
     });
 
+    // Siswa Only (Hasil Ujian Saya)
+    var isSiswaOnly = (role === 'siswa');
+    document.querySelectorAll('.role-siswa-only').forEach(function (el) {
+        el.style.display = isSiswaOnly ? '' : 'none';
+    });
+
     // Manajemen Keuangan (Bendahara, Admin, Kurikulum)
     var isBendahara = ['bendahara', 'admin', 'kurikulum'].includes(role);
     document.querySelectorAll('.role-bendahara').forEach(function (el) {
@@ -1056,6 +1062,22 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionBuatSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadAsesmenList(); }
     if (sectionId === 'sectionArsipAsesmen') { loadArsipAsesmen(); }
     if (sectionId === 'sectionSampahAsesmen') { loadSampahAsesmen(); }
+    if (sectionId === 'sectionHasilAsesmen') {
+        (async function() {
+            await loadActiveYear();
+            await loadMasterKelas();
+            await loadMasterMapel();
+            var lbl = document.getElementById('lblActiveYear');
+            if (lbl && document.getElementById('hasilAsesmenTahun')) {
+                document.getElementById('hasilAsesmenTahun').value = lbl.textContent;
+            }
+            populateKelasDropdown('hasilAsesmenKelas', '');
+            populateMapelIdDropdown('hasilAsesmenMapel', '');
+            document.getElementById('hasilAsesmenLink').value = '';
+            document.getElementById('hasilAsesmenPanel').style.display = 'none';
+            updateHasilAsesmenTipe();
+        })();
+    }
     if (sectionId === 'sectionJurnalMengajar') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadJurnalMengajar(); }
     if (sectionId === 'sectionLaporanJurnal') { loadLaporanJurnal(); }
     if (sectionId === 'sectionPenilaian') { 
@@ -1063,6 +1085,7 @@ window.showSection = function (sectionId, linkEl) {
             await loadActiveYear();
             await loadMasterKelas();
             await loadMasterMapel();
+            await loadMasterKkm();
             var lbl = document.getElementById('lblActiveYear');
             if (lbl && document.getElementById('filterPenilaianTahun')) {
                 document.getElementById('filterPenilaianTahun').value = lbl.textContent;
@@ -1071,6 +1094,7 @@ window.showSection = function (sectionId, linkEl) {
             populateMapelIdDropdown('filterPenilaianMapel', '');
         })();
     }
+    if (sectionId === 'sectionHasilUjianSaya') { loadHasilUjianSaya(); }
     if (sectionId === 'sectionKritikSaranMasuk') { loadKritikSaran(); }
     if (sectionId === 'sectionMutasiSiswa') { loadMasterKelas(); loadMutasiData(); }
     if (sectionId === 'sectionAgendaDinas') { loadRapatData(); loadPerjadinData(); }
@@ -2117,6 +2141,7 @@ async function renderActiveAccounts() {
                 '<td><div style="display:flex;gap:.4rem;flex-wrap:wrap">' +
                 (isMe ? '<span style="font-size:.8rem;color:var(--text-light)">—</span>' :
                     '<button class="btn-icon btn-icon-blue" onclick="changeUserRole(\'' + u.id + '\',\'' + (u.full_name || '').replace(/'/g, "\\'") + '\')" title="Simpan Role"><i data-lucide="save" style="width:14px;height:14px"></i></button>' +
+                    (u.role === 'siswa' ? '<button class="btn-icon" style="background:rgba(139,92,246,.12);color:#7c3aed;" onclick="openLinkSiswaModal(\'' + u.id + '\',\'' + (u.email || '').replace(/'/g, "\\'") + '\')" title="Hubungkan ke Data Siswa"><i data-lucide="link" style="width:14px;height:14px"></i></button>' : '') +
                     '<button class="btn-icon btn-icon-amber" onclick="deactivateUser(\'' + u.id + '\',\'' + (u.full_name || '').replace(/'/g, "\\'") + '\')" title="Nonaktifkan"><i data-lucide="user-x" style="width:14px;height:14px"></i></button>') +
                 '</div></td></tr>';
         }).join('');
@@ -5229,9 +5254,39 @@ async function loadPenilaianTable() {
             nilaiData.forEach(function(n) { nilaiDict[n.siswa_id] = n; });
         }
         
+        var nilaiGanjilDict = {};
+        if (filterSemester === 'Genap') {
+            const { data: nilaiGanjil, error: errGanjil } = await supabaseClient.from('nilai_akademik')
+                .select('*')
+                .eq('tahun_pelajaran', filterTahun)
+                .eq('semester', 'Ganjil')
+                .eq('kelas_id', filterKelas)
+                .eq('mapel_id', filterMapel);
+            if (!errGanjil && nilaiGanjil) {
+                nilaiGanjil.forEach(function(n) { nilaiGanjilDict[n.siswa_id] = n; });
+            }
+        }
+        
         // 4. Render Tabel
         var kkmBadge = kkm > 0 ? kkm : '<span style="color:var(--danger)">Belum diatur</span>';
         var kelasNama = kelasObj ? kelasObj.nama_kelas : '-';
+        var isKelas9 = kelasObj && kelasObj.tingkat === 9;
+        
+        var thead = '<th style="width:40px;">No</th><th>Nama Siswa</th><th style="width:80px;text-align:center;">KKM</th>';
+        if (filterSemester === 'Ganjil') {
+            thead += '<th style="width:100px;text-align:center;">STS Ganjil</th>' +
+                     '<th style="width:100px;text-align:center;">SAS</th>' +
+                     '<th style="width:100px;text-align:center;">Rata-Rata Smt 1</th>';
+        } else {
+            thead += '<th style="width:100px;text-align:center;">STS Genap</th>' +
+                     '<th style="width:100px;text-align:center;">' + (isKelas9 ? 'SAJ' : 'SAT') + '</th>' +
+                     '<th style="width:100px;text-align:center;">Rata Smt 2</th>' +
+                     '<th style="width:100px;text-align:center;">📋 Rata Smt 1</th>' +
+                     '<th style="width:100px;text-align:center;">⭐ Rata Akhir</th>';
+        }
+        thead += '<th style="width:100px;text-align:center;">Status</th><th style="width:60px;text-align:center;">Riwayat</th>';
+        
+        document.getElementById('penilaianTableHeader').innerHTML = thead;
         
         tbody.innerHTML = siswaData.map(function(s, i) {
             var nsts = nilaiDict[s.id] && nilaiDict[s.id].nilai_sts !== null ? nilaiDict[s.id].nilai_sts : '';
@@ -5242,18 +5297,43 @@ async function loadPenilaianTable() {
             var statusBadge = s.status === 'Tidak Aktif' ? '<span style="color:var(--danger);font-size:0.7rem;margin-left:6px;background:rgba(239,68,68,.1);padding:2px 4px;border-radius:4px;">Tidak Aktif</span>' : '';
             var trStyle = s.status === 'Tidak Aktif' ? 'background-color: rgba(239,68,68,0.06);' : '';
             
+            var cols = '';
+            var inputSts = '<input type="number" class="form-input val-sts" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsts + '" min="0" max="100" placeholder="-" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" />';
+            var inputSas = '<input type="number" class="form-input val-sas" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsas + '" min="0" max="100" placeholder="-" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" />';
+            var inputSaj = '<input type="number" class="form-input val-saj" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsaj + '" min="0" max="100" placeholder="-" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" />';
+            var inputSat = '<input type="number" class="form-input val-sat" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsat + '" min="0" max="100" placeholder="-" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" />';
+            
+            if (filterSemester === 'Ganjil') {
+                cols += '<td style="text-align:center;">' + inputSts + '</td>' +
+                        '<td style="text-align:center;">' + inputSas + '</td>' +
+                        '<td style="display:none;"><input type="hidden" class="val-saj" value=""><input type="hidden" class="val-sat" value=""></td>' +
+                        '<td class="td-rata" style="text-align:center;font-weight:bold;font-size:0.95rem;">-</td>';
+            } else {
+                var rataSmt1 = '-';
+                if (nilaiGanjilDict[s.id]) {
+                    var n1 = nilaiGanjilDict[s.id].nilai_sts;
+                    var n2 = nilaiGanjilDict[s.id].nilai_sas;
+                    var p1 = 0; var t1 = 0;
+                    if (n1 !== null) { t1 += n1; p1++; }
+                    if (n2 !== null) { t1 += n2; p1++; }
+                    if (p1 > 0) rataSmt1 = Math.round(t1 / p1);
+                }
+                
+                cols += '<td style="text-align:center;">' + inputSts + '</td>' +
+                        '<td style="text-align:center;">' + (isKelas9 ? inputSaj : inputSat) + '</td>' +
+                        '<td style="display:none;"><input type="hidden" class="val-sas" value="">' + (isKelas9 ? '<input type="hidden" class="val-sat" value="">' : '<input type="hidden" class="val-saj" value="">') + '</td>' +
+                        '<td class="td-rata" style="text-align:center;font-weight:bold;font-size:0.95rem;">-</td>' +
+                        '<td style="text-align:center;background:#f8fafc;font-weight:600;color:var(--text-light);"><span class="val-rata-smt1" data-val="' + rataSmt1 + '">' + rataSmt1 + '</span></td>' +
+                        '<td class="td-rata-akhir" style="text-align:center;font-weight:bold;font-size:1.05rem;background:#eff6ff;color:#1e3a8a;">-</td>';
+            }
+            
             return '<tr class="tr-penilaian" data-siswa="' + s.id + '" style="' + trStyle + '">' +
                 '<td style="text-align:center;">' + (i+1) + '</td>' +
-                '<td style="font-weight:600;">' + s.nama_lengkap + statusBadge + '</td>' +
-                '<td style="color:var(--text-light);font-size:0.85rem;">' + kelasNama + '</td>' +
+                '<td style="font-weight:600;min-width:140px;">' + s.nama_lengkap + statusBadge + '<br><span style="color:var(--text-light);font-size:0.75rem;">' + kelasNama + '</span></td>' +
                 '<td style="text-align:center;font-weight:bold;">' + kkmBadge + '</td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-sts" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsts + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-sas" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsas + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-saj" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsaj + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
-                '<td style="text-align:center;"><input type="number" class="form-input val-sat" style="padding:4px 8px;text-align:center;width:70px;margin:0 auto;" value="' + nsat + '" min="0" max="100" placeholder="0" onkeyup="calcRowStatus(this)" onchange="calcRowStatus(this)" /></td>' +
-                '<td class="td-rata" style="text-align:center;font-weight:bold;font-size:0.9rem;">-</td>' +
+                cols +
                 '<td class="td-ket" style="text-align:center;font-size:0.8rem;">-</td>' +
-                '<td style="text-align:center;"><button class="btn btn-sm btn-outline" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'" ) + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:14px;height:14px"></i></button></td>' +
+                '<td style="text-align:center;"><button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'var(--primary)\'; this.style.background=\'rgba(30,58,138,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'" ) + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:16px;height:16px"></i></button></td>' +
                 '</tr>';
         }).join('');
         
@@ -5263,20 +5343,26 @@ async function loadPenilaianTable() {
         btnSimpan.style.display = 'inline-flex';
         document.getElementById('btnResetNilaiSemua').style.display = 'inline-flex';
         
+        if (window.lucide) lucide.createIcons();
+        
     } catch(e) { tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--danger)">Terjadi Kesalahan: ' + e.message + '</td></tr>'; }
 }
 
 function calcRowStatus(el) {
     var tr = el.closest('tr');
     var inputSts = tr.querySelector('.val-sts').value;
-    var inputSas = tr.querySelector('.val-sas').value;
-    var inputSaj = tr.querySelector('.val-saj').value;
-    var inputSat = tr.querySelector('.val-sat').value;
+    var inputSas = tr.querySelector('.val-sas') ? tr.querySelector('.val-sas').value : '';
+    var inputSaj = tr.querySelector('.val-saj') ? tr.querySelector('.val-saj').value : '';
+    var inputSat = tr.querySelector('.val-sat') ? tr.querySelector('.val-sat').value : '';
     var tdRata = tr.querySelector('.td-rata');
     var tdKet = tr.querySelector('.td-ket');
     
+    var tdRataSmt1 = tr.querySelector('.val-rata-smt1');
+    var tdRataAkhir = tr.querySelector('.td-rata-akhir');
+    
     if (inputSts === '' && inputSas === '' && inputSaj === '' && inputSat === '') {
         tdRata.innerHTML = '<span style="color:var(--text-light)">-</span>';
+        if (tdRataAkhir) tdRataAkhir.innerHTML = '<span style="color:var(--text-light)">-</span>';
         tdKet.innerHTML = '<span style="color:var(--text-light)">-</span>';
         return;
     }
@@ -5290,12 +5376,23 @@ function calcRowStatus(el) {
     var avg = pembagi > 0 ? Math.round(total / pembagi) : 0;
     tdRata.innerHTML = '<span style="font-size:1rem;">' + avg + '</span>';
     
+    var finalAvg = avg;
+    if (tdRataAkhir && tdRataSmt1) {
+        var valSmt1 = tdRataSmt1.getAttribute('data-val');
+        if (valSmt1 !== '-' && valSmt1 !== '') {
+            finalAvg = Math.round((avg + parseInt(valSmt1)) / 2);
+            tdRataAkhir.innerHTML = '<span style="color:#1e3a8a;">' + finalAvg + '</span>';
+        } else {
+            tdRataAkhir.innerHTML = '<span style="color:#1e3a8a;">' + avg + '</span>';
+        }
+    }
+    
     if (penilaianState.currentKkm <= 0) {
         tdKet.innerHTML = '<span style="color:var(--text-light);font-size:0.75rem;">KKM Blm Diatur</span>';
         return;
     }
     
-    if (avg >= penilaianState.currentKkm) {
+    if (finalAvg >= penilaianState.currentKkm) {
         tdRata.querySelector('span').style.color = '#22c55e';
         tdKet.innerHTML = '<span class="badge badge-green" style="font-size:0.75rem;">Lulus</span>';
     } else {
@@ -5432,29 +5529,39 @@ async function openRiwayatNilai(siswaId, namaSiswa) {
                 '<h4 style="margin:0 0 1rem;color:var(--primary);font-size:1rem;display:flex;align-items:center;gap:.5rem;">📚 Kelas ' + group.tingkat + ' (' + group.kelasNama + ')</h4>';
             
             Object.keys(group.semesters).forEach(function(semLabel) {
+                var isGanjil = semLabel.includes('Ganjil');
+                var isKelas9 = group.tingkat === 9;
                 var items = group.semesters[semLabel];
+                
+                var theadHtml = isGanjil ? 
+                    '<th style="text-align:center;width:80px;">STS</th><th style="text-align:center;width:80px;">SAS</th>' : 
+                    '<th style="text-align:center;width:80px;">STS</th><th style="text-align:center;width:80px;">' + (isKelas9 ? 'SAJ' : 'SAT') + '</th>';
+                
                 html += '<div style="margin-bottom:1rem;">' +
                     '<p style="font-weight:600;font-size:.88rem;color:#475569;margin-bottom:.5rem;">📅 Semester ' + semLabel + '</p>' +
                     '<div style="overflow-x:auto;border-radius:8px;border:1px solid rgba(0,0,0,.06);">' +
                     '<table class="dash-table" style="font-size:0.85rem;margin:0;">' +
-                    '<thead><tr>' +
+                    '<thead><tr style="background:#f8fafc;">' +
                     '<th>Mata Pelajaran</th>' +
-                    '<th style="text-align:center;width:70px;">STS</th>' +
-                    '<th style="text-align:center;width:70px;">SAS</th>' +
-                    '<th style="text-align:center;width:70px;">SAJ</th>' +
-                    '<th style="text-align:center;width:70px;">SAT</th>' +
-                    '<th style="text-align:center;width:80px;">Rata-Rata</th>' +
+                    theadHtml +
+                    '<th style="text-align:center;width:90px;color:var(--primary);">Rata-Rata</th>' +
                     '</tr></thead><tbody>';
+                    
                 items.forEach(function(n) {
                     var mapelNama = n.master_mapel ? n.master_mapel.nama_mapel : '-';
-                    var vals = [n.nilai_sts, n.nilai_sas, n.nilai_saj, n.nilai_sat].filter(function(v) { return v !== null && v !== undefined; });
-                    var avg = vals.length > 0 ? Math.round(vals.reduce(function(a,b){return a+b;},0) / vals.length) : '-';
+                    var val1 = n.nilai_sts;
+                    var val2 = isGanjil ? n.nilai_sas : (isKelas9 ? n.nilai_saj : n.nilai_sat);
+                    if (!isGanjil && !isKelas9 && n.nilai_sat === null && n.nilai_saj !== null) val2 = n.nilai_saj; // Fallback jika data tercampur
+                    
+                    var count = 0; var tot = 0;
+                    if (val1 !== null) { tot += val1; count++; }
+                    if (val2 !== null) { tot += val2; count++; }
+                    var avg = count > 0 ? Math.round(tot / count) : '-';
+                    
                     html += '<tr>' +
                         '<td style="font-weight:500;">' + mapelNama + '</td>' +
-                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sts !== null ? n.nilai_sts : '-') + '</td>' +
-                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sas !== null ? n.nilai_sas : '-') + '</td>' +
-                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_saj !== null ? n.nilai_saj : '-') + '</td>' +
-                        '<td style="text-align:center;font-weight:bold;">' + (n.nilai_sat !== null ? n.nilai_sat : '-') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (val1 !== null ? val1 : '<span style="color:#ccc">-</span>') + '</td>' +
+                        '<td style="text-align:center;font-weight:bold;">' + (val2 !== null ? val2 : '<span style="color:#ccc">-</span>') + '</td>' +
                         '<td style="text-align:center;font-weight:bold;color:' + (typeof avg === 'number' && avg >= 75 ? '#22c55e' : typeof avg === 'number' ? '#ef4444' : 'inherit') + ';">' + avg + '</td>' +
                         '</tr>';
                 });
@@ -5472,6 +5579,336 @@ async function openRiwayatNilai(siswaId, namaSiswa) {
 
 function closeRiwayatNilai() {
     document.getElementById('riwayatNilaiModal').classList.remove('active');
+}
+
+// ============================================================
+// HASIL UJIAN SAYA (UNTUK ROLE SISWA)
+// ============================================================
+
+async function loadHasilUjianSaya() {
+    var container = document.getElementById('hasilUjianSayaContainer');
+    if (!container || !currentUser) return;
+    container.innerHTML = '<div class="card" style="text-align:center;padding:3rem;color:var(--text-light);"><p>Memuat hasil ujian...</p></div>';
+
+    try {
+        // 1. Cari data siswa yang terhubung dengan akun ini
+        let siswaData = null;
+        let errS = null;
+
+        if (currentRole === 'siswa' && currentUser.role !== 'siswa') {
+            // Mode Simulasi Tampilan: Prioritaskan siswa yang sudah punya nilai ujian
+            const { data: sampleExams } = await supabaseClient
+                .from('hasil_ujian_siswa')
+                .select('siswa_id, siswa ( id, nama_lengkap, kelas_id, master_kelas ( nama_kelas, tingkat ) )')
+                .limit(1);
+            
+            if (sampleExams && sampleExams.length > 0 && sampleExams[0].siswa) {
+                siswaData = sampleExams[0].siswa;
+                siswaData.nama_lengkap += ' (Mode Simulasi)';
+            } else {
+                // Jika belum ada nilai sama sekali di database, ambil siswa mana saja
+                const { data: randomStudent } = await supabaseClient
+                    .from('siswa')
+                    .select('id, nama_lengkap, kelas_id, master_kelas ( nama_kelas, tingkat )')
+                    .limit(1)
+                    .maybeSingle();
+                if (randomStudent) {
+                    siswaData = randomStudent;
+                    siswaData.nama_lengkap += ' (Mode Simulasi)';
+                }
+            }
+        } else {
+            const { data, error } = await supabaseClient
+                .from('siswa')
+                .select('id, nama_lengkap, kelas_id, master_kelas ( nama_kelas, tingkat )')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+            siswaData = data;
+            errS = error;
+        }
+
+        if (errS) throw errS;
+        if (!siswaData) {
+            container.innerHTML = '<div class="card" style="text-align:center;padding:3rem;">' +
+                '<div style="font-size:3rem;margin-bottom:1rem;">🔗</div>' +
+                '<h3 style="margin-bottom:0.5rem;color:var(--text);">Akun Belum Terhubung</h3>' +
+                '<p style="color:var(--text-light);max-width:400px;margin:0 auto;">Akun Anda belum dihubungkan ke Data Induk Siswa. Hubungi Admin atau Guru untuk menghubungkan akun Anda.</p>' +
+                '</div>';
+            return;
+        }
+
+        // 2. Ambil semua hasil ujian milik siswa ini
+        var filterSemester = document.getElementById('filterHasilUjianSemester').value;
+        var query = supabaseClient.from('hasil_ujian_siswa')
+            .select('*, master_mapel ( nama_mapel ), master_kelas ( nama_kelas )')
+            .eq('siswa_id', siswaData.id)
+            .order('tahun_pelajaran', { ascending: false })
+            .order('semester')
+            .order('tipe_asesmen');
+        
+        if (filterSemester) query = query.eq('semester', filterSemester);
+
+        const { data: hasilData, error: errH } = await query;
+        if (errH) throw errH;
+
+        if (!hasilData || hasilData.length === 0) {
+            container.innerHTML = '<div class="card" style="text-align:center;padding:3rem;">' +
+                '<div style="font-size:3rem;margin-bottom:1rem;">📭</div>' +
+                '<h3 style="margin-bottom:0.5rem;color:var(--text);">Belum Ada Hasil Ujian</h3>' +
+                '<p style="color:var(--text-light);">Belum ada hasil ujian yang dipublikasikan oleh guru untuk Anda.</p>' +
+                '</div>';
+            return;
+        }
+
+        // 3. Kelompokkan per Tahun Pelajaran -> Semester
+        var groups = {};
+        hasilData.forEach(function(h) {
+            var key = h.tahun_pelajaran + '|' + h.semester;
+            if (!groups[key]) groups[key] = { tahun: h.tahun_pelajaran, semester: h.semester, items: [] };
+            groups[key].items.push(h);
+        });
+
+        var kelasNama = siswaData.master_kelas ? siswaData.master_kelas.nama_kelas : '-';
+        var html = '<div style="margin-bottom:1rem;"><span style="font-size:0.9rem;color:var(--text-light);">Menampilkan hasil ujian untuk: </span>' +
+            '<strong style="color:var(--primary);">' + siswaData.nama_lengkap + '</strong>' +
+            '<span style="margin-left:8px;background:rgba(30,58,138,.1);color:var(--primary);padding:2px 10px;border-radius:20px;font-size:0.8rem;font-weight:600;">' + kelasNama + '</span></div>';
+
+        Object.keys(groups).forEach(function(key) {
+            var g = groups[key];
+            html += '<div class="card" style="margin-bottom:1.25rem;border-left:4px solid var(--primary);">' +
+                '<h4 style="margin:0 0 1rem;color:var(--primary);display:flex;align-items:center;gap:8px;">' +
+                '<span style="background:var(--primary);color:white;padding:3px 12px;border-radius:20px;font-size:0.8rem;">Semester ' + g.semester + '</span>' +
+                '<span style="font-size:0.85rem;color:var(--text-light);font-weight:400;">T.P. ' + g.tahun + '</span></h4>' +
+                '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;">';
+
+            g.items.forEach(function(h) {
+                var mapelNama = h.master_mapel ? h.master_mapel.nama_mapel : '-';
+                
+                // Cari KKM untuk mata pelajaran dan kelas ini
+                var kkmObj = masterKkmList.find(function(k) { return k.kelas_id === siswaData.kelas_id && k.mapel_id === h.mapel_id; });
+                var kkmValue = kkmObj ? kkmObj.kkm : 75; // Default 75 jika admin belum mengatur KKM
+                
+                var nilaiColor = h.nilai_akhir >= kkmValue ? '#22c55e' : '#ef4444';
+                var nilaiIcon = h.nilai_akhir >= kkmValue ? '✅' : '❌';
+                var bgGrad = h.nilai_akhir >= kkmValue ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fef2f2,#fee2e2)';
+                var borderCol = h.nilai_akhir >= kkmValue ? '#bbf7d0' : '#fecaca';
+
+                html += '<div style="background:' + bgGrad + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:1.25rem;transition:transform 0.2s;" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">' +
+                    '<div><h5 style="margin:0;font-size:0.95rem;color:var(--text);">' + mapelNama + '</h5>' +
+                    '<div style="display:flex;gap:6px;margin-top:4px;">' +
+                    '<span style="font-size:0.75rem;color:var(--text-light);background:rgba(0,0,0,.05);padding:2px 8px;border-radius:8px;">' + h.tipe_asesmen + '</span>' +
+                    '<span style="font-size:0.75rem;color:var(--primary);background:rgba(59,130,246,.1);padding:2px 8px;border-radius:8px;font-weight:600;">KKM: ' + kkmValue + '</span>' +
+                    '</div></div>' +
+                    '<span style="font-size:1.5rem;">' + nilaiIcon + '</span></div>' +
+                    '<div style="display:flex;gap:1rem;margin-bottom:0.75rem;font-size:0.8rem;color:var(--text-light);">' +
+                    '<span>PG: <strong>' + (h.benar_pg || 0) + '</strong> benar</span>' +
+                    '<span>Poin PG: <strong>' + (h.total_poin_pg || 0) + '</strong></span>' +
+                    '<span>Essay: <strong>' + (h.poin_essay || 0) + '</strong></span></div>' +
+                    '<div style="background:white;border-radius:10px;padding:0.6rem 1rem;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,.06);">' +
+                    '<span style="font-size:0.8rem;font-weight:600;color:var(--text-light);">Nilai Akhir</span>' +
+                    '<span style="font-size:1.4rem;font-weight:800;color:' + nilaiColor + ';">' + Math.round(h.nilai_akhir) + '</span></div>' +
+                    '</div>';
+            });
+
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<div class="card" style="text-align:center;padding:2rem;color:var(--danger);"><p>Gagal memuat: ' + e.message + '</p></div>';
+    }
+}
+
+// --- PUBLIKASIKAN HASIL ASESMEN KE SISWA ---
+async function publikasikanHasilKeSiswa() {
+    var tipe = document.getElementById('hasilAsesmenTipe').value;
+    var tahun = document.getElementById('hasilAsesmenTahun').value;
+    var semester = document.getElementById('hasilAsesmenSemester').value;
+    var kelasId = document.getElementById('hasilAsesmenKelas').value;
+    var mapelId = document.getElementById('hasilAsesmenMapel').value;
+
+    if (!hasilAsesmenState.data || hasilAsesmenState.data.length === 0) {
+        showToast('Belum ada data hasil asesmen yang ditarik!', 'warning');
+        return;
+    }
+
+    var matched = hasilAsesmenState.data.filter(function(d) { return d.matched; });
+    if (matched.length === 0) {
+        showToast('Tidak ada siswa yang cocok untuk dipublikasikan!', 'warning');
+        return;
+    }
+
+    showCustomConfirm('Publikasikan ke Siswa?',
+        'Hasil ujian <strong>' + tipe + '</strong> akan dipublikasikan ke <strong>' + matched.length + ' siswa</strong> yang berhasil dicocokkan. Siswa dengan role "siswa" akan dapat melihat hasilnya di menu "Hasil Ujian Saya".',
+        'Ya, Publikasikan',
+        async function() {
+            var btn = document.getElementById('btnPublikasikanSiswa');
+            var origText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:16px;height:16px;"></i> Memproses...';
+            if (window.lucide) lucide.createIcons();
+
+            try {
+                var payload = matched.map(function(d) {
+                    return {
+                        siswa_id: d.siswa_id,
+                        kelas_id: kelasId,
+                        mapel_id: mapelId,
+                        tahun_pelajaran: tahun,
+                        semester: semester,
+                        tipe_asesmen: tipe,
+                        benar_pg: d.benar_pg || 0,
+                        total_poin_pg: d.skor_pg || 0,
+                        poin_essay: d.skor_essay || 0,
+                        nilai_akhir: d.nilai_akhir || 0,
+                        dipublikasikan_oleh: currentUser.id
+                    };
+                });
+
+                const { error } = await supabaseClient.from('hasil_ujian_siswa')
+                    .upsert(payload, { onConflict: 'siswa_id, mapel_id, tahun_pelajaran, semester, tipe_asesmen' });
+                if (error) throw error;
+
+                showToast('Berhasil dipublikasikan ke ' + matched.length + ' siswa! 📢🎉', 'success');
+            } catch(e) {
+                showToast('Gagal publikasi: ' + e.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origText;
+                if (window.lucide) lucide.createIcons();
+            }
+        }
+    );
+}
+
+// --- LINK AKUN SISWA KE DATA INDUK ---
+var linkSiswaAllData = [];
+
+function openLinkSiswaModal(userId, email) {
+    document.getElementById('linkSiswaUserId').value = userId;
+    document.getElementById('linkSiswaEmail').value = email;
+    document.getElementById('linkSiswaSearch').value = '';
+    document.getElementById('linkSiswaModal').classList.add('active');
+    if (window.lucide) lucide.createIcons();
+
+    (async function() {
+        var results = document.getElementById('linkSiswaResults');
+        var searchGroup = document.getElementById('linkSiswaSearchGroup');
+        results.innerHTML = '<p style="text-align:center;padding:1rem;color:var(--text-light);">Memuat data siswa...</p>';
+        
+        try {
+            // Cek apakah akun ini sudah terhubung ke siswa tertentu
+            const { data: linkedData, error: errLink } = await supabaseClient.from('siswa')
+                .select('id, nama_lengkap, master_kelas ( nama_kelas )')
+                .eq('user_id', userId)
+                .maybeSingle();
+                
+            if (errLink) throw errLink;
+            
+            if (linkedData) {
+                var kelasNama = linkedData.master_kelas ? linkedData.master_kelas.nama_kelas : '-';
+                results.innerHTML = '<div style="padding:1.5rem; text-align:center;">' +
+                    '<p style="margin-bottom:1rem;color:var(--text);font-weight:600;">Akun ini saat ini terhubung dengan:</p>' +
+                    '<div style="background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.2); border-radius:10px; padding:1rem; margin-bottom:1rem;">' +
+                    '<strong style="font-size:1.1rem; color:var(--primary);">' + linkedData.nama_lengkap + '</strong><br>' +
+                    '<span style="font-size:0.85rem; color:var(--text-light);">' + kelasNama + '</span>' +
+                    '</div>' +
+                    '<button class="btn btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="confirmUnlinkSiswa(\'' + linkedData.id + '\', \'' + linkedData.nama_lengkap.replace(/'/g, "\\'") + '\')">' +
+                    '<i data-lucide="unlink" style="width:16px;height:16px;"></i> Putuskan Hubungan' +
+                    '</button>' +
+                    '</div>';
+                if (window.lucide) lucide.createIcons();
+                if (searchGroup) searchGroup.style.display = 'none';
+                return;
+            }
+
+            // Jika belum terhubung, load semua siswa yang belum terhubung
+            if (searchGroup) searchGroup.style.display = '';
+            
+            const { data, error } = await supabaseClient.from('siswa')
+                .select('id, nama_lengkap, master_kelas ( nama_kelas )')
+                .is('user_id', null)
+                .order('nama_lengkap');
+            if (error) throw error;
+            linkSiswaAllData = data || [];
+            renderLinkSiswaList(linkSiswaAllData);
+        } catch(e) {
+            results.innerHTML = '<p style="text-align:center;padding:1rem;color:var(--danger);">Gagal memuat: ' + e.message + '</p>';
+        }
+    })();
+}
+
+function filterLinkSiswaList(keyword) {
+    var kw = keyword.toLowerCase().trim();
+    if (!kw) { renderLinkSiswaList(linkSiswaAllData); return; }
+    var filtered = linkSiswaAllData.filter(function(s) {
+        return s.nama_lengkap.toLowerCase().indexOf(kw) !== -1;
+    });
+    renderLinkSiswaList(filtered);
+}
+
+function renderLinkSiswaList(list) {
+    var results = document.getElementById('linkSiswaResults');
+    if (!list || list.length === 0) {
+        results.innerHTML = '<p style="text-align:center;padding:1.5rem;color:var(--text-light);font-size:0.85rem;">Tidak ada siswa yang belum terhubung.</p>';
+        return;
+    }
+    var html = '';
+    list.forEach(function(s) {
+        var kelasNama = s.master_kelas ? s.master_kelas.nama_kelas : '-';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'transparent\'">' +
+            '<div><strong style="font-size:0.9rem;">' + s.nama_lengkap + '</strong><br><span style="font-size:0.75rem;color:var(--text-light);">' + kelasNama + '</span></div>' +
+            '<button class="btn btn-sm btn-primary" style="padding:4px 12px;font-size:0.75rem;" onclick="confirmLinkSiswa(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/'/g, "\\'") + '\')">Hubungkan</button>' +
+            '</div>';
+    });
+    results.innerHTML = html;
+}
+
+async function confirmLinkSiswa(siswaId, namaSiswa) {
+    var userId = document.getElementById('linkSiswaUserId').value;
+    var email = document.getElementById('linkSiswaEmail').value;
+    if (!userId || !siswaId) return;
+
+    showCustomConfirm('Hubungkan Akun?',
+        'Akun <strong>' + email + '</strong> akan dihubungkan ke data siswa <strong>' + namaSiswa + '</strong>. Tindakan ini bisa diubah nanti.',
+        'Ya, Hubungkan',
+        async function() {
+            try {
+                const { error } = await supabaseClient.from('siswa')
+                    .update({ user_id: userId })
+                    .eq('id', siswaId);
+                if (error) throw error;
+                showToast('Akun berhasil dihubungkan ke ' + namaSiswa + '! 🔗', 'success');
+                document.getElementById('linkSiswaModal').classList.remove('active');
+                // Refresh akun list
+                if (typeof renderActiveAccounts === 'function') renderActiveAccounts();
+            } catch(e) {
+                showToast('Gagal: ' + e.message, 'error');
+            }
+        }
+    );
+}
+
+async function confirmUnlinkSiswa(siswaId, namaSiswa) {
+    showCustomConfirm('Putuskan Hubungan?',
+        'Anda yakin ingin memutuskan hubungan akun ini dari data siswa <strong>' + namaSiswa + '</strong>?',
+        'Ya, Putuskan',
+        async function() {
+            try {
+                const { error } = await supabaseClient.from('siswa')
+                    .update({ user_id: null })
+                    .eq('id', siswaId);
+                if (error) throw error;
+                showToast('Hubungan dengan ' + namaSiswa + ' berhasil diputus.', 'success');
+                document.getElementById('linkSiswaModal').classList.remove('active');
+                // Refresh akun list
+                if (typeof renderActiveAccounts === 'function') renderActiveAccounts();
+            } catch(e) {
+                showToast('Gagal: ' + e.message, 'error');
+            }
+        }
+    );
 }
 
 // ============================================================
@@ -5675,6 +6112,300 @@ function cetakLaporanNilai() {
     printWindow.document.close();
     
     setTimeout(function() { printWindow.print(); }, 500);
+}
+
+// ============================================================
+// HASIL & ANALISIS ASESMEN (GOOGLE FORM)
+// ============================================================
+var hasilAsesmenState = {
+    data: [], // Array of objects parsed from CSV
+    siswaList: [] // Students in the selected class
+};
+
+function updateHasilAsesmenTipe() {
+    var sem = document.getElementById('hasilAsesmenSemester').value;
+    var kelasId = document.getElementById('hasilAsesmenKelas').value;
+    var kelasObj = masterKelasList.find(function(k) { return k.id === kelasId; });
+    var tingkat = kelasObj ? kelasObj.tingkat : 0;
+    
+    var selTipe = document.getElementById('hasilAsesmenTipe');
+    if (!selTipe) return;
+    
+    var html = '';
+    if (sem === 'Ganjil') {
+        html += '<option value="STS">Tipe: STS Ganjil</option>';
+        html += '<option value="SAS">Tipe: SAS</option>';
+    } else {
+        html += '<option value="STS">Tipe: STS Genap</option>';
+        if (tingkat === 9) {
+            html += '<option value="SAJ">Tipe: SAJ</option>';
+        } else {
+            html += '<option value="SAT">Tipe: SAT</option>';
+        }
+    }
+    selTipe.innerHTML = html;
+}
+
+function parseCSV(str) {
+    var arr = [];
+    var quote = false;
+    var row = 0, col = 0, c = 0;
+    for (row = 0, col = 0, c = 0; c < str.length; c++) {
+        var cc = str[c], nc = str[c+1];
+        arr[row] = arr[row] || [];
+        arr[row][col] = arr[row][col] || '';
+        if (cc == '"' && quote && nc == '"') { arr[row][col] += cc; ++c; continue; }
+        if (cc == '"') { quote = !quote; continue; }
+        if (cc == ',' && !quote) { ++col; continue; }
+        if (cc == '\r' && nc == '\n' && !quote) { ++row; col = 0; ++c; continue; }
+        if (cc == '\n' && !quote) { ++row; col = 0; continue; }
+        if (cc == '\r' && !quote) { ++row; col = 0; continue; }
+        arr[row][col] += cc;
+    }
+    return arr;
+}
+
+function extractFileId(url) {
+    var match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : null;
+}
+
+async function loadDataHasilAsesmen() {
+    var link = document.getElementById('hasilAsesmenLink').value.trim();
+    var tahun = document.getElementById('hasilAsesmenTahun').value;
+    var semester = document.getElementById('hasilAsesmenSemester').value;
+    var kelasId = document.getElementById('hasilAsesmenKelas').value;
+    var mapelId = document.getElementById('hasilAsesmenMapel').value;
+    
+    if (!link || !kelasId || !mapelId) {
+        showToast('Pastikan Link Spreadsheet, Kelas, dan Mapel sudah diisi!', 'warning');
+        return;
+    }
+    
+    var fileId = extractFileId(link);
+    if (!fileId) {
+        showToast('Link Spreadsheet tidak valid. Pastikan itu adalah URL Google Sheets asli.', 'error');
+        return;
+    }
+    
+    var btn = document.getElementById('btnTarikHasilAsesmen');
+    var origText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:16px;height:16px;"></i> Mengunduh...';
+    if (window.lucide) lucide.createIcons();
+    
+    document.getElementById('hasilAsesmenPanel').style.display = 'block';
+    var tbody = document.getElementById('hasilAsesmenTbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;">Mengunduh dan mencocokkan data...</td></tr>';
+    
+    try {
+        // 1. Get Students in the Class
+        const { data: siswaData, error: errS } = await supabaseClient.from('siswa').select('id, nama_lengkap').eq('kelas_id', kelasId).not('status', 'in', '("Pindah","Lulus")').order('nama_lengkap');
+        if (errS) throw errS;
+        hasilAsesmenState.siswaList = siswaData || [];
+        
+        // 2. Fetch CSV from Google Sheets
+        // Menargetkan sheet khusus "Hasil Koreksi" jika ada, jika tidak otomatis sheet pertama
+        var csvUrl = 'https://docs.google.com/spreadsheets/d/' + fileId + '/gviz/tq?tqx=out:csv&sheet=Hasil%20Koreksi';
+        
+        var response = await fetch(csvUrl);
+        if (!response.ok) {
+            // Coba ambil sheet default (pertama) jika "Hasil Koreksi" tidak ditemukan
+            csvUrl = 'https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv';
+            response = await fetch(csvUrl);
+            if (!response.ok) throw new Error('Gagal mengakses Spreadsheet. Pastikan aksesnya "Siapa saja yang memiliki link".');
+        }
+        
+        var csvText = await response.text();
+        var rows = parseCSV(csvText);
+        
+        if (rows.length <= 1) {
+            throw new Error('Spreadsheet kosong atau gagal dibaca.');
+        }
+        
+        var headers = rows[0].map(h => (h || '').trim().toLowerCase());
+        
+        // Identify columns based on Google Apps Script output structure
+        var idxNama = headers.findIndex(h => h === 'nama');
+        if (idxNama === -1) idxNama = headers.findIndex(h => h.indexOf('nama') !== -1);
+        
+        var idxBenarPG = headers.findIndex(h => h === 'benar pg');
+        var idxSkorPG = headers.findIndex(h => h === 'total poin pg');
+        var idxTotalEssay = headers.findIndex(h => h === 'total poin essay');
+        var idxNilaiAkhir = headers.findIndex(h => h === 'nilai akhir keseluruhan');
+        
+        if (idxNama === -1 || idxNilaiAkhir === -1) {
+            throw new Error('Format Spreadsheet tidak dikenali. Kolom "Nama" atau "Nilai Akhir Keseluruhan" tidak ditemukan.');
+        }
+        
+        hasilAsesmenState.data = [];
+        var matchedCount = 0;
+        
+        var html = '';
+        // Map data per student in database
+        hasilAsesmenState.siswaList.forEach(function(s, i) {
+            var namaDb = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9]/g, '');
+            var bestMatch = null;
+            
+            for (var r = 1; r < rows.length; r++) {
+                if (!rows[r] || rows[r].length < idxNilaiAkhir) continue;
+                var namaSheet = (rows[r][idxNama] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (namaSheet && (namaDb.indexOf(namaSheet) !== -1 || namaSheet.indexOf(namaDb) !== -1 || namaDb === namaSheet)) {
+                    bestMatch = rows[r];
+                    break;
+                }
+            }
+            
+            var rowObj = { siswa_id: s.id, nama_db: s.nama_lengkap, matched: false, nilai_akhir: 0, benar_pg: 0, skor_pg: 0, skor_essay: 0 };
+            
+            var bPg = '-', sPg = '-', sEs = '-', nAkhir = '-';
+            var namaAsliSheet = '-';
+            
+            if (bestMatch) {
+                namaAsliSheet = bestMatch[idxNama] || '';
+                bPg = idxBenarPG !== -1 ? (bestMatch[idxBenarPG] || '0') : '-';
+                sPg = idxSkorPG !== -1 ? (bestMatch[idxSkorPG] || '0') : '-';
+                sEs = idxTotalEssay !== -1 ? (bestMatch[idxTotalEssay] || '0') : '-';
+                nAkhir = bestMatch[idxNilaiAkhir] || '0';
+                
+                rowObj.matched = true;
+                rowObj.nilai_akhir = parseFloat(nAkhir) || 0;
+                rowObj.benar_pg = parseInt(bPg) || 0;
+                rowObj.skor_pg = parseFloat(sPg) || 0;
+                rowObj.skor_essay = parseFloat(sEs) || 0;
+                matchedCount++;
+            }
+            
+            hasilAsesmenState.data.push(rowObj);
+            
+            var statusBadge = rowObj.matched ? '<span style="color:#16a34a;font-weight:bold;">Cocok</span>' : '<span style="color:#dc2626;font-size:0.8rem;">Isi Manual</span>';
+            var trStyle = rowObj.matched ? '' : 'background:rgba(220,38,38,0.05);';
+            
+            var bPgHtml = rowObj.matched ? bPg : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_pg\', this.value)">';
+            var sPgHtml = rowObj.matched ? sPg : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_pg\', this.value)">';
+            var sEsHtml = rowObj.matched ? sEs : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_essay\', this.value)">';
+            var nAkhirHtml = rowObj.matched ? nAkhir : '<input type="number" min="0" max="100" class="form-input" style="width:70px;padding:4px;margin:0 auto;font-size:0.9rem;font-weight:bold;color:var(--primary);text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'nilai_akhir\', this.value)">';
+            
+            html += '<tr style="' + trStyle + '" data-siswa="' + s.id + '">' +
+                '<td style="text-align:center;">' + (i+1) + '</td>' +
+                '<td style="font-weight:600;">' + s.nama_lengkap + '</td>' +
+                '<td style="font-size:0.8rem;color:var(--text-light);">' + (rowObj.matched ? namaAsliSheet : '-') + '</td>' +
+                '<td style="text-align:center;">' + bPgHtml + '</td>' +
+                '<td style="text-align:center;">' + sPgHtml + '</td>' +
+                '<td style="text-align:center;">' + sEsHtml + '</td>' +
+                '<td style="text-align:center;font-weight:bold;font-size:1.1rem;color:var(--primary);">' + nAkhirHtml + '</td>' +
+                '<td style="text-align:center;">' + statusBadge + '</td>' +
+                '</tr>';
+        });
+        
+        tbody.innerHTML = html;
+        document.getElementById('hasilAsesmenStats').innerHTML = '<strong>' + matchedCount + '</strong> dari ' + hasilAsesmenState.siswaList.length + ' siswa ditemukan di Spreadsheet.';
+        if (window.lucide) lucide.createIcons();
+        
+    } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ef4444;padding:2rem;">Gagal memuat data: ' + e.message + '<br><small>Pastikan opsi "Siapa saja yang memiliki link" pada Google Sheets sudah diset ke "Pelihat (Viewer)".</small></td></tr>';
+        document.getElementById('hasilAsesmenStats').textContent = 'Terjadi kesalahan.';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origText;
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+function updateHasilAsesmenManual(siswaId, field, value) {
+    if (!hasilAsesmenState.data) return;
+    var item = hasilAsesmenState.data.find(function(d) { return d.siswa_id === siswaId; });
+    if (item) {
+        item[field] = parseFloat(value) || 0;
+        // Tandai sebagai matched agar ikut disimpan ke nilai resmi & dipublikasikan
+        if (!item.matched) {
+            item.matched = true;
+            // Opsional: update teks badge secara visual jika diperlukan
+            var tr = document.querySelector('#hasilAsesmenTbody tr[data-siswa="' + siswaId + '"]');
+            if (tr) {
+                var badgeTd = tr.lastElementChild;
+                if (badgeTd) badgeTd.innerHTML = '<span style="color:#eab308;font-weight:bold;">Manual</span>';
+            }
+        }
+    }
+}
+
+
+async function sinkronisasiKeNilaiResmi() {
+    var tahun = document.getElementById('hasilAsesmenTahun').value;
+    var semester = document.getElementById('hasilAsesmenSemester').value;
+    var kelasId = document.getElementById('hasilAsesmenKelas').value;
+    var mapelId = document.getElementById('hasilAsesmenMapel').value;
+    var tipe = document.getElementById('hasilAsesmenTipe').value; // STS, SAS, SAJ, SAT
+    
+    if (!hasilAsesmenState.data || hasilAsesmenState.data.length === 0) {
+        showToast('Tarik data terlebih dahulu!', 'warning');
+        return;
+    }
+    
+    var validData = hasilAsesmenState.data.filter(d => d.matched);
+    if (validData.length === 0) {
+        showToast('Tidak ada data nilai siswa yang valid untuk disinkronisasi.', 'warning');
+        return;
+    }
+    
+    showCustomConfirm('Sinkronisasi ke Nilai ' + tipe + '?', 'Anda akan menyimpan <strong>' + validData.length + '</strong> nilai akhir siswa ini ke kolom <strong>' + tipe + '</strong> pada laporan resmi.', 'Ya, Sinkronisasikan', async function() {
+        var btn = document.getElementById('btnSinkronHasil');
+        var origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" class="icon-spin"></i> Menyimpan...';
+        
+        try {
+            // Fetch existing records for this class/mapel so we don't overwrite other types of grades accidentally
+            const { data: existingData, error: errEx } = await supabaseClient.from('nilai_akademik')
+                .select('*')
+                .eq('tahun_pelajaran', tahun)
+                .eq('semester', semester)
+                .eq('kelas_id', kelasId)
+                .eq('mapel_id', mapelId);
+                
+            if (errEx) throw errEx;
+            
+            var existingDict = {};
+            if (existingData) {
+                existingData.forEach(d => existingDict[d.siswa_id] = d);
+            }
+            
+            var payload = [];
+            validData.forEach(function(vd) {
+                var ex = existingDict[vd.siswa_id] || { 
+                    tahun_pelajaran: tahun, 
+                    semester: semester, 
+                    kelas_id: kelasId, 
+                    mapel_id: mapelId, 
+                    siswa_id: vd.siswa_id,
+                    nilai_sts: null,
+                    nilai_sas: null,
+                    nilai_saj: null,
+                    nilai_sat: null
+                };
+                
+                if (tipe === 'STS') ex.nilai_sts = vd.nilai_akhir;
+                if (tipe === 'SAS') ex.nilai_sas = vd.nilai_akhir;
+                if (tipe === 'SAJ') ex.nilai_saj = vd.nilai_akhir;
+                if (tipe === 'SAT') ex.nilai_sat = vd.nilai_akhir;
+                
+                ex.updated_at = new Date().toISOString();
+                payload.push(ex);
+            });
+            
+            const { error } = await supabaseClient.from('nilai_akademik').upsert(payload, { onConflict: 'tahun_pelajaran, semester, kelas_id, mapel_id, siswa_id' });
+            if (error) throw error;
+            
+            showToast('Sinkronisasi berhasil! Nilai ' + tipe + ' telah diperbarui.', 'success');
+        } catch(e) {
+            showToast('Gagal sinkronisasi: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+            if (window.lucide) lucide.createIcons();
+        }
+    });
 }
 
 // ============================================================
