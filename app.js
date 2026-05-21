@@ -15256,7 +15256,19 @@ function renderOperasionalPemasukanTable() {
     let tbody = document.querySelector('#tableOperasionalPemasukan tbody');
     if (!tbody) return;
     
+    let search = (document.getElementById('searchOpPemasukan')?.value || '').toLowerCase();
+    let filterBulan = document.getElementById('filterBulanOpPemasukan')?.value || '';
+    
     let filtered = dOperasional.filter(x => x.jenis_transaksi === 'Pemasukan');
+    if (search) {
+        filtered = filtered.filter(x => 
+            (x.keterangan || '').toLowerCase().includes(search) ||
+            (x.kategori || '').toLowerCase().includes(search)
+        );
+    }
+    if (filterBulan) {
+        filtered = filtered.filter(x => x.tanggal && x.tanggal.startsWith(filterBulan));
+    }
     
     let total = 0;
     let currMonthTotal = 0;
@@ -15278,7 +15290,7 @@ function renderOperasionalPemasukanTable() {
             <td>${formatDateIndonesia(d.tanggal)}</td>
             <td>${d.kategori || 'Dana BOS'}</td>
             <td>${d.keterangan || '-'}</td>
-            <td style="color:var(--success); font-weight:600;">+ Rp ${formatRupiah(amt)}</td>
+            <td style="color:var(--success); font-weight:600;">+ ${formatRupiah(amt)}</td>
             <td style="text-align:right;">
                 <button class="btn btn-sm btn-danger" onclick="deleteOperasional('${d.id}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
             </td>
@@ -15296,11 +15308,11 @@ function renderOperasionalPemasukanTable() {
         summaryDiv.innerHTML = `
             <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #10b981;">
                 <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pemasukan</div>
-                <div style="font-size:1.3rem; font-weight:700; color:#10b981;">Rp ${formatRupiah(total)}</div>
+                <div style="font-size:1.3rem; font-weight:700; color:#10b981;">${formatRupiah(total)}</div>
             </div>
             <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
                 <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
-                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(currMonthTotal)}</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${formatRupiah(currMonthTotal)}</div>
             </div>
             <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
                 <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
@@ -15308,7 +15320,7 @@ function renderOperasionalPemasukanTable() {
             </div>
             <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #3b82f6;">
                 <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Pemasukan Terbesar</div>
-                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(maxTrx)}</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${formatRupiah(maxTrx)}</div>
             </div>
         `;
     }
@@ -15362,11 +15374,11 @@ function renderOperasionalPengeluaranSummary() {
     summaryDiv.innerHTML = `
         <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #ef4444;">
             <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pengeluaran</div>
-            <div style="font-size:1.3rem; font-weight:700; color:#ef4444;">Rp ${formatRupiah(total)}</div>
+            <div style="font-size:1.3rem; font-weight:700; color:#ef4444;">${formatRupiah(total)}</div>
         </div>
         <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
             <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
-            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(currMonthTotal)}</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${formatRupiah(currMonthTotal)}</div>
         </div>
         <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
             <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
@@ -15374,7 +15386,7 @@ function renderOperasionalPengeluaranSummary() {
         </div>
         <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #3b82f6;">
             <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Pengeluaran Terbesar</div>
-            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(maxTrx)}</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${formatRupiah(maxTrx)}</div>
         </div>
     `;
 }
@@ -15393,6 +15405,7 @@ function renderOpKategoriTable() {
     if (!thead || !tbody) return;
     
     let search = (document.getElementById('searchOpKategori')?.value || '').toLowerCase();
+    let filterBulan = document.getElementById('filterBulanOpKategori')?.value || '';
     let kat = currentOpKategori;
     
     // Filter data by category
@@ -15400,8 +15413,12 @@ function renderOpKategoriTable() {
     if (search) {
         filtered = filtered.filter(x => 
             (x.keterangan || '').toLowerCase().includes(search) ||
-            (x.kategori || '').toLowerCase().includes(search)
+            (x.kategori || '').toLowerCase().includes(search) ||
+            (x.penerima || '').toLowerCase().includes(search)
         );
+    }
+    if (filterBulan) {
+        filtered = filtered.filter(x => x.tanggal && x.tanggal.startsWith(filterBulan));
     }
     
     // Build category-specific thead
@@ -15617,19 +15634,20 @@ async function saveOperasionalPengeluaran() {
     }
 }
 
-async function deleteOperasional(id) {
-    if(!confirm('Hapus transaksi operasional ini?')) return;
-    try {
-        let { error } = await supabaseClient.from('buku_kas_bendahara').delete().eq('id', id);
-        if(error) throw error;
-        
-        dOperasional = dOperasional.filter(x => x.id !== id);
-        if (currentOperasionalTab === 'pemasukan') renderOperasionalPemasukanTable();
-        if (currentOperasionalTab === 'pengeluaran') renderOpKategoriTable();
-        showToast('Transaksi berhasil dihapus!', 'success');
-    } catch(e) {
-        showToast('Gagal menghapus: ' + e.message, 'error');
-    }
+function deleteOperasional(id) {
+    showCustomConfirm('Hapus Data?', 'Hapus transaksi operasional ini?', 'Ya, Hapus', async function() {
+        try {
+            let { error } = await supabaseClient.from('buku_kas_bendahara').delete().eq('id', id);
+            if(error) throw error;
+            
+            dOperasional = dOperasional.filter(x => x.id !== id);
+            if (currentOperasionalTab === 'pemasukan') renderOperasionalPemasukanTable();
+            if (currentOperasionalTab === 'pengeluaran') renderOpKategoriTable();
+            showToast('Transaksi berhasil dihapus!', 'success');
+        } catch(e) {
+            showToast('Gagal menghapus: ' + e.message, 'error');
+        }
+    });
 }
 
 
@@ -15690,6 +15708,32 @@ async function saveOperasionalPemasukan() {
 function printLaporanOperasional() {
     let title = currentOperasionalTab === 'pemasukan' ? 'Laporan Pemasukan Operasional (Dana BOS)' : 'Laporan Pengeluaran Operasional';
     let filtered = dOperasional.filter(x => x.jenis_transaksi === (currentOperasionalTab === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'));
+    
+    if (currentOperasionalTab === 'pemasukan') {
+        let search = (document.getElementById('searchOpPemasukan')?.value || '').toLowerCase();
+        let filterBulan = document.getElementById('filterBulanOpPemasukan')?.value || '';
+        if (search) {
+            filtered = filtered.filter(x => (x.keterangan || '').toLowerCase().includes(search) || (x.kategori || '').toLowerCase().includes(search));
+        }
+        if (filterBulan) {
+            filtered = filtered.filter(x => x.tanggal && x.tanggal.startsWith(filterBulan));
+        }
+    } else {
+        if(currentOpKategori) {
+            filtered = filtered.filter(x => x.kategori === currentOpKategori);
+            title += ` — Kategori: ${currentOpKategori}`;
+        }
+        let search = (document.getElementById('searchOpKategori')?.value || '').toLowerCase();
+        let filterBulan = document.getElementById('filterBulanOpKategori')?.value || '';
+        if (search) {
+            filtered = filtered.filter(x => (x.keterangan || '').toLowerCase().includes(search) || (x.kategori || '').toLowerCase().includes(search) || (x.penerima || '').toLowerCase().includes(search));
+        }
+        if (filterBulan) {
+            filtered = filtered.filter(x => x.tanggal && x.tanggal.startsWith(filterBulan));
+        }
+    }
+    
+    if(filtered.length === 0) return showToast('Tidak ada data yang sesuai filter untuk dicetak.', 'warning');
     
     let tbody = '';
     let total = 0;

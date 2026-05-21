@@ -3050,17 +3050,6 @@
           <h2><i data-lucide="wallet" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Universal</h2>
           <p>Pusat kontrol tagihan siswa (Pemasukan) dan pengeluaran rutin (Kas Keluar) sekolah.</p>
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; flex-direction:column;" class="mobile-vertical-actions" id="universalHeaderActions">
-          <button class="btn btn-primary" onclick="openTambahTransaksiModal('universal')" id="btnAksiUniversalPemasukan">
-            <i data-lucide="plus" style="width:18px;height:18px;"></i> Buat Tagihan Baru
-          </button>
-          <button class="btn btn-outline" onclick="printLaporanKasKeluar()" id="btnAksiUniversalCetakPengeluaran" style="display:none;">
-            <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
-          </button>
-          <button class="btn btn-primary" onclick="openKasKeluarModal()" id="btnAksiUniversalPengeluaran" style="display:none;">
-            <i data-lucide="plus" style="width:18px;height:18px;"></i> Catat Pengeluaran
-          </button>
-        </div>
       </div>
 
       <!-- TABS NAVIGATION -->
@@ -3077,11 +3066,16 @@
         <!-- Summary Cards Tagihan -->
         <div id="tagihanSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
 
-        <!-- Filter -->
-        <div class="card" style="margin-bottom:1rem; padding:1rem 1.2rem;">
-          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
-            <input type="text" id="searchTagihanMaster" class="form-input" placeholder="Cari tagihan..." onkeyup="renderMasterTagihanTable('universal')" style="flex:2 1 180px; margin:0; padding:0.4rem 0.8rem;">
-            <input type="month" id="filterBulanTagihan" class="form-input" onchange="renderMasterTagihanTable('universal')" style="flex:1 1 140px; margin:0; padding:0.4rem 0.8rem;">
+        <!-- Filter & Actions -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+          <div style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+            <input type="text" id="searchTagihanMaster" class="form-input" placeholder="Cari tagihan..." onkeyup="renderMasterTagihanTable('universal')" style="width:100%; max-width:280px; margin:0;" />
+            <input type="month" id="filterBulanTagihan" class="form-input" onchange="renderMasterTagihanTable('universal')" style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
+            <button class="btn btn-primary" onclick="openTambahTransaksiModal('universal')" style="white-space:nowrap;">
+              <i data-lucide="plus" style="width:18px;height:18px;"></i> Buat Tagihan Baru
+            </button>
           </div>
         </div>
 
@@ -3164,10 +3158,7 @@
           <select id="selectUnivKategoriPengeluaran" class="form-input" style="margin:0; max-width:350px;" onchange="switchUnivKategoriPengeluaran(this.value)">
             <option value="">— Pilih Kategori —</option>
             <option value="Honor">Honor</option>
-            <option value="Ekstrakurikuler">Ekstrakurikuler</option>
-            <option value="Utilitas (listrik & wifi)">Utilitas (listrik & wifi)</option>
-            <option value="Alat Tulis Kantor (ATK)">Alat Tulis Kantor (ATK)</option>
-            <option value="Perjalanan Dinas">Perjalanan Dinas</option>
+            <option value="Konsumsi">Konsumsi</option>
             <option value="Lainnya">Lainnya</option>
           </select>
         </div>
@@ -3176,14 +3167,18 @@
         <div id="univKategoriContentContainer" style="display:none;">
           <!-- Filter + Tombol Tambah -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
-            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
-              <input type="text" id="searchUnivKategori" class="form-input" placeholder="Cari..." style="max-width:280px; margin:0;" oninput="renderUnivKategoriTable()" />
-              <input type="month" id="filterBulanUnivKategori" class="form-input" onchange="renderUnivKategoriTable()" style="max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+            <div style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+              <input type="text" id="searchUnivKategori" class="form-input" placeholder="Cari..." style="width:100%; max-width:280px; margin:0;" oninput="renderUnivKategoriTable()" />
+              <input type="month" id="filterBulanUnivKategori" class="form-input" onchange="renderUnivKategoriTable()" style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
             </div>
-            <!-- Note: btnAksiUniversalPengeluaran button in header already opens kasKeluarModal, but we can have one here too -->
-            <button class="btn btn-primary" onclick="openKasKeluarModal()">
-              <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
-            </button>
+            <div style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
+              <button class="btn btn-primary" onclick="openKasKeluarModal()" style="white-space:nowrap;">
+                <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+              </button>
+              <button class="btn btn-outline" onclick="printLaporanKasKeluar()" style="white-space:nowrap;">
+                <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
+              </button>
+            </div>
           </div>
 
           <!-- Dynamic Table -->
@@ -3285,27 +3280,12 @@
         </div>
       </div>
     </section>
-
     <!-- ========== SECTION: TRANSAKSI OPERASIONAL ========== -->
     <section class="dash-section" id="sectionTransaksiOperasional">
       <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
         <div>
           <h2><i data-lucide="building-2" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Operasional</h2>
           <p>Pusat kontrol pemasukan (Dana BOS) dan pengeluaran operasional sekolah.</p>
-        </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; flex-direction:column;" class="mobile-vertical-actions" id="operasionalHeaderActions">
-          <button class="btn btn-primary" onclick="openOperasionalPemasukanModal()" id="btnAksiOperasionalPemasukan" style="display:block;">
-            <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Pemasukan
-          </button>
-          <button class="btn btn-outline" onclick="printLaporanOperasional()" id="btnAksiOperasionalCetakPemasukan" style="display:block;">
-            <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
-          </button>
-          <button class="btn btn-outline" onclick="printLaporanOperasional()" id="btnAksiOperasionalCetakPengeluaran" style="display:none;">
-            <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
-          </button>
-          <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()" id="btnAksiOperasionalPengeluaran" style="display:none;">
-            <i data-lucide="plus" style="width:18px;height:18px;"></i> Catat Pengeluaran
-          </button>
         </div>
       </div>
 
@@ -3322,10 +3302,23 @@
       <!-- TAB PEMASUKAN -->
       <div id="tabOperasionalPemasukan">
         <div id="operasionalPemasukanSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
-        
-        
 
-        <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--primary-dark);">Riwayat Pemasukan Operasional</h3>
+        <!-- Filter & Actions -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+          <div style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+            <input type="text" id="searchOpPemasukan" class="form-input" placeholder="Cari keterangan..." oninput="renderOperasionalPemasukanTable()" style="width:100%; max-width:280px; margin:0;" />
+            <input type="month" id="filterBulanOpPemasukan" class="form-input" onchange="renderOperasionalPemasukanTable()" style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
+            <button class="btn btn-primary" onclick="openOperasionalPemasukanModal()" style="white-space:nowrap;">
+              <i data-lucide="plus" style="width:18px;height:18px;"></i> Catat Pemasukan
+            </button>
+            <button class="btn btn-outline" onclick="printLaporanOperasional()" style="white-space:nowrap;">
+              <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
+            </button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="table-container">
             <table class="data-table" id="tableOperasionalPemasukan">
@@ -3368,10 +3361,18 @@
         <div id="opKategoriContentContainer" style="display:none;">
           <!-- Filter + Tombol Tambah -->
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
-            <input type="text" id="searchOpKategori" class="form-input" placeholder="Cari..." style="max-width:280px; margin:0;" oninput="renderOpKategoriTable()" />
-            <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()">
-              <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
-            </button>
+            <div style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+              <input type="text" id="searchOpKategori" class="form-input" placeholder="Cari..." style="width:100%; max-width:280px; margin:0;" oninput="renderOpKategoriTable()" />
+              <input type="month" id="filterBulanOpKategori" class="form-input" onchange="renderOpKategoriTable()" style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
+              <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()" style="white-space:nowrap;">
+                <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+              </button>
+              <button class="btn btn-outline" onclick="printLaporanOperasional()" style="white-space:nowrap;">
+                <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
+              </button>
+            </div>
           </div>
 
           <!-- Dynamic Table -->
