@@ -214,7 +214,7 @@
 
       <div class="sidebar-nav-group role-bendahara">
         <span class="sidebar-nav-label">Layanan Bendahara</span>
-        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionKasSekolah', this)">
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionBukuKasBendahara', this)">
           <i data-lucide="landmark" style="width:18px;height:18px"></i>
           <span>Kas Sekolah</span>
         </a>
@@ -222,18 +222,15 @@
           <i data-lucide="wallet" style="width:18px;height:18px"></i>
           <span>Transaksi Universal</span>
         </a>
-        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionKeuanganPendaftaran', this)">
-          <i data-lucide="user-plus" style="width:18px;height:18px"></i>
-          <span>Pendaftaran & Administrasi</span>
-        </a>
-        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionPengeluaranDinas', this)">
-          <i data-lucide="map-pin" style="width:18px;height:18px"></i>
-          <span>Pengeluaran Dinas</span>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionTransaksiOperasional', this)">
+          <i data-lucide="building-2" style="width:18px;height:18px"></i>
+          <span>Transaksi Operasional</span>
         </a>
         <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionArsipTransaksi', this)">
           <i data-lucide="archive" style="width:18px;height:18px"></i>
           <span>Arsip Transaksi</span>
         </a>
+      </div>
       </div>
 
       <div class="sidebar-nav-group role-operasional">
@@ -3053,7 +3050,7 @@
           <h2><i data-lucide="wallet" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Universal</h2>
           <p>Pusat kontrol tagihan siswa (Pemasukan) dan pengeluaran rutin (Kas Keluar) sekolah.</p>
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;" id="universalHeaderActions">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; flex-direction:column;" class="mobile-vertical-actions" id="universalHeaderActions">
           <button class="btn btn-primary" onclick="openTambahTransaksiModal('universal')" id="btnAksiUniversalPemasukan">
             <i data-lucide="plus" style="width:18px;height:18px;"></i> Buat Tagihan Baru
           </button>
@@ -3069,7 +3066,7 @@
       <!-- TABS NAVIGATION -->
       <div class="universal-tabs" style="display:flex; gap:8px; margin-bottom:1.5rem; border-bottom:2px solid var(--border-color); padding-bottom:0.5rem;">
         <button class="btn" id="tabBtnUniversalTagihan" style="flex:1; background:var(--primary); color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;" onclick="switchUniversalTab('tagihan')">
-          <i data-lucide="download" style="width:16px;height:16px;"></i> Tagihan
+          <i data-lucide="download" style="width:16px;height:16px;"></i> Pemasukan
         </button>
         <button class="btn" id="tabBtnUniversalKasKeluar" style="flex:1; background:transparent; color:var(--text-light); border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;" onclick="switchUniversalTab('pengeluaran')">
           <i data-lucide="upload" style="width:16px;height:16px;"></i> Pengeluaran
@@ -3158,43 +3155,53 @@
 
       <!-- TAB 2: KAS KELUAR -->
       <div id="tabUniversalKasKeluar" style="display:none;">
-        <!-- Summary Cards -->
+        <!-- Summary Cards (ALL kas keluar universal) -->
         <div id="kasKeluarSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
 
-        <!-- Filter -->
+        <!-- Pilih Kategori -->
         <div class="card" style="margin-bottom:1rem; padding:1rem 1.2rem;">
-          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
-            <input type="text" id="searchKasKeluar" class="form-input" placeholder="Cari nama item atau keterangan..." onkeyup="renderKasKeluarTable()" style="flex:2 1 180px; margin:0; padding:0.4rem 0.8rem;">
-            <select id="filterKategoriKK" class="form-input" onchange="renderKasKeluarTable()" style="flex:1 1 140px; margin:0; padding:0.4rem 0.8rem;">
-              <option value="">Semua Kategori</option>
-              <option value="Pelatih Ekskul">Pelatih Ekskul</option>
-              <option value="Sarana & Prasarana">Sarana & Prasarana</option>
-              <option value="Tagihan Utilitas">Tagihan Utilitas</option>
-              <option value="Operasional">Operasional</option>
-              <option value="Konsumsi">Konsumsi</option>
-              <option value="Lainnya">Lainnya</option>
-            </select>
-            <input type="month" id="filterBulanKK" class="form-input" onchange="renderKasKeluarTable()" style="flex:1 1 140px; margin:0; padding:0.4rem 0.8rem;">
+          <label class="form-label" style="margin-bottom:0.5rem; font-weight:600; color:var(--primary-dark);"><i data-lucide="layers" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Pilih Kategori Pengeluaran</label>
+          <select id="selectUnivKategoriPengeluaran" class="form-input" style="margin:0; max-width:350px;" onchange="switchUnivKategoriPengeluaran(this.value)">
+            <option value="">— Pilih Kategori —</option>
+            <option value="Honor">Honor</option>
+            <option value="Ekstrakurikuler">Ekstrakurikuler</option>
+            <option value="Utilitas (listrik & wifi)">Utilitas (listrik & wifi)</option>
+            <option value="Alat Tulis Kantor (ATK)">Alat Tulis Kantor (ATK)</option>
+            <option value="Perjalanan Dinas">Perjalanan Dinas</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Category Content Container -->
+        <div id="univKategoriContentContainer" style="display:none;">
+          <!-- Filter + Tombol Tambah -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+              <input type="text" id="searchUnivKategori" class="form-input" placeholder="Cari..." style="max-width:280px; margin:0;" oninput="renderUnivKategoriTable()" />
+              <input type="month" id="filterBulanUnivKategori" class="form-input" onchange="renderUnivKategoriTable()" style="max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+            </div>
+            <!-- Note: btnAksiUniversalPengeluaran button in header already opens kasKeluarModal, but we can have one here too -->
+            <button class="btn btn-primary" onclick="openKasKeluarModal()">
+              <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+            </button>
+          </div>
+
+          <!-- Dynamic Table -->
+          <div class="card">
+            <h3 id="univKategoriTableTitle" style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);"></h3>
+            <div class="table-container">
+              <table class="data-table" id="tableUnivKategori">
+                <thead id="theadUnivKategori"></thead>
+                <tbody id="tbodyUnivKategori"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="card">
-          <div class="table-container">
-            <table class="data-table" id="tableKasKeluar">
-              <thead>
-                <tr>
-                  <th style="width:40px;">No</th>
-                  <th>Kategori</th>
-                  <th>Nama Item / Deskripsi</th>
-                  <th>Jumlah</th>
-                  <th>Tanggal</th>
-                  <th>Keterangan</th>
-                  <th style="text-align:right; width:100px;">Aksi</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
+        <!-- Placeholder when no category selected -->
+        <div id="univKategoriPlaceholder" style="text-align:center; padding:3rem 1rem; color:var(--text-light);">
+          <i data-lucide="folder-open" style="width:48px;height:48px;opacity:0.3;margin-bottom:1rem;display:block;margin-left:auto;margin-right:auto;"></i>
+          <p style="font-size:1rem;">Pilih kategori pengeluaran di atas untuk melihat riwayat transaksi.</p>
         </div>
       </div>
     </section>
@@ -3279,47 +3286,110 @@
       </div>
     </section>
 
-    <!-- ========== SECTION: PENGELUARAN DINAS ========== -->
-    <section class="dash-section" id="sectionPengeluaranDinas">
-      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+    <!-- ========== SECTION: TRANSAKSI OPERASIONAL ========== -->
+    <section class="dash-section" id="sectionTransaksiOperasional">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
         <div>
-          <h2><i data-lucide="map-pin" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Pengeluaran Dinas</h2>
-          <p>Catat dan kelola pengeluaran untuk rapat, sosialisasi, dan perjalanan dinas lainnya.</p>
+          <h2><i data-lucide="building-2" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Operasional</h2>
+          <p>Pusat kontrol pemasukan (Dana BOS) dan pengeluaran operasional sekolah.</p>
         </div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-          <button class="btn btn-outline" onclick="printLaporanPengeluaranDinas()">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; flex-direction:column;" class="mobile-vertical-actions" id="operasionalHeaderActions">
+          <button class="btn btn-primary" onclick="openOperasionalPemasukanModal()" id="btnAksiOperasionalPemasukan" style="display:block;">
+            <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Pemasukan
+          </button>
+          <button class="btn btn-outline" onclick="printLaporanOperasional()" id="btnAksiOperasionalCetakPemasukan" style="display:block;">
             <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
           </button>
-          <button class="btn btn-primary" onclick="openPengeluaranDinasModal()">
-            <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Pengeluaran Dinas
+          <button class="btn btn-outline" onclick="printLaporanOperasional()" id="btnAksiOperasionalCetakPengeluaran" style="display:none;">
+            <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
+          </button>
+          <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()" id="btnAksiOperasionalPengeluaran" style="display:none;">
+            <i data-lucide="plus" style="width:18px;height:18px;"></i> Catat Pengeluaran
           </button>
         </div>
       </div>
 
-      <!-- Summary Cards -->
-      <div id="pengeluaranDinasSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+      <!-- TABS NAVIGATION -->
+      <div class="universal-tabs" style="display:flex; gap:8px; margin-bottom:1.5rem; border-bottom:2px solid var(--border-color); padding-bottom:0.5rem; flex-wrap:wrap;">
+        <button class="btn" id="tabBtnOperasionalPemasukan" style="flex:1; background:var(--primary); color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;" onclick="switchOperasionalTab('pemasukan')">
+          <i data-lucide="download" style="width:16px;height:16px;"></i> Pemasukan
+        </button>
+        <button class="btn" id="tabBtnOperasionalPengeluaran" style="flex:1; background:transparent; color:var(--text-light); border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;" onclick="switchOperasionalTab('pengeluaran')">
+          <i data-lucide="upload" style="width:16px;height:16px;"></i> Pengeluaran
+        </button>
+      </div>
 
-      <div class="card">
-        <div style="margin-bottom:1rem;">
-          <input type="text" id="searchPengeluaranDinas" class="form-input" placeholder="Cari tujuan, petugas, atau jenis..." onkeyup="renderPengeluaranDinasTable()">
+      <!-- TAB PEMASUKAN -->
+      <div id="tabOperasionalPemasukan">
+        <div id="operasionalPemasukanSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+        
+        
+
+        <h3 style="margin-bottom:1rem; font-size:1.1rem; color:var(--primary-dark);">Riwayat Pemasukan Operasional</h3>
+        <div class="card">
+          <div class="table-container">
+            <table class="data-table" id="tableOperasionalPemasukan">
+              <thead>
+                <tr>
+                  <th style="width:40px;">No</th>
+                  <th>Tanggal</th>
+                  <th>Sumber Dana</th>
+                  <th>Keterangan</th>
+                  <th>Jumlah</th>
+                  <th style="text-align:right; width:80px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
-        <div class="table-container">
-          <table class="data-table" id="tablePengeluaranDinas">
-            <thead>
-              <tr>
-                <th style="width:40px;">No</th>
-                <th>Jenis</th>
-                <th>Tujuan</th>
-                <th>Petugas</th>
-                <th>Jumlah Uang</th>
-                <th>Berangkat</th>
-                <th>Pulang</th>
-                <th>Keterangan</th>
-                <th style="text-align:right; width:100px;">Aksi</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+      </div>
+
+      <!-- TAB PENGELUARAN -->
+      <div id="tabOperasionalPengeluaran" style="display:none;">
+        <!-- Summary Cards (ALL pengeluaran) -->
+        <div id="operasionalPengeluaranSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+
+        <!-- Pilih Kategori -->
+        <div class="card" style="margin-bottom:1.5rem; padding:1rem 1.2rem;">
+          <label class="form-label" style="margin-bottom:0.5rem; font-weight:600; color:var(--primary-dark);"><i data-lucide="layers" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Pilih Kategori Pengeluaran</label>
+          <select id="selectKategoriPengeluaran" class="form-input" style="margin:0; max-width:350px;" onchange="switchOpKategoriPengeluaran(this.value)">
+            <option value="">— Pilih Kategori —</option>
+            <option value="Honor">Honor</option>
+            <option value="Ekstrakurikuler">Ekstrakurikuler</option>
+            <option value="Utilitas (listrik & wifi)">Utilitas (listrik & wifi)</option>
+            <option value="Alat Tulis Kantor (ATK)">Alat Tulis Kantor (ATK)</option>
+            <option value="Perjalanan Dinas">Perjalanan Dinas</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Category Content Container -->
+        <div id="opKategoriContentContainer" style="display:none;">
+          <!-- Filter + Tombol Tambah -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+            <input type="text" id="searchOpKategori" class="form-input" placeholder="Cari..." style="max-width:280px; margin:0;" oninput="renderOpKategoriTable()" />
+            <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()">
+              <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+            </button>
+          </div>
+
+          <!-- Dynamic Table -->
+          <div class="card">
+            <h3 id="opKategoriTableTitle" style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);"></h3>
+            <div class="table-container">
+              <table class="data-table" id="tableOpKategori">
+                <thead id="theadOpKategori"></thead>
+                <tbody id="tbodyOpKategori"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Placeholder when no category selected -->
+        <div id="opKategoriPlaceholder" style="text-align:center; padding:3rem 1rem; color:var(--text-light);">
+          <i data-lucide="folder-open" style="width:48px;height:48px;opacity:0.3;margin-bottom:1rem;display:block;margin-left:auto;margin-right:auto;"></i>
+          <p style="font-size:1rem;">Pilih kategori pengeluaran di atas untuk melihat riwayat transaksi.</p>
         </div>
       </div>
     </section>
@@ -3462,6 +3532,129 @@
         </div>
       </div>
     </section>
+    <!-- ========== SECTION: BUKU KAS BENDAHARA (KAS SEKOLAH) ========== -->
+    <section class="dash-section" id="sectionBukuKasBendahara">
+      <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2><i data-lucide="landmark" style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Kas Sekolah</h2>
+          <p>Kelola arus kas masuk dan keluar secara terpusat untuk Kas Operasional (BOS) dan Kas Internal (Siswa).</p>
+        </div>
+      </div>
+
+      <!-- TABS -->
+      <div class="account-tabs" style="margin-bottom:1.5rem;">
+        <button class="account-tab-btn active" data-tab="kas_global" onclick="switchBukuKasTab('kas_global')">
+          <i data-lucide="pie-chart" style="width:16px;height:16px"></i> Ringkasan Global
+        </button>
+        <button class="account-tab-btn" data-tab="kas_operasional" onclick="switchBukuKasTab('kas_operasional')">
+          <i data-lucide="landmark" style="width:16px;height:16px"></i> Kas Operasional
+        </button>
+        <button class="account-tab-btn" data-tab="kas_internal" onclick="switchBukuKasTab('kas_internal')">
+          <i data-lucide="users" style="width:16px;height:16px"></i> Kas Internal
+        </button>
+      </div>
+
+      <!-- FILTER GLOBAL (Applies to all tabs) -->
+      <div class="card" style="margin-bottom:1.5rem; padding:1rem 1.5rem; display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+        <div style="flex:1; min-width:150px;">
+          <label style="font-size:0.8rem; color:var(--text-light); margin-bottom:0.2rem; display:block;">Pilih Bulan</label>
+          <input type="month" id="filterBulanBukuKas" class="form-input" style="margin:0; padding:0.5rem;" onchange="loadBukuKas()" />
+        </div>
+        <div style="flex:2; min-width:200px;">
+          <label style="font-size:0.8rem; color:var(--text-light); margin-bottom:0.2rem; display:block;">Cari Transaksi</label>
+          <input type="text" id="searchBukuKas" class="form-input" placeholder="Cari keterangan, kategori..." style="margin:0; padding:0.5rem;" oninput="renderBukuKas()" />
+        </div>
+      </div>
+
+      <!-- SUMMARY CARDS -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+        <div style="background: linear-gradient(135deg, #64748b 0%, #475569 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(100,116,139,0.15);">
+          <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Saldo Awal</h4>
+          <h2 id="bkSaldoAwal" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
+        </div>
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(16,185,129,0.15);">
+          <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Total Pemasukan</h4>
+          <h2 id="bkTotalPemasukan" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
+        </div>
+        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(239,68,68,0.15);">
+          <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Total Pengeluaran</h4>
+          <h2 id="bkTotalPengeluaran" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
+        </div>
+        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(59,130,246,0.15);">
+          <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Saldo Akhir</h4>
+          <h2 id="bkSaldoAkhir" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="card" style="padding:0; overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="data-table" id="tableBukuKas">
+            <thead>
+              <tr>
+                <th style="width:40px;">No</th>
+                <th style="width:110px;">Tanggal</th>
+                <th style="width:130px;" id="thSumberDana">Sumber Dana</th>
+                <th style="width:140px;">Kategori</th>
+                <th>Keterangan</th>
+                <th style="text-align:right;">Masuk (Rp)</th>
+                <th style="text-align:right;">Keluar (Rp)</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyBukuKas">
+              <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== MODAL: TAMBAH TRANSAKSI KAS ========== -->
+    <div class="modal-overlay" id="modalTambahTransaksiKas">
+      <div class="modal" style="max-width:500px;position:relative;">
+        <button class="modal-close" onclick="document.getElementById('modalTambahTransaksiKas').classList.remove('active')"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+        <div class="modal-header">
+          <h3 id="modalKasTitle">Tambah Transaksi</h3>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Sumber Dana</label>
+            <input type="text" id="inputKasSumber" class="form-input" readonly style="background:#f1f5f9;" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Jenis Transaksi</label>
+            <select id="inputKasJenis" class="form-input">
+              <option value="Pemasukan">Pemasukan</option>
+              <option value="Pengeluaran">Pengeluaran</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Kategori / Jenis Pembayaran</label>
+            <input type="text" id="inputKasKategori" class="form-input" placeholder="Contoh: Honor Guru, SPP, Ujian..." list="listKategoriKas" />
+            <datalist id="listKategoriKas">
+              <!-- Diisi via JS tergantung sumber dana -->
+            </datalist>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Nominal (Rp)</label>
+            <input type="number" id="inputKasNominal" class="form-input" placeholder="0" min="0" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Tanggal Transaksi</label>
+            <input type="date" id="inputKasTanggal" class="form-input" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Keterangan / Rincian</label>
+            <textarea id="inputKasKeterangan" class="form-input" rows="3" placeholder="Tuliskan keterangan lebih lanjut mengenai transaksi ini..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer" style="text-align:right; margin-top:1.5rem; display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn btn-outline" onclick="document.getElementById('modalTambahTransaksiKas').classList.remove('active')">Batal</button>
+          <button class="btn btn-primary" onclick="simpanTransaksiKas()">Simpan Transaksi</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ========== SECTION: LAPORAN BENDAHARA (KEPSEK ONLY) ========== -->
     <section class="dash-section" id="sectionLaporanKeuangan">
       <div class="dash-section-header" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
@@ -4622,94 +4815,107 @@
   </div>
   
   <!-- ========== MODAL: BUAT TRANSAKSI / TAGIHAN BARU ========== -->
+  <!-- ========== MODAL: BUAT TAGIHAN BARU (GABUNGAN UNIVERSAL + PENDAFTARAN) ========== -->
   <div class="modal-overlay" id="keuanganInsidentalModal">
-    <div class="modal" style="max-width:600px;position:relative;">
+    <div class="modal" style="max-width:620px;position:relative;">
       <button class="modal-close" onclick="closeKeuanganInsidentalModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <div class="modal-logo" style="background:rgba(37,99,235,.12);color:#2563eb;"><i data-lucide="wallet" style="width:26px;height:26px"></i></div>
-        <h3 id="keuanganInsidentalTitle">Buat Transaksi Baru</h3>
-        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;" id="keuanganInsidentalDesc">Tentukan nama kegiatan, kelas target, nominal, dan tanggal pembukaan transaksi.</p>
+        <h3 id="keuanganInsidentalTitle">Buat Tagihan Baru</h3>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;" id="keuanganInsidentalDesc">Pilih kategori tagihan, tentukan detail, dan simpan.</p>
       </div>
       <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem;">
         <input type="hidden" id="formInsidentalJenis" value="universal" />
+
+        <!-- DROPDOWN KATEGORI TAGIHAN -->
         <div class="form-group" style="margin:0;">
-          <label class="form-label">Nama Transaksi / Kegiatan *</label>
-          <input type="text" id="formInsidentalNama" class="form-input" placeholder="Contoh: Kegiatan Renang, Study Tour, ANBK" />
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Kelas Target *</label>
-          <select id="formInsidentalKelas" class="form-input">
-            <option value="Semua Kelas">Semua Kelas</option>
+          <label class="form-label">Kategori Tagihan *</label>
+          <select id="formTagihanKategori" class="form-input" onchange="onTagihanKategoriChange(this.value)">
+            <option value="universal">Tagihan Universal (Kegiatan / Biaya Rutin)</option>
+            <option value="pendaftaran">Biaya Pendaftaran (Siswa Baru)</option>
           </select>
         </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Jumlah yang Harus Dibayar (Rp) *</label>
-          <input type="number" id="formInsidentalNominal" class="form-input" placeholder="500000" />
+
+        <!-- ===== FORM: TAGIHAN UNIVERSAL ===== -->
+        <div id="formGroupUniversal">
+          <div style="display:flex; flex-direction:column; gap:1.2rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Nama Transaksi / Kegiatan *</label>
+              <input type="text" id="formInsidentalNama" class="form-input" placeholder="Contoh: Kegiatan Renang, Study Tour, ANBK" />
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Kelas Target *</label>
+              <select id="formInsidentalKelas" class="form-input">
+                <option value="Semua Kelas">Semua Kelas</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Jumlah yang Harus Dibayar (Rp) *</label>
+              <input type="number" id="formInsidentalNominal" class="form-input" placeholder="500000" />
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Tanggal Dibuat *</label>
+              <input type="date" id="formInsidentalTanggal" class="form-input" />
+            </div>
+          </div>
         </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Tanggal Dibuat *</label>
-          <input type="date" id="formInsidentalTanggal" class="form-input" />
+
+        <!-- ===== FORM: BIAYA PENDAFTARAN ===== -->
+        <div id="formGroupPendaftaran" style="display:none;">
+          <div style="display:flex; flex-direction:column; gap:1.2rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Nama Tagihan *</label>
+              <input type="text" id="formPendaftaranNama" class="form-input" placeholder="Contoh: Pendaftaran Angkatan 2024/2025" />
+            </div>
+            <div class="grid-responsive">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Tahun Pelajaran</label>
+                <input type="text" id="formPendaftaranTahun" class="form-input" readonly style="background:#f1f5f9; cursor:not-allowed;" />
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Tanggal Dibuat</label>
+                <input type="date" id="formPendaftaranTanggal" class="form-input" />
+              </div>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Kelas Target *</label>
+              <select id="formPendaftaranKelas" class="form-input">
+                <option value="Semua Kelas">Semua Kelas</option>
+              </select>
+            </div>
+
+            <!-- RINCIAN BIAYA -->
+            <div>
+              <label class="form-label" style="font-weight:600; font-size:1rem; margin-bottom:8px;">Rincian Biaya Pendaftaran</label>
+              <div id="pendaftaranRincianContainer" style="display:flex; flex-direction:column; gap:8px;">
+                <!-- Dynamic items -->
+              </div>
+              <button class="btn btn-outline" style="width:100%; margin-top:10px; border-style:dashed;" onclick="addPendaftaranRincianItem()">
+                <i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Item Biaya
+              </button>
+            </div>
+          </div>
         </div>
+
       </div>
-      <div class="modal-footer modal-footer-responsive" style="border-top: 1px solid var(--border-color); padding-top:1rem; margin-top:0;">
+
+      <!-- FOOTER: Universal -->
+      <div class="modal-footer modal-footer-responsive" id="footerUniversal" style="border-top: 1px solid var(--border-color); padding-top:1rem; margin-top:0;">
         <button class="btn btn-primary" style="display:flex; justify-content:center; align-items:center; gap:0.5rem;" onclick="saveKeuanganInsidental()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan Tagihan</button>
         <button class="btn btn-danger" onclick="closeKeuanganInsidentalModal()">Batal</button>
       </div>
-    </div>
-  </div>
 
-
-  <!-- ========== MODAL: BUAT TAGIHAN PENDAFTARAN (DENGAN RINCIAN) ========== -->
-  <div class="modal-overlay" id="pendaftaranTagihanModal">
-    <div class="modal" style="max-width:600px;position:relative;">
-      <button class="modal-close" onclick="closePendaftaranTagihanModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
-      <div class="modal-header">
-        <div class="modal-logo" style="background:rgba(16,185,129,.12);color:#10b981;"><i data-lucide="file-text" style="width:26px;height:26px"></i></div>
-        <h3>Buat Tagihan Pendaftaran</h3>
-        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">Tentukan nama tagihan, tahun pelajaran, dan rincian biaya pendaftaran siswa baru.</p>
-      </div>
-      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem;">
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Nama Tagihan *</label>
-          <input type="text" id="formPendaftaranNama" class="form-input" placeholder="Contoh: Pendaftaran Angkatan 2024/2025" />
-        </div>
-        <div class="grid-responsive">
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Tahun Pelajaran</label>
-            <input type="text" id="formPendaftaranTahun" class="form-input" readonly style="background:#f1f5f9; cursor:not-allowed;" />
-          </div>
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Tanggal Dibuat</label>
-            <input type="date" id="formPendaftaranTanggal" class="form-input" />
-          </div>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Kelas Target *</label>
-          <select id="formPendaftaranKelas" class="form-input">
-            <option value="Semua Kelas">Semua Kelas</option>
-          </select>
-        </div>
-
-        <!-- RINCIAN BIAYA -->
-        <div>
-          <label class="form-label" style="font-weight:600; font-size:1rem; margin-bottom:8px;">Rincian Biaya Pendaftaran</label>
-          <div id="pendaftaranRincianContainer" style="display:flex; flex-direction:column; gap:8px;">
-            <!-- Dynamic items -->
-          </div>
-          <button class="btn btn-outline" style="width:100%; margin-top:10px; border-style:dashed;" onclick="addPendaftaranRincianItem()">
-            <i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Item Biaya
-          </button>
-        </div>
-      </div>
-      <div class="modal-footer" style="display:flex; flex-direction:column; align-items:stretch; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top:0; gap:0.75rem;">
+      <!-- FOOTER: Pendaftaran -->
+      <div class="modal-footer" id="footerPendaftaran" style="display:none; flex-direction:column; align-items:stretch; border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top:0; gap:0.75rem;">
         <div style="text-align:left; width:100%; margin-bottom: 0.25rem;">
           <span style="font-weight:700; font-size:1.2rem; color:var(--primary-dark);">Total: <span id="formPendaftaranTotalText">Rp 0</span></span>
         </div>
         <div class="modal-footer-responsive" style="display:flex; flex-direction:column; gap:0.75rem; width:100%;">
           <button class="btn btn-primary" style="width:100%; display:flex; justify-content:center; align-items:center; gap:0.5rem;" onclick="savePendaftaranTagihan()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan Tagihan</button>
-          <button class="btn btn-danger" style="width:100%;" onclick="closePendaftaranTagihanModal()">Batal</button>
+          <button class="btn btn-danger" style="width:100%;" onclick="closeKeuanganInsidentalModal()">Batal</button>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -4756,46 +4962,17 @@
     </div>
   </div>
 
-  <!-- ========== KAS KELUAR MODAL ========== -->
+  <!-- ========== KAS KELUAR MODAL (UNIVERSAL) ========== -->
   <div class="modal-overlay" id="kasKeluarModal">
     <div class="modal" style="max-width:550px;position:relative;">
       <button class="modal-close" onclick="closeKasKeluarModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <div class="modal-logo" style="background:rgba(239,68,68,.12);color:#ef4444;"><i data-lucide="trending-down" style="width:26px;height:26px"></i></div>
         <h3 id="kasKeluarModalTitle">Tambah Pengeluaran</h3>
-        <p style="color:var(--text-light); font-size:0.95rem;">Catat pengeluaran kas sekolah.</p>
+        <p style="color:var(--text-light); font-size:0.95rem;">Catat pengeluaran kas sekolah (Universal).</p>
       </div>
-      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem;">
-        <input type="hidden" id="formKKId" />
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Kategori *</label>
-          <select id="formKKKategori" class="form-input">
-            <option value="Pelatih Ekskul">Pelatih Ekskul</option>
-            <option value="Sarana & Prasarana">Sarana & Prasarana</option>
-            <option value="Tagihan Utilitas">Tagihan Utilitas</option>
-            <option value="Operasional">Operasional</option>
-            <option value="Konsumsi">Konsumsi</option>
-            <option value="Lainnya">Lainnya</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Nama Item / Deskripsi *</label>
-          <input type="text" id="formKKNamaItem" class="form-input" placeholder="Cth: Honor pelatih futsal bulan Mei" />
-        </div>
-        <div class="grid-responsive" style="gap:1rem;">
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Jumlah (Rp) *</label>
-            <input type="number" id="formKKJumlah" class="form-input" placeholder="0" min="0" />
-          </div>
-          <div class="form-group" style="margin:0;">
-            <label class="form-label">Tanggal *</label>
-            <input type="date" id="formKKTanggal" class="form-input" />
-          </div>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label class="form-label">Keterangan (opsional)</label>
-          <textarea id="formKKKeterangan" class="form-input" rows="2" placeholder="Catatan tambahan..."></textarea>
-        </div>
+      <div class="modal-body" id="kasKeluarModalBody" style="display:flex; flex-direction:column; gap:1.2rem; padding-top:1rem;">
+        <!-- Form fields will be generated dynamically by JS based on category -->
       </div>
       <div class="modal-footer modal-footer-responsive" style="border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
         <button class="btn btn-primary" style="display:flex; justify-content:center; align-items:center; gap:0.5rem;" onclick="saveKasKeluar()"><i data-lucide="check" style="width:16px;height:16px;"></i> Simpan</button>
@@ -5544,5 +5721,52 @@
     }
   </style>
 
+  <!-- Modal Tambah Pemasukan Operasional -->
+  <div class="modal-overlay" id="operasionalPemasukanModal">
+    <div class="modal" style="max-width:500px;position:relative;">
+      <button class="modal-close" onclick="closeOperasionalPemasukanModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <h3 id="opMasukModalTitle">Tambah Pemasukan Operasional</h3>
+      </div>
+      <div class="modal-body" style="padding-top:0.5rem;">
+        <div class="form-group">
+          <label class="form-label">Sumber Dana</label>
+          <input type="text" class="form-input" value="Dana BOS" readonly style="background:#f1f5f9; cursor:not-allowed;" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal Diterima <span style="color:red">*</span></label>
+          <input type="date" id="formOpMasukTanggal" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Jumlah (Rp) <span style="color:red">*</span></label>
+          <input type="number" id="formOpMasukJumlah" class="form-input" placeholder="Masukkan jumlah" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Keterangan</label>
+          <input type="text" id="formOpMasukKet" class="form-input" placeholder="Keterangan pemasukan (opsional)" />
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:right;">
+        <button class="btn btn-outline" onclick="closeOperasionalPemasukanModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPemasukan()">Simpan</button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal Tambah Pengeluaran Operasional (Dynamic) -->
+  <div class="modal-overlay" id="operasionalPengeluaranModal">
+    <div class="modal" style="max-width:500px;position:relative;">
+      <button class="modal-close" onclick="closeOperasionalPengeluaranModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <h3 id="opKeluarModalTitle">Catat Pengeluaran Operasional</h3>
+      </div>
+      <div class="modal-body" id="opKeluarModalBody" style="padding-top:0.5rem;">
+        <!-- Form fields will be generated dynamically by JS based on category -->
+      </div>
+      <div class="modal-footer" style="text-align:right;">
+        <button class="btn btn-outline" onclick="closeOperasionalPengeluaranModal()">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPengeluaran()">Simpan Pengeluaran</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

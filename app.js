@@ -801,7 +801,7 @@ async function initDashboard() {
         const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
         if (error || !profile) { await supabaseClient.auth.signOut(); window.location.href = 'index.html'; return; }
 
-        currentUser = { id: session.user.id, email: session.user.email, name: profile.full_name };
+        currentUser = { id: session.user.id, email: session.user.email, name: profile.full_name, role: profile.role };
         currentRole = profile.role;
 
         // Cek mode simulasi (Admin Only)
@@ -7227,8 +7227,12 @@ async function loadAsesmenList() {
                             sendBtn = '<button class="btn-icon" style="background:rgba(16,185,129,.1);color:#10b981;" onclick="sendToSoalUjian(\'' + a.id + '\')" title="Kirim ke Soal Ujian"><i data-lucide="send" style="width:14px;height:14px"></i></button>';
                         }
                     }
+                    var regradeBtn = '';
+                    if (a.google_form_url && a.google_sheet_url) {
+                        regradeBtn = '<button class="btn-icon" style="background:rgba(139,92,246,.1);color:#8b5cf6;" onclick="regradeAsesmen(\'' + a.id + '\')" title="Koreksi Ulang Semua Jawaban"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i></button>';
+                    }
                     aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
-                        sendBtn + ujianBtn +
+                        regradeBtn + sendBtn + ujianBtn +
                         '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
                         '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
                 }
@@ -7253,6 +7257,61 @@ async function loadAsesmenList() {
     } catch(e) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
     }
+}
+
+// ============================================================
+// KOREKSI ULANG (REGRADE) ASESMEN
+// ============================================================
+
+async function regradeAsesmen(asesmenId) {
+    var a = asesmenList.find(function(x) { return x.id === asesmenId; });
+    if (!a) { showToast('Asesmen tidak ditemukan!', 'error'); return; }
+    if (!a.google_form_url) { showToast('Form URL tidak ditemukan!', 'error'); return; }
+    
+    showCustomConfirm(
+        'Koreksi Ulang Semua Jawaban?',
+        'Sistem akan mengoreksi ulang <strong>semua jawaban siswa</strong> yang sudah masuk pada asesmen:<br><br>' +
+        '<strong>"' + escHtml(a.judul || '-') + '"</strong><br><br>' +
+        '✅ Jawaban yang sudah terekam akan dikoreksi otomatis<br>' +
+        '✅ Trigger auto-grading akan dipulihkan jika hilang<br>' +
+        '✅ Hasil koreksi masuk ke tab "Hasil Koreksi" di Google Sheet<br><br>' +
+        '⏱️ Proses ini mungkin memakan waktu beberapa detik tergantung jumlah jawaban.',
+        'Ya, Koreksi Ulang',
+        async function() {
+            showGlobalLoader('Mengoreksi ulang semua jawaban... Harap tunggu');
+            try {
+                var gasUrl = await _getGasUrl();
+                if (!gasUrl) {
+                    showToast('URL Google Apps Script belum dikonfigurasi!', 'warning');
+                    return;
+                }
+                
+                var response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'regrade',
+                        formUrl: a.google_form_edit_url || a.google_form_url
+                    })
+                });
+                var result = await response.json();
+                
+                if (result.status === 'success') {
+                    var infoHtml = '<strong>' + escHtml(result.message) + '</strong>';
+                    if (result.triggerRestored) {
+                        infoHtml += '<br><br>🔄 <span style="color:#16a34a;">Trigger auto-grading berhasil dipulihkan!</span><br>Jawaban baru selanjutnya akan otomatis dikoreksi.';
+                    }
+                    showNotifModal('Koreksi Ulang Berhasil! ✅', infoHtml, 'success');
+                } else {
+                    throw new Error(result.message || 'Gagal mengoreksi ulang');
+                }
+            } catch(e) {
+                showNotifModal('Gagal Koreksi Ulang', 'Terjadi kesalahan:<br><br><strong>' + escHtml(e.message) + '</strong><br><br>Pastikan URL Google Apps Script sudah benar dan form masih ada.', 'error');
+            } finally {
+                hideGlobalLoader();
+            }
+        }
+    );
 }
 
 // ============================================================
@@ -10372,6 +10431,7 @@ function resetAINaskah() {
 
 
 /* ============================================================
+/* ============================================================
    MODUL MANAJEMEN KEUANGAN BENDAHARA
    ============================================================ */
 
@@ -10459,10 +10519,14 @@ let activeDetailIdKat = null;
 let activeDetailJenis = null;
 
 function renderMasterTagihanTable(jenis) {
-    let tbody = document.querySelector(`#masterTable${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'} tbody`);
+    let tbody = document.querySelector(`#masterTableUniversal tbody`);
     if(!tbody) return;
     
-    let baseData = dKeuanganInsidental.filter(k => (k.jenis_tagihan || 'universal') === jenis && !k.is_archived);
+    // Gabungkan data universal dan pendaftaran ke satu tabel
+    let baseData = dKeuanganInsidental.filter(k => !k.is_archived);
+    if(jenis === 'pendaftaran') {
+        baseData = baseData.filter(k => (k.jenis_tagihan || 'universal') === 'pendaftaran');
+    }
     let filteredData = baseData;
     
     // Filter tags
@@ -10487,28 +10551,28 @@ function renderMasterTagihanTable(jenis) {
             // Ini bisa didapat dari menghitung total terbayar pada semua tagihan jenis ini
             let totalTerbayarSemua = 0;
             let totalTerbayarBulanIni = 0;
-            let bulanIni = new Date().toISOString().slice(0,7);
+            let now = new Date();
+            let bulanIni = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
             
             // Mencari nama transaksi terbanyak
             let namaCounts = {};
             
             baseData.forEach(k => {
-                let kodeTagihan = 'insidental_' + k.id;
+                let prefix = (k.jenis_tagihan === 'pendaftaran') ? 'pendaftaran_' : 'insidental_';
+                let kodeTagihan = prefix + k.id;
                 // Ambil semua pembayaran untuk tagihan ini
-                if(window.dPembayaranSiswa) {
+                if(dPembayaranSiswa && dPembayaranSiswa.length > 0) {
                     dPembayaranSiswa.forEach(p => {
-                        let detailArr = [];
-                        try { detailArr = JSON.parse(p.detail_pembayaran || '[]'); } catch(e){}
-                        detailArr.forEach(d => {
-                            if(d.kode === kodeTagihan) {
-                                let nom = parseInt(d.nominal) || 0;
+                        if(p.jenis === kodeTagihan) {
+                            p.riwayat.forEach(r => {
+                                let nom = parseInt(r.nominal) || 0;
                                 totalTerbayarSemua += nom;
-                                if(p.tanggal_pembayaran && p.tanggal_pembayaran.startsWith(bulanIni)) {
+                                if(r.tanggal && r.tanggal.startsWith(bulanIni)) {
                                     totalTerbayarBulanIni += nom;
                                 }
                                 namaCounts[k.nama] = (namaCounts[k.nama] || 0) + nom;
-                            }
-                        });
+                            });
+                        }
                     });
                 }
             });
@@ -10538,14 +10602,15 @@ function renderMasterTagihanTable(jenis) {
     
     tbody.innerHTML = '';
     if(filteredData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada riwayat tagihan ${jenis}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada riwayat tagihan.</td></tr>`;
         return;
     }
     
     filteredData.forEach((k, idx) => {
-        // Parse rincian if available
+        let itemJenis = k.jenis_tagihan || 'universal';
+        // Parse rincian if available (for pendaftaran type)
         let rincianHtml = '';
-        if(jenis === 'pendaftaran' && k.rincian) {
+        if(k.rincian) {
             try {
                 let items = typeof k.rincian === 'string' ? JSON.parse(k.rincian) : k.rincian;
                 if(items && items.length > 0) {
@@ -10558,17 +10623,21 @@ function renderMasterTagihanTable(jenis) {
             } catch(e) {}
         }
         
+        let jenisBadge = itemJenis === 'pendaftaran' 
+            ? '<span style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:600; background:rgba(16,185,129,0.12); color:#10b981;">Pendaftaran</span>'
+            : '<span style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:0.72rem; font-weight:600; background:rgba(37,99,235,0.12); color:#2563eb;">Universal</span>';
+        
         tbody.innerHTML += `
             <tr>
                 <td>${idx + 1}</td>
-                <td><strong>${k.nama}</strong>${rincianHtml}</td>
+                <td><strong>${k.nama}</strong>${rincianHtml}<br>${jenisBadge}</td>
                 <td>${k.kelas}</td>
                 <td style="color:var(--danger); font-weight:600;">${formatRupiah(k.nominal)}</td>
                 <td>${k.tanggal}</td>
                 <td style="text-align:right; white-space:nowrap;">
-                    <button class="btn btn-sm btn-outline" style="color:#64748b; border-color:#cbd5e1;" onclick="arsipkanTagihan('${k.id}', '${jenis}')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px;"></i></button>
-                    <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="hapusTagihan('${k.id}', '${jenis}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
-                    <button class="btn btn-sm btn-primary" onclick="bukaDetailTagihan('${k.id}', '${jenis}')">Detail</button>
+                    <button class="btn btn-sm btn-outline" style="color:#64748b; border-color:#cbd5e1;" onclick="arsipkanTagihan('${k.id}', '${itemJenis}')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px;"></i></button>
+                    <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="hapusTagihan('${k.id}', '${itemJenis}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+                    <button class="btn btn-sm btn-primary" onclick="bukaDetailTagihan('${k.id}', '${itemJenis}')">Detail</button>
                 </td>
             </tr>
         `;
@@ -10583,14 +10652,14 @@ function bukaDetailTagihan(idKat, jenis) {
     let kat = dKeuanganInsidental.find(k => k.id == idKat);
     if(!kat) return;
     
-    let containerMaster = document.getElementById(`masterTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
-    let containerDetail = document.getElementById(`detailTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    let containerMaster = document.getElementById('masterTableContainerUniversal');
+    let containerDetail = document.getElementById('detailTableContainerUniversal');
     
     containerMaster.style.display = 'none';
     containerDetail.style.display = 'block';
     
-    document.getElementById(`lblDetailNama${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).innerText = kat.nama;
-    document.getElementById(`lblDetailInfo${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).innerText = `Kelas: ${kat.kelas} | Nominal: ${formatRupiah(kat.nominal)}`;
+    document.getElementById('lblDetailNamaUniversal').innerText = kat.nama;
+    document.getElementById('lblDetailInfoUniversal').innerText = `Kelas: ${kat.kelas} | Nominal: ${formatRupiah(kat.nominal)}`;
     
     renderDetailSiswaTable(jenis);
 }
@@ -10599,19 +10668,22 @@ function tutupDetailTagihan(jenis) {
     activeDetailIdKat = null;
     activeDetailJenis = null;
     
-    let containerMaster = document.getElementById(`masterTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
-    let containerDetail = document.getElementById(`detailTableContainer${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`);
+    let containerMaster = document.getElementById('masterTableContainerUniversal');
+    let containerDetail = document.getElementById('detailTableContainerUniversal');
     
     containerMaster.style.display = 'block';
     containerDetail.style.display = 'none';
+    
+    // Perbarui tabel master dan summary cards
+    renderMasterTagihanTable('universal');
 }
 
 function renderDetailSiswaTable(jenis) {
     if(!activeDetailIdKat) return;
     
-    let tbody = document.querySelector(`#tableDetailSiswa${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'} tbody`);
+    let tbody = document.querySelector('#tableDetailSiswaUniversal tbody');
     if(!tbody) return;
-    let search = document.getElementById(`searchDetail${jenis === 'pendaftaran' ? 'Pendaftaran' : 'Universal'}`).value.toLowerCase();
+    let search = document.getElementById('searchDetailUniversal').value.toLowerCase();
     
     let kat = dKeuanganInsidental.find(k => k.id == activeDetailIdKat);
     if(!kat) return;
@@ -10651,16 +10723,16 @@ function renderDetailSiswaTable(jenis) {
 }
 
 function openTambahTransaksiModal(jenis) {
-    if(jenis === 'pendaftaran') {
-        openPendaftaranTagihanModal();
-        return;
-    }
-    // Universal flow
+    // Reset dropdown ke 'universal' by default
+    var katDropdown = document.getElementById('formTagihanKategori');
+    if(katDropdown) katDropdown.value = 'universal';
+    
+    // Reset form universal
     document.getElementById('formInsidentalJenis').value = 'universal';
     document.getElementById('formInsidentalNama').value = '';
     document.getElementById('formInsidentalNominal').value = '';
     document.getElementById('formInsidentalTanggal').value = new Date().toISOString().split('T')[0];
-    document.getElementById('keuanganInsidentalTitle').innerText = 'Buat Transaksi Universal';
+    document.getElementById('keuanganInsidentalTitle').innerText = 'Buat Tagihan Baru';
     
     let selKelas = document.getElementById('formInsidentalKelas');
     selKelas.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
@@ -10670,40 +10742,78 @@ function openTambahTransaksiModal(jenis) {
         });
     }
     
+    // Show universal form, hide pendaftaran
+    onTagihanKategoriChange('universal');
+    
+    // Jika dipanggil dengan jenis 'pendaftaran', langsung switch
+    if(jenis === 'pendaftaran') {
+        if(katDropdown) katDropdown.value = 'pendaftaran';
+        onTagihanKategoriChange('pendaftaran');
+    }
+    
     document.getElementById('keuanganInsidentalModal').classList.add('active');
     if(window.lucide) lucide.createIcons();
 }
 
-// === PENDAFTARAN TAGIHAN MODAL (DENGAN RINCIAN) ===
-async function openPendaftaranTagihanModal() {
-    document.getElementById('formPendaftaranNama').value = '';
-    document.getElementById('formPendaftaranTanggal').value = new Date().toISOString().split('T')[0];
+// === FUNGSI TOGGLE FORM SESUAI DROPDOWN KATEGORI ===
+async function onTagihanKategoriChange(val) {
+    var grpUniversal = document.getElementById('formGroupUniversal');
+    var grpPendaftaran = document.getElementById('formGroupPendaftaran');
+    var footerUniversal = document.getElementById('footerUniversal');
+    var footerPendaftaran = document.getElementById('footerPendaftaran');
     
-    // Muat tahun pelajaran dari database terlebih dahulu
-    if(typeof loadActiveYear === 'function') await loadActiveYear();
-    let lblYear = document.getElementById('lblActiveYear');
-    document.getElementById('formPendaftaranTahun').value = (lblYear && lblYear.textContent && lblYear.textContent !== 'Memuat...') ? lblYear.textContent : '-';
-    
-    // Populate kelas
-    let selKelas = document.getElementById('formPendaftaranKelas');
-    selKelas.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
-    if(typeof masterKelasList !== 'undefined') {
-        masterKelasList.forEach(k => {
-            selKelas.innerHTML += `<option value="${k.nama_kelas}">${k.nama_kelas}</option>`;
-        });
+    if(val === 'pendaftaran') {
+        // Sembunyikan form universal, tampilkan pendaftaran
+        if(grpUniversal) grpUniversal.style.display = 'none';
+        if(grpPendaftaran) grpPendaftaran.style.display = 'block';
+        if(footerUniversal) footerUniversal.style.display = 'none';
+        if(footerPendaftaran) footerPendaftaran.style.display = 'flex';
+        
+        document.getElementById('formInsidentalJenis').value = 'pendaftaran';
+        
+        // Populate data pendaftaran
+        document.getElementById('formPendaftaranNama').value = '';
+        document.getElementById('formPendaftaranTanggal').value = new Date().toISOString().split('T')[0];
+        
+        // Muat tahun pelajaran
+        if(typeof loadActiveYear === 'function') await loadActiveYear();
+        let lblYear = document.getElementById('lblActiveYear');
+        document.getElementById('formPendaftaranTahun').value = (lblYear && lblYear.textContent && lblYear.textContent !== 'Memuat...') ? lblYear.textContent : '-';
+        
+        // Populate kelas
+        let selKelas = document.getElementById('formPendaftaranKelas');
+        selKelas.innerHTML = '<option value="Semua Kelas">Semua Kelas</option>';
+        if(typeof masterKelasList !== 'undefined') {
+            masterKelasList.forEach(k => {
+                selKelas.innerHTML += `<option value="${k.nama_kelas}">${k.nama_kelas}</option>`;
+            });
+        }
+        
+        // Reset rincian items — add 1 empty item by default
+        document.getElementById('pendaftaranRincianContainer').innerHTML = '';
+        addPendaftaranRincianItem();
+        updatePendaftaranRincianTotal();
+        
+    } else {
+        // Tampilkan form universal, sembunyikan pendaftaran
+        if(grpUniversal) grpUniversal.style.display = 'block';
+        if(grpPendaftaran) grpPendaftaran.style.display = 'none';
+        if(footerUniversal) footerUniversal.style.display = 'flex';
+        if(footerPendaftaran) footerPendaftaran.style.display = 'none';
+        
+        document.getElementById('formInsidentalJenis').value = 'universal';
     }
     
-    // Reset rincian items — add 1 empty item by default
-    document.getElementById('pendaftaranRincianContainer').innerHTML = '';
-    addPendaftaranRincianItem();
-    updatePendaftaranRincianTotal();
-    
-    document.getElementById('pendaftaranTagihanModal').classList.add('active');
     if(window.lucide) lucide.createIcons();
 }
 
+// === PENDAFTARAN TAGIHAN MODAL (LEGACY COMPAT — now uses unified modal) ===
+async function openPendaftaranTagihanModal() {
+    openTambahTransaksiModal('pendaftaran');
+}
+
 function closePendaftaranTagihanModal() {
-    document.getElementById('pendaftaranTagihanModal').classList.remove('active');
+    closeKeuanganInsidentalModal();
 }
 
 function addPendaftaranRincianItem() {
@@ -10838,8 +10948,9 @@ function hapusTagihan(idKat, jenisTable) {
 }
 
 // === CETAK LAPORAN TAGIHAN (F4 KOP SURAT) ===
-function printLaporanTagihan(jenis) {
-    if(!activeDetailIdKat || activeDetailJenis !== jenis) {
+function printLaporanTagihan() {
+    let jenis = activeDetailJenis;
+    if(!activeDetailIdKat || !jenis) {
         return showToast('Silakan buka detail tagihan terlebih dahulu sebelum mencetak laporan.', 'warning');
     }
     
@@ -11345,8 +11456,9 @@ function cetakKwitansiSatuan() {
 }
 
 // -- Buka Modal Kwitansi Massal --
-function openKwitansiMassal(jenisTab) {
-    if(!activeDetailIdKat || activeDetailJenis !== jenisTab) {
+function openKwitansiMassal() {
+    let jenisTab = activeDetailJenis;
+    if(!activeDetailIdKat || !jenisTab) {
         return showToast('Silakan buka detail tagihan terlebih dahulu.', 'warning');
     }
     
@@ -12049,107 +12161,248 @@ document.addEventListener('DOMContentLoaded', () => {
     if(typeof supabaseClient !== 'undefined') fetchKasKeluar();
 });
 
-function renderKasKeluarTable() {
-    let tbody = document.querySelector('#tableKasKeluar tbody');
-    if(!tbody) return;
+// ---- KAS KELUAR UNIVERSAL: CATEGORY-BASED SYSTEM ----
+let currentUnivKategori = '';
+
+function switchUnivKategoriPengeluaran(kategori) {
+    currentUnivKategori = kategori;
+    let container = document.getElementById('univKategoriContentContainer');
+    let placeholder = document.getElementById('univKategoriPlaceholder');
     
-    let search = (document.getElementById('searchKasKeluar')?.value || '').toLowerCase();
-    let filterKat = document.getElementById('filterKategoriKK')?.value || '';
-    let filterBulan = document.getElementById('filterBulanKK')?.value || '';
-    
-    let filtered = dKasKeluar;
-    if(search) {
-        filtered = filtered.filter(d => 
-            d.nama_item.toLowerCase().includes(search) || 
-            (d.keterangan || '').toLowerCase().includes(search) ||
-            d.kategori.toLowerCase().includes(search)
-        );
-    }
-    if(filterKat) {
-        filtered = filtered.filter(d => d.kategori === filterKat);
-    }
-    if(filterBulan) {
-        filtered = filtered.filter(d => d.tanggal && d.tanggal.startsWith(filterBulan));
-    }
-    
-    // Summary Cards
-    let summaryEl = document.getElementById('kasKeluarSummary');
-    if(summaryEl) {
-        let totalAll = dKasKeluar.reduce((s, d) => s + parseInt(d.jumlah || 0), 0);
-        let totalFiltered = filtered.reduce((s, d) => s + parseInt(d.jumlah || 0), 0);
-        let bulanIni = new Date().toISOString().slice(0,7);
-        let totalBulanIni = dKasKeluar.filter(d => d.tanggal && d.tanggal.startsWith(bulanIni)).reduce((s, d) => s + parseInt(d.jumlah || 0), 0);
-        
-        // Count per category
-        let katCounts = {};
-        dKasKeluar.forEach(d => { katCounts[d.kategori] = (katCounts[d.kategori] || 0) + parseInt(d.jumlah || 0); });
-        let topKat = Object.entries(katCounts).sort((a,b) => b[1] - a[1])[0];
-        
-        summaryEl.innerHTML = `
-            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #ef4444;">
-                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Kas Keluar</div>
-                <div style="font-size:1.3rem; font-weight:700; color:#ef4444;">${formatRupiah(totalAll)}</div>
-            </div>
-            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
-                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
-                <div style="font-size:1.3rem; font-weight:700; color:#f59e0b;">${formatRupiah(totalBulanIni)}</div>
-            </div>
-            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
-                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
-                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${dKasKeluar.length}</div>
-            </div>
-            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #8b5cf6;">
-                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Terbanyak</div>
-                <div style="font-size:1rem; font-weight:700; color:#8b5cf6;">${topKat ? topKat[0] : '-'}</div>
-            </div>
-        `;
-    }
-    
-    tbody.innerHTML = '';
-    if(filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-light);">Belum ada data kas keluar.</td></tr>`;
+    if (!kategori) {
+        container.style.display = 'none';
+        placeholder.style.display = 'block';
         return;
     }
     
-    let katColors = {
-        'Pelatih Ekskul': '#2563eb',
-        'Sarana & Prasarana': '#059669',
-        'Tagihan Utilitas': '#f59e0b',
-        'Operasional': '#8b5cf6',
-        'Konsumsi': '#ec4899',
-        'Lainnya': '#64748b'
-    };
+    container.style.display = 'block';
+    placeholder.style.display = 'none';
     
-    filtered.forEach((d, idx) => {
-        let color = katColors[d.kategori] || '#64748b';
-        tbody.innerHTML += `
-            <tr>
-                <td>${idx + 1}</td>
-                <td><span style="background:${color}15; color:${color}; padding:3px 10px; border-radius:6px; font-size:0.8rem; font-weight:600;">${d.kategori}</span></td>
-                <td><strong>${d.nama_item}</strong></td>
-                <td style="font-weight:600; color:var(--danger);">${formatRupiah(d.jumlah)}</td>
-                <td>${d.tanggal}</td>
-                <td>${d.keterangan || '-'}</td>
-                <td style="text-align:right; white-space:nowrap;">
-                    <button class="btn btn-sm btn-outline" onclick="editKasKeluar('${d.id}')"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
-                    <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="hapusKasKeluar('${d.id}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
-                </td>
-            </tr>
-        `;
-    });
-    if(window.lucide) lucide.createIcons();
+    // Update table title
+    document.getElementById('univKategoriTableTitle').textContent = 'Riwayat Pengeluaran — ' + kategori;
+    
+    // Render category-specific table
+    renderUnivKategoriTable();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function renderKasKeluarSummary() {
+    let summaryDiv = document.getElementById('kasKeluarSummary');
+    if (!summaryDiv) return;
+    
+    let total = 0, currMonthTotal = 0;
+    let now = new Date();
+    let currentMonth = now.getMonth(), currentYear = now.getFullYear();
+    
+    // Summary uses ALL kas keluar universal, regardless of category
+    dKasKeluar.forEach(d => {
+        let amt = parseInt(d.jumlah) || 0;
+        total += amt;
+        let dDate = new Date(d.tanggal);
+        if (dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear) {
+            currMonthTotal += amt;
+        }
+    });
+    
+    let maxTrx = dKasKeluar.length > 0 ? Math.max(...dKasKeluar.map(x => parseInt(x.jumlah) || 0)) : 0;
+    
+    summaryDiv.innerHTML = `
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #ef4444;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pengeluaran Universal</div>
+            <div style="font-size:1.3rem; font-weight:700; color:#ef4444;">Rp ${formatRupiah(total)}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(currMonthTotal)}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${dKasKeluar.length}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #3b82f6;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Pengeluaran Terbesar</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(maxTrx)}</div>
+        </div>
+    `;
+}
+
+function renderKasKeluarTable() {
+    // This function replaces the old generic table renderer.
+    // It is called during initial fetch or when the tab is switched.
+    renderKasKeluarSummary();
+    if (currentUnivKategori) {
+        renderUnivKategoriTable();
+    }
+}
+
+function renderUnivKategoriTable() {
+    let thead = document.getElementById('theadUnivKategori');
+    let tbody = document.getElementById('tbodyUnivKategori');
+    if (!thead || !tbody) return;
+    
+    let search = (document.getElementById('searchUnivKategori')?.value || '').toLowerCase();
+    let filterBulan = document.getElementById('filterBulanUnivKategori')?.value || '';
+    let kat = currentUnivKategori;
+    
+    // Filter data by category
+    let filtered = dKasKeluar.filter(x => x.kategori === kat);
+    if (search) {
+        filtered = filtered.filter(x => 
+            (x.keterangan || '').toLowerCase().includes(search) ||
+            (x.nama_item || '').toLowerCase().includes(search) ||
+            (x.penerima || '').toLowerCase().includes(search)
+        );
+    }
+    if (filterBulan) {
+        filtered = filtered.filter(x => x.tanggal && x.tanggal.startsWith(filterBulan));
+    }
+    
+    // Build category-specific thead
+    let thRow = '';
+    if (kat === 'Honor') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Penerima</th>
+            <th>Tanggal Dibayar</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else if (kat === 'Ekstrakurikuler') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Pelatih / PJ</th>
+            <th>Tanggal Dibayar</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else if (kat === 'Perjalanan Dinas') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Pelaku Perjalanan</th>
+            <th>Tanggal Dibayarkan</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else {
+        // Utilitas, ATK, Lainnya
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Tanggal Dibayarkan</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    }
+    thead.innerHTML = thRow;
+    
+    // Build tbody rows
+    let trs = '';
+    if (filtered.length === 0) {
+        let colSpan = (kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') ? 6 : 5;
+        trs = `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text-light);padding:2rem;">Belum ada data pengeluaran untuk kategori ${kat}</td></tr>`;
+    } else {
+        filtered.forEach((d, idx) => {
+            let amt = parseInt(d.jumlah) || 0;
+            let actBtns = `
+                <button class="btn btn-sm btn-outline" onclick="editKasKeluar('${d.id}')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="hapusKasKeluar('${d.id}')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            `;
+            
+            // For categories without penerima field, we still show keterangan and maybe nama_item.
+            // Let's combine nama_item and keterangan if they are both filled, or just use one.
+            let detailKet = d.nama_item;
+            if (d.keterangan && d.keterangan !== d.nama_item) detailKet += ` — ${d.keterangan}`;
+            
+            if (kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') {
+                trs += `<tr>
+                    <td>${idx+1}</td>
+                    <td><strong>${d.penerima || '-'}</strong></td>
+                    <td>${formatDateIndonesia(d.tanggal)}</td>
+                    <td style="color:#ef4444; font-weight:600;">- Rp ${formatRupiah(amt)}</td>
+                    <td>${detailKet}</td>
+                    <td style="text-align:right; white-space:nowrap;">${actBtns}</td>
+                </tr>`;
+            } else {
+                trs += `<tr>
+                    <td>${idx+1}</td>
+                    <td>${formatDateIndonesia(d.tanggal)}</td>
+                    <td style="color:#ef4444; font-weight:600;">- Rp ${formatRupiah(amt)}</td>
+                    <td>${detailKet}</td>
+                    <td style="text-align:right; white-space:nowrap;">${actBtns}</td>
+                </tr>`;
+            }
+        });
+    }
+    tbody.innerHTML = trs;
+    
+    // Also refresh summary
+    renderKasKeluarSummary();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ---- KAS KELUAR MODAL (UNIVERSAL DYNAMIC FORM) ----
 function openKasKeluarModal() {
-    document.getElementById('kasKeluarModalTitle').innerText = 'Tambah Pengeluaran';
-    document.getElementById('formKKId').value = '';
-    document.getElementById('formKKKategori').value = 'Pelatih Ekskul';
-    document.getElementById('formKKNamaItem').value = '';
-    document.getElementById('formKKJumlah').value = '';
-    document.getElementById('formKKTanggal').value = new Date().toISOString().split('T')[0];
-    document.getElementById('formKKKeterangan').value = '';
+    let kat = currentUnivKategori;
+    if (!kat) {
+        showToast('Pilih kategori pengeluaran terlebih dahulu!', 'warning');
+        return;
+    }
+    
+    let modalBody = document.getElementById('kasKeluarModalBody');
+    let title = document.getElementById('kasKeluarModalTitle');
+    title.textContent = 'Tambah Pengeluaran — ' + kat;
+    
+    let formHTML = '';
+    
+    formHTML += `<input type="hidden" id="formKKId" />`;
+    formHTML += `<input type="hidden" id="formKKKategori" value="${kat}" />`;
+    
+    if (kat === 'Honor') {
+        let guruOptions = '<option value="">— Pilih Guru —</option>';
+        if (typeof guruList !== 'undefined' && guruList.length > 0) {
+            guruList.filter(g => g.status === 'Aktif').forEach(g => {
+                guruOptions += `<option value="${g.nama_lengkap}">${g.nama_lengkap} — ${g.jabatan || 'Guru'}</option>`;
+            });
+        }
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Penerima Honor <span style="color:red">*</span></label>
+                <select id="formKKPenerima" class="form-input">${guruOptions}</select>
+            </div>`;
+    } else if (kat === 'Ekstrakurikuler') {
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Pelatih / Penanggung Jawab <span style="color:red">*</span></label>
+                <input type="text" id="formKKPenerima" class="form-input" placeholder="Masukkan nama pelatih" />
+            </div>`;
+    } else if (kat === 'Perjalanan Dinas') {
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Yang Melakukan Perjalanan <span style="color:red">*</span></label>
+                <input type="text" id="formKKPenerima" class="form-input" placeholder="Masukkan nama" />
+            </div>`;
+    }
+    
+    formHTML += `
+        <div class="form-group">
+            <label class="form-label">Tanggal Dibayarkan <span style="color:red">*</span></label>
+            <input type="date" id="formKKTanggal" class="form-input" value="${new Date().toISOString().split('T')[0]}" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Jumlah (Rp) <span style="color:red">*</span></label>
+            <input type="number" id="formKKJumlah" class="form-input" placeholder="Masukkan nominal" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Keterangan / Nama Item</label>
+            <input type="text" id="formKKKeterangan" class="form-input" placeholder="Opsional: Keterangan tambahan..." />
+        </div>`;
+    
+    modalBody.innerHTML = formHTML;
     document.getElementById('kasKeluarModal').classList.add('active');
-    if(window.lucide) lucide.createIcons();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function closeKasKeluarModal() {
@@ -12160,30 +12413,65 @@ function editKasKeluar(id) {
     let d = dKasKeluar.find(x => x.id === id);
     if(!d) return;
     
-    document.getElementById('kasKeluarModalTitle').innerText = 'Edit Pengeluaran';
-    document.getElementById('formKKId').value = d.id;
-    document.getElementById('formKKKategori').value = d.kategori;
-    document.getElementById('formKKNamaItem').value = d.nama_item;
-    document.getElementById('formKKJumlah').value = d.jumlah;
-    document.getElementById('formKKTanggal').value = d.tanggal;
-    document.getElementById('formKKKeterangan').value = d.keterangan || '';
-    document.getElementById('kasKeluarModal').classList.add('active');
-    if(window.lucide) lucide.createIcons();
+    // Make sure we are viewing the correct category
+    if (d.kategori !== currentUnivKategori) {
+        switchUnivKategoriPengeluaran(d.kategori);
+        document.getElementById('selectUnivKategoriPengeluaran').value = d.kategori;
+    }
+    
+    openKasKeluarModal(); // Generates the form structure based on currentUnivKategori
+    
+    setTimeout(() => {
+        document.getElementById('kasKeluarModalTitle').textContent = 'Edit Pengeluaran — ' + d.kategori;
+        document.getElementById('formKKId').value = d.id;
+        
+        let penerimaField = document.getElementById('formKKPenerima');
+        if(penerimaField) penerimaField.value = d.penerima || '';
+        
+        document.getElementById('formKKTanggal').value = d.tanggal || '';
+        document.getElementById('formKKJumlah').value = d.jumlah || '';
+        
+        // Populate keterangan. Previously we might have used nama_item and keterangan.
+        // If we are editing older data, display both or just keterangan
+        let combinedKet = d.keterangan || d.nama_item || '';
+        document.getElementById('formKKKeterangan').value = combinedKet;
+    }, 50);
 }
 
 async function saveKasKeluar() {
     let id = document.getElementById('formKKId').value;
-    let kategori = document.getElementById('formKKKategori').value;
-    let nama_item = document.getElementById('formKKNamaItem').value.trim();
+    let kat = document.getElementById('formKKKategori')?.value || currentUnivKategori;
+    let tgl = document.getElementById('formKKTanggal').value;
     let jumlah = parseInt(document.getElementById('formKKJumlah').value) || 0;
-    let tanggal = document.getElementById('formKKTanggal').value;
-    let keterangan = document.getElementById('formKKKeterangan').value.trim();
+    let ket = document.getElementById('formKKKeterangan')?.value.trim() || '-';
     
-    if(!nama_item) return showToast('Nama item wajib diisi!', 'error');
-    if(jumlah <= 0) return showToast('Jumlah harus lebih dari 0!', 'error');
-    if(!tanggal) return showToast('Tanggal wajib diisi!', 'error');
+    let penerimaField = document.getElementById('formKKPenerima');
+    let penerima = penerimaField ? penerimaField.value.trim() : '';
     
-    let payload = { kategori, nama_item, jumlah, tanggal, keterangan };
+    if (!tgl || !jumlah) {
+        showToast('Tanggal dan Jumlah harus diisi!', 'warning');
+        return;
+    }
+    
+    if ((kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') && !penerima) {
+        showToast('Nama/Penerima harus diisi!', 'warning');
+        return;
+    }
+    
+    let btn = document.querySelector('#kasKeluarModal .btn-primary');
+    let oldTxt = btn.innerHTML;
+    btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
+    
+    // Map to kas_keluar schema: {kategori, nama_item, jumlah, tanggal, keterangan, penerima}
+    // We use "ket" for both nama_item and keterangan to keep it simple, or set nama_item to category name.
+    let payload = { 
+        kategori: kat, 
+        nama_item: kat, // Using category name as item name since it's redundant now
+        jumlah: jumlah, 
+        tanggal: tgl, 
+        keterangan: ket, 
+        penerima: penerima 
+    };
     
     try {
         if(id) {
@@ -12199,9 +12487,11 @@ async function saveKasKeluar() {
             showToast('Pengeluaran berhasil ditambahkan!', 'success');
         }
         closeKasKeluarModal();
-        renderKasKeluarTable();
+        renderUnivKategoriTable();
     } catch(e) {
         showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+        btn.innerHTML = oldTxt; btn.disabled = false;
     }
 }
 
@@ -12212,7 +12502,7 @@ function hapusKasKeluar(id) {
             if(error) throw error;
             dKasKeluar = dKasKeluar.filter(x => x.id !== id);
             showToast('Data berhasil dihapus!', 'success');
-            renderKasKeluarTable();
+            renderUnivKategoriTable();
         } catch(e) {
             showToast('Gagal menghapus: ' + e.message, 'error');
         }
@@ -12225,19 +12515,21 @@ function printLaporanKasKeluar() {
         return showToast('Belum ada data kas keluar untuk dicetak.', 'warning');
     }
     
-    let search = (document.getElementById('searchKasKeluar')?.value || '').toLowerCase();
-    let filterKat = document.getElementById('filterKategoriKK')?.value || '';
-    let filterBulan = document.getElementById('filterBulanKK')?.value || '';
+    let search = (document.getElementById('searchUnivKategori')?.value || '').toLowerCase();
+    let filterBulan = document.getElementById('filterBulanUnivKategori')?.value || '';
     
     let filtered = dKasKeluar;
+    if (currentUnivKategori) {
+        filtered = filtered.filter(x => x.kategori === currentUnivKategori);
+    }
+    
     if(search) {
         filtered = filtered.filter(d => 
-            d.nama_item.toLowerCase().includes(search) || 
+            (d.nama_item || '').toLowerCase().includes(search) || 
             (d.keterangan || '').toLowerCase().includes(search) ||
-            d.kategori.toLowerCase().includes(search)
+            (d.penerima || '').toLowerCase().includes(search)
         );
     }
-    if(filterKat) filtered = filtered.filter(d => d.kategori === filterKat);
     if(filterBulan) filtered = filtered.filter(d => d.tanggal && d.tanggal.startsWith(filterBulan));
     
     let today = new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
@@ -12249,7 +12541,6 @@ function printLaporanKasKeluar() {
         let bulanNama = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         periodeLabel = bulanNama[parseInt(m)] + ' ' + y;
     }
-    if(filterKat) periodeLabel += ' — Kategori: ' + filterKat;
     
     let trs = '';
     filtered.forEach((d, idx) => {
@@ -12318,7 +12609,7 @@ function printLaporanKasKeluar() {
 
 let dPengeluaranDinas = [];
 
-async function fetchPengeluaranDinas() {
+async function fetchOperasionalData() {
     try {
         const { data, error } = await supabaseClient.from('pengeluaran_dinas').select('*').order('created_at', { ascending: false });
         if(error) throw error;
@@ -12329,7 +12620,7 @@ async function fetchPengeluaranDinas() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    if(typeof supabaseClient !== 'undefined') fetchPengeluaranDinas();
+    if(typeof supabaseClient !== 'undefined') fetchOperasionalData();
 });
 
 function renderPengeluaranDinasTable() {
@@ -12861,13 +13152,413 @@ if(originalShowSectionKeuangan) {
         if(sectionId === 'sectionKeuanganInsidental') { 
             switchUniversalTab('tagihan');
             tutupDetailTagihan('universal'); 
-            renderMasterTagihanTable('universal'); 
+            fetchKeuanganData().then(() => renderMasterTagihanTable('universal'));
         }
-        if(sectionId === 'sectionKeuanganPendaftaran') { tutupDetailTagihan('pendaftaran'); renderMasterTagihanTable('pendaftaran'); loadActiveYear(); }
-        if(sectionId === 'sectionPengeluaranDinas') { fetchPengeluaranDinas().then(() => renderPengeluaranDinasTable()); }
-        if(sectionId === 'sectionKasSekolah') { Promise.all([fetchKeuanganData(), fetchKasKeluar(), fetchPengeluaranDinas()]).then(() => renderKasSekolahTable()); }
-        if(sectionId === 'sectionArsipTransaksi') { Promise.all([fetchKeuanganData(), fetchKasKeluar(), fetchPengeluaranDinas()]).then(() => renderArsipTransaksi()); }
-        if(sectionId === 'sectionLaporanKeuangan') { Promise.all([fetchKeuanganData(), fetchPengeluaranDinas()]).then(() => switchLaporanTab('universal')); }
+        if(sectionId === 'sectionTransaksiOperasional') { fetchOperasionalData(); }
+        if(sectionId === 'sectionArsipTransaksi') { Promise.all([fetchKeuanganData(), fetchKasKeluar(), fetchOperasionalData()]).then(() => renderArsipTransaksi()); }
+        if(sectionId === 'sectionLaporanKeuangan') { Promise.all([fetchKeuanganData(), fetchOperasionalData()]).then(() => switchLaporanTab('universal')); }
+    };
+}
+
+/* ============================================================
+   MODUL MANAJEMEN KEUANGAN BENDAHARA (BUKU KAS)
+   ============================================================ */
+
+
+let bukuKasData = [];
+let currentBukuKasTab = 'kas_global'; // kas_global, kas_operasional, kas_internal
+
+function switchBukuKasTab(tabName) {
+    currentBukuKasTab = tabName;
+    document.querySelectorAll('.account-tab-btn[data-tab^="kas_"]').forEach(btn => {
+        if(btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    let thSumber = document.getElementById('thSumberDana');
+    if(thSumber) {
+        thSumber.style.display = tabName === 'kas_global' ? 'table-cell' : 'none';
+    }
+    
+    renderBukuKas();
+}
+
+async function loadBukuKas() {
+    let tbody = document.getElementById('tbodyBukuKas');
+    if(tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;">Memuat data...</td></tr>';
+    
+    try {
+        let filterBulan = document.getElementById('filterBulanBukuKas')?.value;
+        let year, month;
+        if(filterBulan) {
+            year = filterBulan.split('-')[0];
+            month = filterBulan.split('-')[1];
+        }
+        
+        let qPem = supabaseClient.from('keuangan_pembayaran').select('*');
+        let qKeluar = supabaseClient.from('kas_keluar').select('*');
+        let qKat = supabaseClient.from('keuangan_kategori').select('id, nama');
+        
+        if(year && month) {
+            qPem = qPem.gte('tanggal', `${year}-${month}-01`).lte('tanggal', `${year}-${month}-31`);
+            qKeluar = qKeluar.gte('tanggal', `${year}-${month}-01`).lte('tanggal', `${year}-${month}-31`);
+        }
+        
+        const [resPem, resKeluar, resKat] = await Promise.all([qPem, qKeluar, qKat]);
+        
+        let katMap = {};
+        if(resKat.data) {
+            resKat.data.forEach(k => {
+                katMap[`insidental_${k.id}`] = k.nama;
+                katMap[`rutin_${k.id}`] = k.nama;
+            });
+        }
+        
+        let aggregated = [];
+        
+        if(resPem.data) {
+            resPem.data.forEach(p => {
+                aggregated.push({
+                    id: p.id,
+                    sumber_dana: 'Kas Internal',
+                    jenis_transaksi: 'Pemasukan',
+                    kategori: katMap[p.jenis] || p.jenis,
+                    nominal: p.nominal,
+                    tanggal: p.tanggal,
+                    keterangan: p.keterangan || 'Pembayaran Tagihan',
+                    created_at: p.created_at
+                });
+            });
+        }
+        
+        if(resKeluar.data) {
+            resKeluar.data.forEach(p => {
+                aggregated.push({
+                    id: p.id,
+                    sumber_dana: 'Kas Internal',
+                    jenis_transaksi: 'Pengeluaran',
+                    kategori: p.kategori,
+                    nominal: p.jumlah,
+                    tanggal: p.tanggal,
+                    keterangan: p.nama_item + (p.keterangan ? ' - ' + p.keterangan : ''),
+                    created_at: p.created_at
+                });
+            });
+        }
+        
+        // Sort by date descending
+        aggregated.sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal) || new Date(b.created_at) - new Date(a.created_at));
+        
+        bukuKasData = aggregated;
+        renderBukuKas();
+    } catch(err) {
+        console.error('Gagal load buku kas:', err);
+        showToast('Gagal memuat buku kas: ' + err.message, 'error');
+    }
+}
+
+function renderBukuKas() {
+    let tbody = document.getElementById('tbodyBukuKas');
+    if(!tbody) return;
+    
+    let search = (document.getElementById('searchBukuKas')?.value || '').toLowerCase();
+    
+    let filtered = bukuKasData.filter(item => {
+        if(currentBukuKasTab === 'kas_operasional' && item.sumber_dana !== 'Kas Operasional') return false;
+        if(currentBukuKasTab === 'kas_internal' && item.sumber_dana !== 'Kas Internal') return false;
+        
+        if(search) {
+            let text = `${item.kategori} ${item.keterangan}`.toLowerCase();
+            if(!text.includes(search)) return false;
+        }
+        return true;
+    });
+    
+    // Sort ascending for running balance calculation
+    let sortedAsc = [...filtered].sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+    
+    let saldo = 0;
+    let totalMasuk = 0;
+    let totalKeluar = 0;
+    
+    let displayArray = [];
+    for(let i=0; i<sortedAsc.length; i++) {
+        let item = sortedAsc[i];
+        if(item.jenis_transaksi === 'Pemasukan') {
+            saldo += Number(item.nominal);
+            totalMasuk += Number(item.nominal);
+        } else {
+            saldo -= Number(item.nominal);
+            totalKeluar += Number(item.nominal);
+        }
+        displayArray.push({ ...item, currentSaldo: saldo });
+    }
+    
+    // Reverse for UI (Newest first)
+    displayArray.reverse();
+    
+    let rowsHtml = '';
+    
+    if(displayArray.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;">Belum ada riwayat transaksi.</td></tr>`;
+    } else {
+        displayArray.forEach((item, index) => {
+            let tgl = new Date(item.tanggal).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+            let isMasuk = item.jenis_transaksi === 'Pemasukan';
+            
+            let sumberDanaCol = currentBukuKasTab === 'kas_global' 
+                ? `<td style="font-size:0.85rem;"><span class="badge ${item.sumber_dana === 'Kas Operasional' ? 'badge-blue' : 'badge-green'}" style="background:${item.sumber_dana === 'Kas Operasional' ? '#e0f2fe' : '#dcfce7'}; color:${item.sumber_dana === 'Kas Operasional' ? '#0369a1' : '#166534'}; padding:2px 6px; border-radius:4px;">${item.sumber_dana}</span></td>`
+                : '';
+            
+            rowsHtml += `<tr>
+                <td>${displayArray.length - index}</td>
+                <td>${tgl}</td>
+                ${sumberDanaCol}
+                <td><strong>${item.kategori}</strong></td>
+                <td><span style="font-size:0.85rem;">${item.keterangan || '-'}</span></td>
+                <td style="text-align:right; color:#10b981; font-weight:500;">${isMasuk ? '+ ' + formatRupiah(item.nominal) : '-'}</td>
+                <td style="text-align:right; color:#ef4444; font-weight:500;">${!isMasuk ? '- ' + formatRupiah(item.nominal) : '-'}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = rowsHtml;
+    }
+    
+    // Update summary cards
+    if(document.getElementById('bkSaldoAwal')) document.getElementById('bkSaldoAwal').textContent = 'Rp 0';
+    if(document.getElementById('bkTotalPemasukan')) document.getElementById('bkTotalPemasukan').textContent = formatRupiah(totalMasuk);
+    if(document.getElementById('bkTotalPengeluaran')) document.getElementById('bkTotalPengeluaran').textContent = formatRupiah(totalKeluar);
+    if(document.getElementById('bkSaldoAkhir')) document.getElementById('bkSaldoAkhir').textContent = formatRupiah(saldo);
+    
+    if(window.lucide) lucide.createIcons();
+}
+
+function openTambahTransaksiKas() {
+    document.getElementById('inputKasSumber').value = currentBukuKasTab === 'kas_operasional' ? 'Kas Operasional' : 'Kas Internal';
+    document.getElementById('inputKasJenis').value = 'Pemasukan';
+    document.getElementById('inputKasKategori').value = '';
+    document.getElementById('inputKasNominal').value = '';
+    document.getElementById('inputKasTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('inputKasKeterangan').value = '';
+    
+    let dl = document.getElementById('listKategoriKas');
+    if(dl) {
+        if(currentBukuKasTab === 'kas_operasional') {
+            dl.innerHTML = '<option value="Dana BOS"><option value="Honor Guru"><option value="Listrik & Wifi"><option value="ATK"><option value="Perjalanan Dinas"><option value="Ekstrakurikuler"><option value="Saldo Awal">';
+        } else {
+            dl.innerHTML = '<option value="Pendaftaran Siswa"><option value="Biaya Ujian (STS/SAS)"><option value="Biaya ANBK"><option value="Biaya Kelulusan"><option value="Fee Pembuat Soal"><option value="Fee Pengawas"><option value="Saldo Awal">';
+        }
+    }
+    
+    document.getElementById('modalTambahTransaksiKas').classList.add('active');
+}
+
+async function simpanTransaksiKas() {
+    let sumber = document.getElementById('inputKasSumber').value;
+    let jenis = document.getElementById('inputKasJenis').value;
+    let kategori = document.getElementById('inputKasKategori').value.trim();
+    let nominal = document.getElementById('inputKasNominal').value;
+    let tanggal = document.getElementById('inputKasTanggal').value;
+    let keterangan = document.getElementById('inputKasKeterangan').value.trim();
+    
+    if(!kategori || !nominal || !tanggal) {
+        return showToast('Mohon lengkapi kategori, nominal, dan tanggal.', 'warning');
+    }
+    
+    let payload = {
+        sumber_dana: sumber,
+        jenis_transaksi: jenis,
+        kategori: kategori,
+        nominal: nominal,
+        tanggal: tanggal,
+        keterangan: keterangan,
+        created_by: currentUser ? currentUser.id : null
+    };
+    
+    try {
+        const { error } = await supabaseClient.from('buku_kas_bendahara').insert([payload]);
+        if(error) throw error;
+        
+        showToast('Transaksi berhasil disimpan', 'success');
+        document.getElementById('modalTambahTransaksiKas').classList.remove('active');
+        loadBukuKas();
+    } catch(err) {
+        showToast('Gagal menyimpan: ' + err.message, 'error');
+    }
+}
+
+async function hapusTransaksiKas(id) {
+    showCustomConfirm('Hapus Transaksi?', 'Apakah Anda yakin ingin menghapus transaksi ini secara permanen?', 'Hapus', async function() {
+        try {
+            const { error } = await supabaseClient.from('buku_kas_bendahara').delete().eq('id', id);
+            if(error) throw error;
+            showToast('Transaksi dihapus.', 'success');
+            loadBukuKas();
+        } catch(err) {
+            showToast('Gagal menghapus: ' + err.message, 'error');
+        }
+    });
+}
+
+// -- Pengaturan Kwitansi (localStorage) --
+function getKwitansiSettings() {
+    try {
+        let s = localStorage.getItem('kwitansi_settings');
+        return s ? JSON.parse(s) : { namaBendahara: '', ttdBase64: '' };
+    } catch(e) { return { namaBendahara: '', ttdBase64: '' }; }
+}
+
+function openPengaturanKwitansi() {
+    let settings = getKwitansiSettings();
+    let inputNama = document.getElementById('inputNamaBendahara');
+    if(inputNama) inputNama.value = settings.namaBendahara || '';
+    
+    let inputTtd = document.getElementById('inputTTDBendahara');
+    if(inputTtd) inputTtd.value = '';
+    
+    if(settings.ttdBase64) {
+        let img = document.getElementById('previewTTDImage');
+        if(img) img.src = settings.ttdBase64;
+        let statusText = document.getElementById('ttdStatusText');
+        if(statusText) statusText.innerText = 'Tanda tangan saat ini sudah tersimpan:';
+        let container = document.getElementById('previewTTDContainer');
+        if(container) container.style.display = 'block';
+    } else {
+        let container = document.getElementById('previewTTDContainer');
+        if(container) container.style.display = 'none';
+    }
+    
+    let modal = document.getElementById('pengaturanKwitansiModal');
+    if(modal) modal.classList.add('active');
+    if(window.lucide) lucide.createIcons();
+}
+
+function closePengaturanKwitansi() {
+    let modal = document.getElementById('pengaturanKwitansiModal');
+    if(modal) modal.classList.remove('active');
+}
+
+function previewTTDBendahara(event) {
+    let file = event.target.files[0];
+    if(!file) return;
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let img = document.getElementById('previewTTDImage');
+        if(img) img.src = e.target.result;
+        let statusText = document.getElementById('ttdStatusText');
+        if(statusText) statusText.innerText = 'Preview Tanda Tangan Baru:';
+        let container = document.getElementById('previewTTDContainer');
+        if(container) container.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function hapusTTDBendahara() {
+    let settings = getKwitansiSettings();
+    settings.ttdBase64 = '';
+    localStorage.setItem('kwitansi_settings', JSON.stringify(settings));
+    let img = document.getElementById('previewTTDImage');
+    if(img) img.src = '';
+    let container = document.getElementById('previewTTDContainer');
+    if(container) container.style.display = 'none';
+    let input = document.getElementById('inputTTDBendahara');
+    if(input) input.value = '';
+    showToast('Tanda tangan dihapus.', 'success');
+}
+
+async function simpanPengaturanKwitansi() {
+    let inputNama = document.getElementById('inputNamaBendahara');
+    let nama = inputNama ? inputNama.value.trim() : '';
+    
+    let settings = getKwitansiSettings();
+    settings.namaBendahara = nama;
+    
+    let fileInput = document.getElementById('inputTTDBendahara');
+    if(fileInput && fileInput.files && fileInput.files[0]) {
+        var file = fileInput.files[0];
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            settings.ttdBase64 = e.target.result;
+            localStorage.setItem('kwitansi_settings', JSON.stringify(settings));
+            closePengaturanKwitansi();
+            showToast('Pengaturan bendahara berhasil disimpan!', 'success');
+        };
+        reader.readAsDataURL(file);
+    } else {
+        localStorage.setItem('kwitansi_settings', JSON.stringify(settings));
+        closePengaturanKwitansi();
+        showToast('Pengaturan bendahara berhasil disimpan!', 'success');
+    }
+}
+
+function cetakLaporanKas() {
+    let title = 'Laporan Buku Kas Bendahara';
+    if(currentBukuKasTab === 'kas_operasional') title = 'Laporan Kas Operasional (BOS)';
+    if(currentBukuKasTab === 'kas_internal') title = 'Laporan Kas Internal (Siswa)';
+    
+    let tbl = document.getElementById('tableBukuKas');
+    if(!tbl) return;
+    let tableHtml = tbl.outerHTML;
+    
+    let settings = getKwitansiSettings();
+    let ttdHtml = '';
+    if (settings.ttdBase64) {
+        ttdHtml = `<img src="${settings.ttdBase64}" style="max-width:150px; max-height:80px; margin:5px 0;">`;
+    } else {
+        ttdHtml = `<br><br><br>`;
+    }
+    
+    let printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>${title}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; font-size:12px; }
+                h1, h2, h3 { text-align: center; margin: 5px 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .text-right { text-align: right; }
+                .badge { font-size:10px; padding:2px 4px; border-radius:4px; border:1px solid #ccc; }
+                @media print { 
+                    button { display:none !important; }
+                    th:last-child, td:last-child { display:none !important; } /* Sembunyikan kolom Aksi */
+                }
+            </style>
+        </head>
+        <body>
+            <h2>SMP IT AL-FATHONAH</h2>
+            <h3>${title}</h3>
+            <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID')}</p>
+            ${tableHtml}
+            
+            <div style="margin-top:40px; width:100%; display:flex; justify-content:flex-end;">
+                <div style="text-align:center; width:250px;">
+                    <div>Cianjur, ${new Date().toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</div>
+                    <div>Bendahara Sekolah,</div>
+                    ${ttdHtml}
+                    <div style="text-decoration:underline; font-weight:bold;">${settings.namaBendahara || '_______________________'}</div>
+                </div>
+            </div>
+            
+            <script>
+                setTimeout(() => { window.print(); window.close(); }, 500);
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+const originalShowSectionBendahara = window.showSection;
+if(originalShowSectionBendahara) {
+    window.showSection = function(sectionId, element) {
+        originalShowSectionBendahara(sectionId, element);
+        if(sectionId === 'sectionBukuKasBendahara') { 
+            loadBukuKas(); 
+        }
     };
 }
 
@@ -14502,4 +15193,603 @@ async function loadTestimoniPublic() {
 
         if (window.lucide) lucide.createIcons();
     } catch(e) { console.log('Testimoni public fallback to static'); }
+}
+
+
+// ============================================================
+// TRANSAKSI OPERASIONAL
+// ============================================================
+function formatDateIndonesia(dateStr) {
+    if(!dateStr) return '-';
+    let d = new Date(dateStr);
+    let bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return d.getDate() + ' ' + bulan[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+let dOperasional = [];
+let currentOperasionalTab = 'pemasukan';
+
+function switchOperasionalTab(tab) {
+    currentOperasionalTab = tab;
+    
+    // Update Buttons
+    document.getElementById('tabBtnOperasionalPemasukan').style.background = tab === 'pemasukan' ? 'var(--primary)' : 'transparent';
+    document.getElementById('tabBtnOperasionalPemasukan').style.color = tab === 'pemasukan' ? 'white' : 'var(--text-light)';
+    
+    document.getElementById('tabBtnOperasionalPengeluaran').style.background = tab === 'pengeluaran' ? 'var(--primary)' : 'transparent';
+    document.getElementById('tabBtnOperasionalPengeluaran').style.color = tab === 'pengeluaran' ? 'white' : 'var(--text-light)';
+    
+    // Update Content
+    document.getElementById('tabOperasionalPemasukan').style.display = tab === 'pemasukan' ? 'block' : 'none';
+    document.getElementById('tabOperasionalPengeluaran').style.display = tab === 'pengeluaran' ? 'block' : 'none';
+    
+    // Update Header Actions
+    document.getElementById('btnAksiOperasionalPemasukan').style.display = tab === 'pemasukan' ? 'block' : 'none';
+    document.getElementById('btnAksiOperasionalCetakPemasukan').style.display = tab === 'pemasukan' ? 'block' : 'none';
+    document.getElementById('btnAksiOperasionalCetakPengeluaran').style.display = tab === 'pengeluaran' ? 'block' : 'none';
+    document.getElementById('btnAksiOperasionalPengeluaran').style.display = tab === 'pengeluaran' ? 'block' : 'none';
+    
+    if (tab === 'pemasukan') renderOperasionalPemasukanTable();
+    if (tab === 'pengeluaran') renderOperasionalPengeluaranTable();
+}
+
+async function fetchOperasionalData() {
+    try {
+        let { data, error } = await supabaseClient
+            .from('buku_kas_bendahara')
+            .select('*')
+            .eq('sumber_dana', 'Kas Operasional')
+            .order('tanggal', { ascending: false });
+            
+        if (error) throw error;
+        dOperasional = data || [];
+        
+        if (currentOperasionalTab === 'pemasukan') renderOperasionalPemasukanTable();
+        if (currentOperasionalTab === 'pengeluaran') renderOperasionalPengeluaranTable();
+        
+    } catch (e) {
+        console.error('Error fetching operasional:', e);
+    }
+}
+
+function renderOperasionalPemasukanTable() {
+    let tbody = document.querySelector('#tableOperasionalPemasukan tbody');
+    if (!tbody) return;
+    
+    let filtered = dOperasional.filter(x => x.jenis_transaksi === 'Pemasukan');
+    
+    let total = 0;
+    let currMonthTotal = 0;
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+    
+    let trs = '';
+    filtered.forEach((d, idx) => {
+        let amt = parseInt(d.nominal) || 0;
+        total += amt;
+        let dDate = new Date(d.tanggal);
+        if (dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear) {
+            currMonthTotal += amt;
+        }
+        
+        trs += `
+        <tr>
+            <td>${idx + 1}</td>
+            <td>${formatDateIndonesia(d.tanggal)}</td>
+            <td>${d.kategori || 'Dana BOS'}</td>
+            <td>${d.keterangan || '-'}</td>
+            <td style="color:var(--success); font-weight:600;">+ Rp ${formatRupiah(amt)}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-sm btn-danger" onclick="deleteOperasional('${d.id}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+            </td>
+        </tr>`;
+    });
+    
+    if (filtered.length === 0) trs = '<tr><td colspan="6" style="text-align:center;color:var(--text-light);padding:2rem;">Belum ada data pemasukan operasional</td></tr>';
+    tbody.innerHTML = trs;
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Summary
+    let summaryDiv = document.getElementById('operasionalPemasukanSummary');
+    if (summaryDiv) {
+        let maxTrx = filtered.length > 0 ? Math.max(...filtered.map(x => parseInt(x.nominal) || 0)) : 0;
+        summaryDiv.innerHTML = `
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #10b981;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pemasukan</div>
+                <div style="font-size:1.3rem; font-weight:700; color:#10b981;">Rp ${formatRupiah(total)}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(currMonthTotal)}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${filtered.length}</div>
+            </div>
+            <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #3b82f6;">
+                <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Pemasukan Terbesar</div>
+                <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(maxTrx)}</div>
+            </div>
+        `;
+    }
+}
+
+// ---- PENGELUARAN: CATEGORY-BASED SYSTEM ----
+let currentOpKategori = '';
+
+function switchOpKategoriPengeluaran(kategori) {
+    currentOpKategori = kategori;
+    let container = document.getElementById('opKategoriContentContainer');
+    let placeholder = document.getElementById('opKategoriPlaceholder');
+    
+    if (!kategori) {
+        container.style.display = 'none';
+        placeholder.style.display = 'block';
+        return;
+    }
+    
+    container.style.display = 'block';
+    placeholder.style.display = 'none';
+    
+    // Update table title
+    document.getElementById('opKategoriTableTitle').textContent = 'Riwayat Pengeluaran — ' + kategori;
+    
+    // Render category-specific table
+    renderOpKategoriTable();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function renderOperasionalPengeluaranSummary() {
+    let summaryDiv = document.getElementById('operasionalPengeluaranSummary');
+    if (!summaryDiv) return;
+    
+    let allPengeluaran = dOperasional.filter(x => x.jenis_transaksi === 'Pengeluaran');
+    let total = 0, currMonthTotal = 0;
+    let now = new Date();
+    let currentMonth = now.getMonth(), currentYear = now.getFullYear();
+    
+    allPengeluaran.forEach(d => {
+        let amt = parseInt(d.nominal) || 0;
+        total += amt;
+        let dDate = new Date(d.tanggal);
+        if (dDate.getMonth() === currentMonth && dDate.getFullYear() === currentYear) {
+            currMonthTotal += amt;
+        }
+    });
+    
+    let maxTrx = allPengeluaran.length > 0 ? Math.max(...allPengeluaran.map(x => parseInt(x.nominal) || 0)) : 0;
+    
+    summaryDiv.innerHTML = `
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #ef4444;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Pengeluaran</div>
+            <div style="font-size:1.3rem; font-weight:700; color:#ef4444;">Rp ${formatRupiah(total)}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(currMonthTotal)}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${allPengeluaran.length}</div>
+        </div>
+        <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #3b82f6;">
+            <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Pengeluaran Terbesar</div>
+            <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">Rp ${formatRupiah(maxTrx)}</div>
+        </div>
+    `;
+}
+
+function renderOperasionalPengeluaranTable() {
+    // Called from switchOperasionalTab — render summary + restore category view
+    renderOperasionalPengeluaranSummary();
+    if (currentOpKategori) {
+        renderOpKategoriTable();
+    }
+}
+
+function renderOpKategoriTable() {
+    let thead = document.getElementById('theadOpKategori');
+    let tbody = document.getElementById('tbodyOpKategori');
+    if (!thead || !tbody) return;
+    
+    let search = (document.getElementById('searchOpKategori')?.value || '').toLowerCase();
+    let kat = currentOpKategori;
+    
+    // Filter data by category
+    let filtered = dOperasional.filter(x => x.jenis_transaksi === 'Pengeluaran' && x.kategori === kat);
+    if (search) {
+        filtered = filtered.filter(x => 
+            (x.keterangan || '').toLowerCase().includes(search) ||
+            (x.kategori || '').toLowerCase().includes(search)
+        );
+    }
+    
+    // Build category-specific thead
+    let thRow = '';
+    if (kat === 'Honor') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Penerima</th>
+            <th>Tanggal Dibayar</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else if (kat === 'Ekstrakurikuler') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Pelatih / PJ</th>
+            <th>Tanggal Dibayar</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else if (kat === 'Perjalanan Dinas') {
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Nama Pelaku Perjalanan</th>
+            <th>Tanggal Dibayarkan</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    } else {
+        // Utilitas, ATK, Lainnya
+        thRow = `<tr>
+            <th style="width:40px;">No</th>
+            <th>Tanggal Dibayarkan</th>
+            <th>Jumlah</th>
+            <th>Keterangan</th>
+            <th style="text-align:right;width:70px;">Aksi</th>
+        </tr>`;
+    }
+    thead.innerHTML = thRow;
+    
+    // Build tbody rows
+    let trs = '';
+    if (filtered.length === 0) {
+        let colSpan = (kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') ? 6 : 5;
+        trs = `<tr><td colspan="${colSpan}" style="text-align:center;color:var(--text-light);padding:2rem;">Belum ada data pengeluaran untuk kategori ${kat}</td></tr>`;
+    } else {
+        filtered.forEach((d, idx) => {
+            let amt = parseInt(d.nominal) || 0;
+            let delBtn = `<button class="btn btn-sm btn-danger" onclick="deleteOperasional('${d.id}')"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>`;
+            
+            // Extract nama from keterangan field (stored as "NAMA||actual keterangan")
+            let namaPenerima = '-';
+            let keteranganTampil = d.keterangan || '-';
+            if (d.keterangan && d.keterangan.includes('||')) {
+                let parts = d.keterangan.split('||');
+                namaPenerima = parts[0] || '-';
+                keteranganTampil = parts[1] || '-';
+            }
+            
+            if (kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') {
+                trs += `<tr>
+                    <td>${idx+1}</td>
+                    <td><strong>${namaPenerima}</strong></td>
+                    <td>${formatDateIndonesia(d.tanggal)}</td>
+                    <td style="color:#ef4444; font-weight:600;">- Rp ${formatRupiah(amt)}</td>
+                    <td>${keteranganTampil}</td>
+                    <td style="text-align:right;">${delBtn}</td>
+                </tr>`;
+            } else {
+                trs += `<tr>
+                    <td>${idx+1}</td>
+                    <td>${formatDateIndonesia(d.tanggal)}</td>
+                    <td style="color:#ef4444; font-weight:600;">- Rp ${formatRupiah(amt)}</td>
+                    <td>${d.keterangan || '-'}</td>
+                    <td style="text-align:right;">${delBtn}</td>
+                </tr>`;
+            }
+        });
+    }
+    tbody.innerHTML = trs;
+    
+    // Also refresh summary
+    renderOperasionalPengeluaranSummary();
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// ---- MODAL PENGELUARAN (DYNAMIC FORM) ----
+
+function openOperasionalPengeluaranModal() {
+    let kat = currentOpKategori;
+    if (!kat) {
+        showToast('Pilih kategori pengeluaran terlebih dahulu!', 'warning');
+        return;
+    }
+    
+    let modalBody = document.getElementById('opKeluarModalBody');
+    let title = document.getElementById('opKeluarModalTitle');
+    title.textContent = 'Catat Pengeluaran — ' + kat;
+    
+    let formHTML = '';
+    
+    // Kategori field (hidden, auto-set)
+    formHTML += `<input type="hidden" id="formOpKeluarKategori" value="${kat}" />`;
+    
+    if (kat === 'Honor') {
+        // Nama Penerima = dropdown dari guru master
+        let guruOptions = '<option value="">— Pilih Guru —</option>';
+        if (typeof guruList !== 'undefined' && guruList.length > 0) {
+            guruList.filter(g => g.status === 'Aktif').forEach(g => {
+                guruOptions += `<option value="${g.nama_lengkap}">${g.nama_lengkap} — ${g.jabatan || 'Guru'}</option>`;
+            });
+        }
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Penerima Honor <span style="color:red">*</span></label>
+                <select id="formOpKeluarNama" class="form-input">${guruOptions}</select>
+            </div>`;
+    } else if (kat === 'Ekstrakurikuler') {
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Pelatih / Penanggung Jawab <span style="color:red">*</span></label>
+                <input type="text" id="formOpKeluarNama" class="form-input" placeholder="Masukkan nama pelatih" />
+            </div>`;
+    } else if (kat === 'Perjalanan Dinas') {
+        formHTML += `
+            <div class="form-group">
+                <label class="form-label">Nama Yang Melakukan Perjalanan <span style="color:red">*</span></label>
+                <input type="text" id="formOpKeluarNama" class="form-input" placeholder="Masukkan nama" />
+            </div>`;
+    }
+    // Utilitas, ATK, Lainnya: no nama field
+    
+    // Common fields: Tanggal, Jumlah, Keterangan
+    formHTML += `
+        <div class="form-group">
+            <label class="form-label">Tanggal Dibayarkan <span style="color:red">*</span></label>
+            <input type="date" id="formOpKeluarTanggal" class="form-input" value="${new Date().toISOString().split('T')[0]}" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Jumlah (Rp) <span style="color:red">*</span></label>
+            <input type="number" id="formOpKeluarJumlah" class="form-input" placeholder="Masukkan nominal" />
+        </div>
+        <div class="form-group">
+            <label class="form-label">Keterangan</label>
+            <input type="text" id="formOpKeluarKeterangan" class="form-input" placeholder="Keterangan opsional..." />
+        </div>`;
+    
+    modalBody.innerHTML = formHTML;
+    document.getElementById('operasionalPengeluaranModal').classList.add('active');
+    if(typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeOperasionalPengeluaranModal() {
+    document.getElementById('operasionalPengeluaranModal').classList.remove('active');
+}
+
+async function saveOperasionalPengeluaran() {
+    let kat = document.getElementById('formOpKeluarKategori')?.value || currentOpKategori;
+    let tgl = document.getElementById('formOpKeluarTanggal').value;
+    let jumlah = document.getElementById('formOpKeluarJumlah').value;
+    let ket = document.getElementById('formOpKeluarKeterangan')?.value || '';
+    
+    // For categories with nama field
+    let namaField = document.getElementById('formOpKeluarNama');
+    let nama = namaField ? namaField.value.trim() : '';
+    
+    if (!tgl || !jumlah) {
+        showToast('Tanggal dan Jumlah harus diisi!', 'warning');
+        return;
+    }
+    
+    // Validate nama for categories that require it
+    if ((kat === 'Honor' || kat === 'Ekstrakurikuler' || kat === 'Perjalanan Dinas') && !nama) {
+        showToast('Nama harus diisi!', 'warning');
+        return;
+    }
+    
+    // Store nama + keterangan combined: "NAMA||keterangan"
+    let keteranganSimpan = ket;
+    if (nama) {
+        keteranganSimpan = nama + '||' + ket;
+    }
+    
+    let btn = document.querySelector('#operasionalPengeluaranModal .btn-primary');
+    let oldTxt = btn.innerHTML;
+    btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
+    
+    try {
+        let obj = {
+            sumber_dana: 'Kas Operasional',
+            jenis_transaksi: 'Pengeluaran',
+            kategori: kat,
+            nominal: jumlah,
+            tanggal: tgl,
+            keterangan: keteranganSimpan
+        };
+        
+        let { data, error } = await supabaseClient.from('buku_kas_bendahara').insert([obj]).select();
+        if(error) throw error;
+        
+        if(data && data.length > 0) dOperasional.unshift(data[0]);
+        renderOpKategoriTable();
+        closeOperasionalPengeluaranModal();
+        showToast('Pengeluaran operasional berhasil dicatat!', 'success');
+        
+    } catch(e) {
+        showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+        btn.innerHTML = oldTxt; btn.disabled = false;
+    }
+}
+
+async function deleteOperasional(id) {
+    if(!confirm('Hapus transaksi operasional ini?')) return;
+    try {
+        let { error } = await supabaseClient.from('buku_kas_bendahara').delete().eq('id', id);
+        if(error) throw error;
+        
+        dOperasional = dOperasional.filter(x => x.id !== id);
+        if (currentOperasionalTab === 'pemasukan') renderOperasionalPemasukanTable();
+        if (currentOperasionalTab === 'pengeluaran') renderOpKategoriTable();
+        showToast('Transaksi berhasil dihapus!', 'success');
+    } catch(e) {
+        showToast('Gagal menghapus: ' + e.message, 'error');
+    }
+}
+
+
+function openOperasionalPemasukanModal() {
+    document.getElementById('formOpMasukTanggal').value = new Date().toISOString().split('T')[0];
+    document.getElementById('formOpMasukJumlah').value = '';
+    document.getElementById('formOpMasukKet').value = '';
+    document.getElementById('operasionalPemasukanModal').classList.add('active');
+}
+
+function closeOperasionalPemasukanModal() {
+    document.getElementById('operasionalPemasukanModal').classList.remove('active');
+}
+
+async function saveOperasionalPemasukan() {
+    let tgl = document.getElementById('formOpMasukTanggal').value;
+    let jumlah = document.getElementById('formOpMasukJumlah').value;
+    let ket = document.getElementById('formOpMasukKet').value;
+    
+    if(!tgl || !jumlah) {
+        showToast('Tanggal dan Jumlah harus diisi!', 'warning');
+        return;
+    }
+    
+    let btn = document.querySelector('#operasionalPemasukanModal .btn-primary');
+    let oldTxt = btn.innerHTML;
+    btn.innerHTML = 'Menyimpan...'; btn.disabled = true;
+    
+    try {
+        let obj = {
+            sumber_dana: 'Kas Operasional',
+            jenis_transaksi: 'Pemasukan',
+            kategori: 'Dana BOS',
+            nominal: jumlah,
+            tanggal: tgl,
+            keterangan: ket
+        };
+        
+        let { data, error } = await supabaseClient.from('buku_kas_bendahara').insert([obj]).select();
+        if(error) throw error;
+        
+        if(data && data.length > 0) dOperasional.unshift(data[0]);
+        renderOperasionalPemasukanTable();
+        
+        document.getElementById('formOpMasukTanggal').value = '';
+        document.getElementById('formOpMasukJumlah').value = '';
+        document.getElementById('formOpMasukKet').value = '';
+        
+        closeOperasionalPemasukanModal();
+        showToast('Pemasukan operasional berhasil disimpan!', 'success');
+    } catch(e) {
+        showToast('Gagal menyimpan: ' + e.message, 'error');
+    } finally {
+        btn.innerHTML = oldTxt; btn.disabled = false;
+    }
+}
+
+function printLaporanOperasional() {
+    let title = currentOperasionalTab === 'pemasukan' ? 'Laporan Pemasukan Operasional (Dana BOS)' : 'Laporan Pengeluaran Operasional';
+    let filtered = dOperasional.filter(x => x.jenis_transaksi === (currentOperasionalTab === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran'));
+    
+    let tbody = '';
+    let total = 0;
+    
+    if (currentOperasionalTab === 'pemasukan') {
+        filtered.forEach((d, i) => {
+            let amt = parseInt(d.nominal) || 0;
+            total += amt;
+            tbody += `
+            <tr>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${i+1}</td>
+                <td style="border:1px solid #000; padding:5px;">${formatDateIndonesia(d.tanggal)}</td>
+                <td style="border:1px solid #000; padding:5px;">${d.kategori||'-'}</td>
+                <td style="border:1px solid #000; padding:5px;">${d.keterangan||'-'}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:right;">Rp ${formatRupiah(amt)}</td>
+            </tr>`;
+        });
+        tbody += `
+        <tr>
+            <td colspan="4" style="border:1px solid #000; padding:5px; text-align:right; font-weight:bold;">TOTAL</td>
+            <td style="border:1px solid #000; padding:5px; text-align:right; font-weight:bold;">Rp ${formatRupiah(total)}</td>
+        </tr>`;
+    } else {
+        filtered.forEach((d, i) => {
+            let amt = parseInt(d.nominal) || 0;
+            total += amt;
+            tbody += `
+            <tr>
+                <td style="border:1px solid #000; padding:5px; text-align:center;">${i+1}</td>
+                <td style="border:1px solid #000; padding:5px;">${formatDateIndonesia(d.tanggal)}</td>
+                <td style="border:1px solid #000; padding:5px;">${d.kategori||'-'}</td>
+                <td style="border:1px solid #000; padding:5px;">${d.keterangan||'-'}</td>
+                <td style="border:1px solid #000; padding:5px; text-align:right;">Rp ${formatRupiah(amt)}</td>
+            </tr>`;
+        });
+        tbody += `
+        <tr>
+            <td colspan="4" style="border:1px solid #000; padding:5px; text-align:right; font-weight:bold;">TOTAL PENGELUARAN</td>
+            <td style="border:1px solid #000; padding:5px; text-align:right; font-weight:bold;">Rp ${formatRupiah(total)}</td>
+        </tr>`;
+    }
+
+    let kopSuratHTML = `
+        <div style="text-align:center; border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:20px;">
+            <img src="img/kop-surat.png" onerror="this.src='img/kop-surat.jpg'" alt="Kop Surat" style="max-width:100%; height:auto; max-height:120px;" />
+            <h3 style="margin:15px 0 0 0;">${title}</h3>
+        </div>
+    `;
+    
+    let tableHTML = `
+    <table style="width:100%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+        <thead>
+            <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #000; padding:8px; width:40px;">No</th>
+                <th style="border:1px solid #000; padding:8px;">Tanggal</th>
+                <th style="border:1px solid #000; padding:8px;">${currentOperasionalTab === 'pemasukan' ? 'Sumber Dana' : 'Kategori'}</th>
+                <th style="border:1px solid #000; padding:8px;">Keterangan</th>
+                <th style="border:1px solid #000; padding:8px; text-align:right;">Jumlah</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${tbody}
+        </tbody>
+    </table>
+    `;
+
+    let today = new Date();
+    let ttdHTML = `
+    <div style="margin-top:40px; display:flex; justify-content:flex-end;">
+        <div style="text-align:center; width:250px;">
+            <p style="margin:0;">Kab. Bandung, ${formatDateIndonesia(today.toISOString().split('T')[0])}</p>
+            <p style="margin:0;">Bendahara Sekolah,</p>
+            <br><br><br>
+            <p style="margin:0; font-weight:bold; text-decoration:underline;">.......................................</p>
+        </div>
+    </div>
+    `;
+
+    let printWindow = window.open('', '_blank', 'width=800,height=600');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Cetak ${title}</title>
+            <style>
+                @media print {
+                    @page { margin: 1.5cm; }
+                    body { -webkit-print-color-adjust: exact; margin:0; }
+                }
+                body { font-family: 'Times New Roman', Times, serif; color: #000; padding: 20px; }
+            </style>
+        </head>
+        <body>
+            ${kopSuratHTML}${tableHTML}${ttdHTML}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
 }
