@@ -3651,7 +3651,7 @@ body.dark-mode .toast-info {
 }
 
 /* ========== RESPONSIVE â€” MOBILE ========== */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .dash-sidebar {
     transform: translateX(-100%);
   }
