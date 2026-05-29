@@ -4635,10 +4635,12 @@ body.dark-mode .toast-info {
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-  cursor: pointer;
+  cursor: grab;
   z-index: 999;
   transition: transform 0.2s, box-shadow 0.2s;
   border: none;
+  touch-action: none;
+  user-select: none;
 }
 .ai-fab:hover {
   transform: scale(1.05);
@@ -4830,10 +4832,12 @@ body.dark-mode .toast-info {
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-  cursor: pointer;
+  cursor: grab;
   z-index: 999;
   transition: transform 0.2s, box-shadow 0.2s;
   border: none;
+  touch-action: none;
+  user-select: none;
 }
 .ai-fab:hover {
   transform: scale(1.05);
@@ -5278,5 +5282,99 @@ body.dark-mode .toast-info {
     width: 55px !important;
     font-size: 0.8rem;
     padding: 3px 4px !important;
+  }
+}
+
+/* Mobile Stack for filters and forms */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .mobile-stack > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+  .mobile-stack > .btn {
+    justify-content: center;
+  }
+}
+@media (max-width: 768px) {
+  /* Bikin form-group sejajar di modal jadi stack ke bawah */
+  #sectionTransaksiOperasional .universal-tabs {
+    flex-direction: column !important;
+  }
+  #sectionTransaksiOperasional .universal-tabs .btn {
+    width: 100% !important;
+    margin-bottom: 5px;
+  }
+  /* Semua display flex dengan gap di dalam modal operasional */
+  .modal-body [style*="display:flex"], .modal-body [style*="display: flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .modal-footer {
+    flex-direction: column-reverse !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .modal-footer .btn {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS (KHUSUS LAYANAN BENDAHARA)
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* TABS */
+  #sectionBukuKasBendahara .account-tabs,
+  #sectionKeuanganInsidental .universal-tabs,
+  #sectionTransaksiOperasional .laporan-tabs,
+  #sectionArsipTransaksi .account-tabs,
+  #sectionPusatPengaturan .setting-tabs {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  
+  #sectionBukuKasBendahara .account-tabs button,
+  #sectionKeuanganInsidental .universal-tabs button,
+  #sectionTransaksiOperasional .laporan-tabs button,
+  #sectionArsipTransaksi .account-tabs button,
+  #sectionPusatPengaturan .setting-tabs button {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+  }
+
+  /* FORMS & FILTERS */
+  #sectionBukuKasBendahara .card[style*="display:flex"],
+  #sectionKeuanganInsidental .card[style*="display:flex"],
+  #sectionTransaksiOperasional .card[style*="display:flex"],
+  #sectionArsipTransaksi .card[style*="display:flex"],
+  #sectionBukuKasBendahara .card[style*="display: flex"],
+  #sectionKeuanganInsidental .card[style*="display: flex"],
+  #sectionTransaksiOperasional .card[style*="display: flex"],
+  #sectionArsipTransaksi .card[style*="display: flex"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  #sectionBukuKasBendahara .card > div,
+  #sectionKeuanganInsidental .card > div,
+  #sectionTransaksiOperasional .card > div,
+  #sectionArsipTransaksi .card > div {
+    width: 100% !important;
+    margin-bottom: 0.75rem !important;
+  }
+  
+  /* OVERRIDE INLINE STYLES FOR MOBILE FORMS */
+  #sectionKeuanganInsidental .card > div > div,
+  #sectionBukuKasBendahara .card > div > div {
+     display: block !important;
+     width: 100% !important;
   }
 }
