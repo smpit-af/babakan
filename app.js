@@ -1121,7 +1121,7 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionArsipAsesmen') { loadMasterKelas(); loadMasterMapel(); loadActiveYear(); loadArsipAsesmen(); }
     if (sectionId === 'sectionSoalUjian') { loadSoalUjian(); }
     if (sectionId === 'sectionCetakKartuUjian') { 
-        populateKelasNameDropdown('kartuKelasSelect', ''); 
+        populateKartuKelasCheckboxes(); 
         if (typeof loadPanitiaLocal === 'function') loadPanitiaLocal();
         loadMasterMapel();
         loadGuruData();
@@ -3457,8 +3457,10 @@ function filterSiswaTable() {
             s.status === 'Lulus' ? '<span class="role-badge" style="background:rgba(124,58,237,.1);color:#7c3aed;">Lulus</span>' :
             '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">' + (s.status||'-') + '</span>';
         var fotoTd = s.foto ? '<img src="' + s.foto + '" style="width:36px;height:45px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:45px;border-radius:4px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;border:1px dashed #cbd5e1;">-</div>';
-        return '<tr><td>' + (i+1) + '</td><td style="text-align:center;">' + fotoTd + '</td><td>' + (s.asal_sekolah||'-') + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah||'-') + '</td><td>' + (s.nik_ayah||'-') + '</td><td>' + (s.nama_ibu||'-') + '</td><td>' + (s.nik_ibu||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
-                '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
+        return '<tr><td>' + (i+1) + '</td><td style="text-align:center;">' + fotoTd + '</td><td>' + (s.nisn||'-') + '</td><td>' + (s.nama_lengkap||'-') + '</td><td>' + (s.jenis_kelamin||'-') + '</td><td>' + (s.agama||'-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah||'-') + '</td><td>' + (s.nama_ibu||'-') + '</td><td>' + (s.nomor_hp||'-') + '</td><td>' + (s.email||'-') + '</td><td>' + (s.alamat||'-') + '</td><td>' + statusBadge + '</td>' +
+                '<td style="text-align:center; white-space:nowrap;">' + 
+                '<button class="btn btn-sm btn-outline" onclick="viewDetailSiswa(\'' + s.id + '\')" title="Detail" style="margin-right:2px;border-color:#3b82f6;color:#3b82f6;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button> ' +
+                '<button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit" style="margin-right:2px;"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
                 '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap||'').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
     }).join('');
     if (window.lucide) lucide.createIcons();
@@ -3469,6 +3471,11 @@ function openSiswaModal() {
     document.getElementById('formSiswaNama').value = '';
     document.getElementById('formSiswaJK').value = '';
     document.getElementById('formSiswaNISN').value = '';
+    document.getElementById('formSiswaNIK').value = '';
+    document.getElementById('formSiswaKK').value = '';
+    document.getElementById('formSiswaAgama').value = '';
+    document.getElementById('formSiswaTempatLahir').value = '';
+    document.getElementById('formSiswaTanggalLahir').value = '';
     document.getElementById('formSiswaAsal').value = '';
     document.getElementById('formSiswaMondok').value = 'Tidak';
     document.getElementById('formSiswaAyah').value = '';
@@ -3488,6 +3495,48 @@ function openSiswaModal() {
 }
 function closeSiswaModal() { document.getElementById('siswaModal').classList.remove('active'); }
 
+function viewDetailSiswa(id) {
+    var s = siswaList.find(function(x) { return x.id === id; });
+    if (!s) return;
+    
+    document.getElementById('detailSiswaNama').innerText = s.nama_lengkap || '-';
+    document.getElementById('detailSiswaNISN').innerText = s.nisn || '-';
+    document.getElementById('detailSiswaNIK').innerText = s.nik || '-';
+    document.getElementById('detailSiswaKK').innerText = s.nomor_kk || '-';
+    document.getElementById('detailSiswaJK').innerText = s.jenis_kelamin === 'L' ? 'Laki-laki' : s.jenis_kelamin === 'P' ? 'Perempuan' : '-';
+    document.getElementById('detailSiswaAgama').innerText = s.agama || '-';
+    document.getElementById('detailSiswaTempatLahir').innerText = s.tempat_lahir || '-';
+    document.getElementById('detailSiswaTanggalLahir').innerText = s.tanggal_lahir || '-';
+    document.getElementById('detailSiswaKelas').innerText = s.master_kelas ? s.master_kelas.nama_kelas : '-';
+    document.getElementById('detailSiswaAsal').innerText = s.asal_sekolah || '-';
+    document.getElementById('detailSiswaMondok').innerText = s.mondok || '-';
+    document.getElementById('detailSiswaStatus').innerText = s.status || '-';
+    document.getElementById('detailSiswaAyah').innerText = s.nama_ayah || '-';
+    document.getElementById('detailSiswaNIKAyah').innerText = s.nik_ayah || '-';
+    document.getElementById('detailSiswaIbu').innerText = s.nama_ibu || '-';
+    document.getElementById('detailSiswaNIKIbu').innerText = s.nik_ibu || '-';
+    document.getElementById('detailSiswaHP').innerText = s.nomor_hp || '-';
+    document.getElementById('detailSiswaEmail').innerText = s.email || '-';
+    document.getElementById('detailSiswaAlamat').innerText = s.alamat || '-';
+    
+    var imgEl = document.getElementById('detailSiswaFoto');
+    var phEl = document.getElementById('detailSiswaFotoPlaceholder');
+    if (s.foto) {
+        imgEl.src = s.foto;
+        imgEl.style.display = 'block';
+        phEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        phEl.style.display = 'flex';
+    }
+    
+    document.getElementById('detailSiswaModal').classList.add('active');
+}
+
+function closeDetailSiswaModal() {
+    document.getElementById('detailSiswaModal').classList.remove('active');
+}
+
 function editSiswa(id) {
     var s = siswaList.find(function(x) { return x.id === id; });
     if (!s) return;
@@ -3495,6 +3544,11 @@ function editSiswa(id) {
     document.getElementById('formSiswaNama').value = s.nama_lengkap || '';
     document.getElementById('formSiswaJK').value = s.jenis_kelamin || '';
     document.getElementById('formSiswaNISN').value = s.nisn || '';
+    document.getElementById('formSiswaNIK').value = s.nik || '';
+    document.getElementById('formSiswaKK').value = s.nomor_kk || '';
+    document.getElementById('formSiswaAgama').value = s.agama || '';
+    document.getElementById('formSiswaTempatLahir').value = s.tempat_lahir || '';
+    document.getElementById('formSiswaTanggalLahir').value = s.tanggal_lahir || '';
     document.getElementById('formSiswaAsal').value = s.asal_sekolah || '';
     document.getElementById('formSiswaMondok').value = s.mondok || 'Tidak';
     document.getElementById('formSiswaAyah').value = s.nama_ayah || '';
@@ -3526,6 +3580,11 @@ async function saveSiswa() {
         jenis_kelamin: document.getElementById('formSiswaJK').value || null,
         kelas_id: document.getElementById('formSiswaKelas').value || null,
         nisn: document.getElementById('formSiswaNISN').value.trim() || null,
+        nik: document.getElementById('formSiswaNIK').value.trim() || null,
+        nomor_kk: document.getElementById('formSiswaKK').value.trim() || null,
+        agama: document.getElementById('formSiswaAgama').value.trim() || null,
+        tempat_lahir: document.getElementById('formSiswaTempatLahir').value.trim() || null,
+        tanggal_lahir: document.getElementById('formSiswaTanggalLahir').value || null,
         asal_sekolah: document.getElementById('formSiswaAsal').value.trim() || null,
         mondok: document.getElementById('formSiswaMondok').value || 'Tidak',
         nama_ayah: document.getElementById('formSiswaAyah').value.trim() || null,
@@ -3579,6 +3638,138 @@ function deleteSiswa(id, nama) {
             loadSiswaData();
         } catch(e) { showToast('Gagal: ' + e.message, 'error'); }
     });
+}
+
+// ============================================================
+// IMPORT EXCEL SISWA
+// ============================================================
+function downloadTemplateExcelSiswa() {
+    if (typeof XLSX === 'undefined') {
+        showToast('Library Excel belum dimuat.', 'error');
+        return;
+    }
+    // Header sesuai dengan form yang diminta
+    var headers = [
+        "Nama Lengkap", "Jenis Kelamin (L/P)", "NISN", "Tempat Lahir", 
+        "Tanggal Lahir (YYYY-MM-DD)", "NIK", "Agama", "Alamat", 
+        "Nomor HP", "Nama Ayah", "NIK Ayah", "Nama Ibu", 
+        "NIK Ibu", "Sekolah Asal", "Nomor KK", "Nama Kelas (misal: 7A)"
+    ];
+    
+    // Contoh data dummy untuk baris 2
+    var dummyData = [
+        "Ahmad Dahlan", "L", "0012345678", "Jakarta", 
+        "2010-01-01", "3201234567890001", "Islam", "Jl. Merdeka No 1", 
+        "08123456789", "Budi", "3201234567890002", "Siti", 
+        "3201234567890003", "SDN 1 Babakan", "3201234567890000", "7A"
+    ];
+
+    var ws_data = [headers, dummyData];
+    var ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // Atur lebar kolom agar rapi
+    var wscols = headers.map(h => ({ wch: h.length + 5 }));
+    ws['!cols'] = wscols;
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template_Siswa");
+    XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
+}
+
+async function handleImportSiswaExcel(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    
+    if (typeof showGlobalLoader === 'function') showGlobalLoader('Membaca file Excel...');
+    
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            var data = new Uint8Array(e.target.result);
+            var workbook = XLSX.read(data, {type: 'array'});
+            var firstSheetName = workbook.SheetNames[0];
+            var worksheet = workbook.Sheets[firstSheetName];
+            var json = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+            
+            if (json.length === 0) {
+                if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+                showToast('File Excel kosong atau format salah.', 'error');
+                return;
+            }
+            
+            if (typeof showGlobalLoader === 'function') showGlobalLoader('Mencocokkan data kelas...');
+            
+            // Ambil mapping master kelas: nama_kelas -> id
+            const { data: kelasData, error: errKelas } = await supabaseClient.from('master_kelas').select('id, nama_kelas');
+            if (errKelas) throw errKelas;
+            var kelasMap = {};
+            if (kelasData) {
+                kelasData.forEach(k => { kelasMap[k.nama_kelas.toUpperCase().trim()] = k.id; });
+            }
+
+            var rowsToInsert = [];
+            
+            json.forEach(row => {
+                // Ambil nilai dari kolom berdasarkan header template (atau variasi string yang mungkin)
+                var nama = row["Nama Lengkap"] || row["NAMA LENGKAP"] || "";
+                if (!nama.trim()) return; // Skip baris jika nama kosong
+                
+                var jk = row["Jenis Kelamin (L/P)"] || row["JENIS KELAMIN"] || row["JK"] || "";
+                jk = jk.toUpperCase().trim() === 'P' ? 'P' : 'L'; // Default L
+                
+                var namaKelas = (row["Nama Kelas (misal: 7A)"] || row["KELAS"] || row["NAMA KELAS"] || "").toString().toUpperCase().trim();
+                var kelasId = kelasMap[namaKelas] || null;
+                
+                rowsToInsert.push({
+                    nama_lengkap: nama.trim(),
+                    jenis_kelamin: jk,
+                    kelas_id: kelasId,
+                    nisn: (row["NISN"] || "").toString().trim() || null,
+                    tempat_lahir: (row["Tempat Lahir"] || row["TEMPAT LAHIR"] || "").toString().trim() || null,
+                    tanggal_lahir: (row["Tanggal Lahir (YYYY-MM-DD)"] || row["TANGGAL LAHIR"] || "").toString().trim() || null,
+                    nik: (row["NIK"] || "").toString().trim() || null,
+                    agama: (row["Agama"] || row["AGAMA"] || "").toString().trim() || null,
+                    alamat: (row["Alamat"] || row["ALAMAT"] || "").toString().trim() || null,
+                    nomor_hp: (row["Nomor HP"] || row["NOMOR HP"] || "").toString().trim() || null,
+                    nama_ayah: (row["Nama Ayah"] || row["NAMA AYAH"] || "").toString().trim() || null,
+                    nik_ayah: (row["NIK Ayah"] || row["NIK AYAH"] || "").toString().trim() || null,
+                    nama_ibu: (row["Nama Ibu"] || row["NAMA IBU"] || "").toString().trim() || null,
+                    nik_ibu: (row["NIK Ibu"] || row["NIK IBU"] || "").toString().trim() || null,
+                    asal_sekolah: (row["Sekolah Asal"] || row["SEKOLAH ASAL"] || row["ASAL SEKOLAH"] || "").toString().trim() || null,
+                    nomor_kk: (row["Nomor KK"] || row["NOMOR KK"] || "").toString().trim() || null,
+                    status: 'Aktif',
+                    mondok: 'Tidak'
+                });
+            });
+            
+            if (rowsToInsert.length === 0) {
+                if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+                showToast('Tidak ada data valid yang bisa diimport.', 'warning');
+                return;
+            }
+            
+            if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan ' + rowsToInsert.length + ' siswa ke database...');
+            
+            // Lakukan insert batch ke tabel siswa
+            const { error: errInsert } = await supabaseClient.from('siswa').insert(rowsToInsert);
+            if (errInsert) throw errInsert;
+            
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            showToast(rowsToInsert.length + ' Data Siswa berhasil diimport!', 'success');
+            
+            // Refresh table
+            loadSiswaData();
+            
+        } catch(e) {
+            if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+            showToast('Gagal memproses file: ' + e.message, 'error');
+            console.error(e);
+        } finally {
+            // Reset input file agar bisa upload file yang sama jika gagal
+            document.getElementById('importSiswaExcel').value = '';
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 // ============================================================
@@ -3647,7 +3838,7 @@ async function loadMutasiData() {
         var tbody = document.getElementById('mutasiTableBody');
         if (!tbody) return;
         if (mutasiList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data mutasi siswa.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada data mutasi siswa.</td></tr>';
             return;
         }
         tbody.innerHTML = mutasiList.map(function(m, i) {
@@ -3656,24 +3847,20 @@ async function loadMutasiData() {
             var tipeBadge = m.tipe_mutasi === 'Masuk'
                 ? '<span class="role-badge" style="background:rgba(16,185,129,.1);color:#10b981;">▼ Masuk</span>'
                 : '<span class="role-badge" style="background:rgba(239,68,68,.1);color:#ef4444;">▲ Keluar</span>';
-            var mondokBadge = m.mondok === 'Iya' ? '<span class="role-badge" style="background:rgba(59,130,246,.1);color:#3b82f6;">Iya</span>' : '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">Tidak</span>';
 
             return '<tr>' +
                 '<td>' + (i+1) + '</td>' +
                 '<td>' + tipeBadge + '</td>' +
-                '<td>' + (m.sekolah_asal||'-') + '</td>' +
-                '<td>' + (m.sekolah_tujuan||'-') + '</td>' +
                 '<td>' + (m.nisn||'-') + '</td>' +
                 '<td style="font-weight:600;">' + (m.nama_lengkap||'-') + '</td>' +
                 '<td>' + (m.jenis_kelamin||'-') + '</td>' +
+                '<td>' + (m.agama||'-') + '</td>' +
                 '<td>' + kelasNama + '</td>' +
-                '<td>' + mondokBadge + '</td>' +
+                '<td>' + (m.sekolah_asal||'-') + '</td>' +
+                '<td>' + (m.sekolah_tujuan||'-') + '</td>' +
                 '<td>' + (m.nama_ayah||'-') + '</td>' +
-                '<td>' + (m.nik_ayah||'-') + '</td>' +
                 '<td>' + (m.nama_ibu||'-') + '</td>' +
-                '<td>' + (m.nik_ibu||'-') + '</td>' +
                 '<td>' + (m.nomor_hp||'-') + '</td>' +
-                '<td>' + (m.email||'-') + '</td>' +
                 '<td>' + (m.alamat||'-') + '</td>' +
                 '<td>' + tglMutasi + '</td>' +
                 '<td style="font-size:.85rem;color:var(--text-light);">' + (m.keterangan||'-') + '</td>' +
@@ -3688,6 +3875,11 @@ function openMutasiMasukModal() {
     document.getElementById('formMutasiMasukNama').value = '';
     document.getElementById('formMutasiMasukJK').value = '';
     document.getElementById('formMutasiMasukNISN').value = '';
+    document.getElementById('formMutasiMasukNIK').value = '';
+    document.getElementById('formMutasiMasukKK').value = '';
+    document.getElementById('formMutasiMasukAgama').value = '';
+    document.getElementById('formMutasiMasukTempatLahir').value = '';
+    document.getElementById('formMutasiMasukTanggalLahir').value = '';
     document.getElementById('formMutasiMasukSekolahAsal').value = '';
     document.getElementById('formMutasiMasukTanggal').value = new Date().toISOString().split('T')[0];
     document.getElementById('formMutasiMasukMondok').value = 'Tidak';
@@ -3713,6 +3905,11 @@ async function saveMutasiMasuk() {
     var jk = document.getElementById('formMutasiMasukJK').value || null;
     var kelasId = document.getElementById('formMutasiMasukKelas').value || null;
     var nisn = document.getElementById('formMutasiMasukNISN').value.trim() || null;
+    var nik = document.getElementById('formMutasiMasukNIK').value.trim() || null;
+    var kk = document.getElementById('formMutasiMasukKK').value.trim() || null;
+    var agama = document.getElementById('formMutasiMasukAgama').value.trim() || null;
+    var tempatLahir = document.getElementById('formMutasiMasukTempatLahir').value.trim() || null;
+    var tanggalLahir = document.getElementById('formMutasiMasukTanggalLahir').value || null;
     var sekolahAsal = document.getElementById('formMutasiMasukSekolahAsal').value.trim();
     var tanggal = document.getElementById('formMutasiMasukTanggal').value || new Date().toISOString().split('T')[0];
     var mondok = document.getElementById('formMutasiMasukMondok').value || 'Tidak';
@@ -3736,6 +3933,11 @@ async function saveMutasiMasuk() {
             jenis_kelamin: jk,
             kelas_id: kelasId,
             nisn: nisn,
+            nik: nik,
+            nomor_kk: kk,
+            agama: agama,
+            tempat_lahir: tempatLahir,
+            tanggal_lahir: tanggalLahir,
             asal_sekolah: sekolahAsal,
             nama_ayah: ayah,
             nik_ayah: nikAyah,
@@ -3757,6 +3959,11 @@ async function saveMutasiMasuk() {
             jenis_kelamin: jk,
             kelas_id: kelasId,
             nisn: nisn,
+            nik: nik,
+            nomor_kk: kk,
+            agama: agama,
+            tempat_lahir: tempatLahir,
+            tanggal_lahir: tanggalLahir,
             tipe_mutasi: 'Masuk',
             sekolah_asal: sekolahAsal,
             tanggal_mutasi: tanggal,
@@ -7752,6 +7959,23 @@ function populateKelasNameDropdown(selectId, selectedVal) {
         });
     }
     sel.innerHTML = opts;
+}
+
+function populateKartuKelasCheckboxes() {
+    var container = document.getElementById('kartuKelasContainer');
+    if (!container) return;
+    var html = '';
+    if (typeof masterKelasList !== 'undefined' && masterKelasList) {
+        masterKelasList.forEach(function(k) {
+            html += `
+                <label style="display:flex; align-items:center; gap:4px; font-size:0.9rem; cursor:pointer;">
+                    <input type="checkbox" class="cb-kartu-kelas" value="${k.nama_kelas}" onchange="loadSiswaCetakKartu()" />
+                    ${k.nama_kelas}
+                </label>
+            `;
+        });
+    }
+    container.innerHTML = html || '<div style="color:#94a3b8; font-size:0.9rem;">Belum ada data kelas</div>';
 }
 
 // --- Add / Remove Soal Cards ---
@@ -13995,40 +14219,55 @@ if(originalShowSectionKeuangan) {
 var dataSiswaCetak = [];
 
 async function loadSiswaCetakKartu() {
-    var kelasName = document.getElementById('kartuKelasSelect').value;
+    var selectedClasses = Array.from(document.querySelectorAll('.cb-kartu-kelas:checked')).map(cb => cb.value);
     var tbody = document.getElementById('kartuSiswaTbody');
     var container = document.getElementById('kartuTableContainer');
     
-    if (!kelasName) {
+    if (selectedClasses.length === 0) {
         container.style.display = 'none';
         dataSiswaCetak = [];
         return;
     }
     
     container.style.display = 'block';
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat data siswa...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat data siswa...</td></tr>';
     
     try {
-        // Cari id kelas dari master_kelas berdasarkan namanya
-        const { data: kelasData, error: kelasErr } = await supabaseClient.from('master_kelas').select('id').eq('nama_kelas', kelasName).single();
+        let listSiswa = [];
+        const { data: kelasData, error: kelasErr } = await supabaseClient.from('master_kelas').select('id, nama_kelas').in('nama_kelas', selectedClasses);
         if (kelasErr) throw kelasErr;
         
-        // Ambil siswa di kelas tersebut (Aktif)
-        const { data: siswaData, error: siswaErr } = await supabaseClient.from('siswa').select('id, nama_lengkap, jenis_kelamin, nisn, foto').eq('kelas_id', kelasData.id).eq('status', 'Aktif');
+        var kelasIds = kelasData.map(k => k.id);
+        
+        const { data: siswaData, error: siswaErr } = await supabaseClient
+            .from('siswa')
+            .select('id, nama_lengkap, jenis_kelamin, nisn, foto, kelas_id, master_kelas(nama_kelas)')
+            .in('kelas_id', kelasIds)
+            .eq('status', 'Aktif');
         if (siswaErr) throw siswaErr;
         
-        var listSiswa = siswaData || [];
-        // Sort alphabetical
-        listSiswa.sort((a, b) => (a.nama_lengkap || '').localeCompare(b.nama_lengkap || ''));
+        listSiswa = siswaData || [];
         
+        // Sort by kelas first, then alphabetical within each kelas
+        listSiswa.sort((a, b) => {
+            var kelasA = (a.master_kelas ? a.master_kelas.nama_kelas : '');
+            var kelasB = (b.master_kelas ? b.master_kelas.nama_kelas : '');
+            if (kelasA !== kelasB) return kelasA.localeCompare(kelasB);
+            return (a.nama_lengkap || '').localeCompare(b.nama_lengkap || '');
+        });
+        
+        var defaultRuang = document.getElementById('bulkRuangInput') ? document.getElementById('bulkRuangInput').value : '01';
+
         dataSiswaCetak = listSiswa.map((s, index) => {
-            var num = (index + 1).toString().padStart(3, '0');
             return {
                 ...s,
-                nomorPeserta: num // Default urut dari 001
+                nomorPeserta: '', // Akan diset oleh renumberPerRuang
+                kelasName: s.master_kelas ? s.master_kelas.nama_kelas : '',
+                ruang: defaultRuang
             };
         });
         
+        renumberPerRuang();
         renderTabelCetakKartu();
         
     } catch(e) {
@@ -14039,18 +14278,26 @@ async function loadSiswaCetakKartu() {
 function renderTabelCetakKartu() {
     var tbody = document.getElementById('kartuSiswaTbody');
     if (dataSiswaCetak.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa aktif di kelas ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-light)">Tidak ada siswa aktif di kelas ini.</td></tr>';
         return;
     }
     
+    // reset select all checkbox
+    var selectAll = document.getElementById('cbSiswaCetakAll');
+    if (selectAll) selectAll.checked = true;
+
     tbody.innerHTML = dataSiswaCetak.map((s, i) => {
         return `
             <tr>
+                <td style="text-align:center;"><input type="checkbox" class="cb-siswa-cetak" value="${s.id}" checked /></td>
                 <td style="text-align:center;">${i+1}</td>
-                <td style="font-weight:600;">${s.nama_lengkap || '-'}</td>
+                <td style="font-weight:600;">${s.nama_lengkap || '-'} <br><small style="color:#64748b; font-size:10px;">${s.kelasName || ''}</small></td>
                 <td style="text-align:center;">${s.jenis_kelamin || '-'}</td>
                 <td>
                     <input type="text" class="form-input" id="nomorPeserta_${s.id}" value="${s.nomorPeserta}" onchange="updateNomorPeserta('${s.id}', this.value)" style="height:35px; padding:0.3rem 0.6rem; max-width:150px; font-weight:700; font-family:monospace; font-size:1rem; text-align:center; color:#1e293b;" />
+                </td>
+                <td>
+                    <input type="text" class="form-input" id="ruangPeserta_${s.id}" value="${s.ruang}" onchange="updateRuangPeserta('${s.id}', this.value)" style="height:35px; padding:0.3rem 0.6rem; max-width:60px; font-weight:700; text-align:center; color:#1e293b;" />
                 </td>
                 <td style="text-align:center;">
                     <button class="btn btn-outline" onclick="cetakSatuKartu('${s.id}')" style="padding:0.4rem 0.8rem; font-size:0.8rem; border-color:#0ea5e9; color:#0ea5e9;">
@@ -14069,25 +14316,78 @@ function updateNomorPeserta(id, val) {
     if(siswa) siswa.nomorPeserta = val;
 }
 
+function updateRuangPeserta(id, val) {
+    var siswa = dataSiswaCetak.find(s => s.id === id);
+    if(siswa) siswa.ruang = val;
+    renumberPerRuang();
+    renderTabelCetakKartu();
+}
+
+function toggleAllSiswaCetak(checked) {
+    var checkboxes = document.querySelectorAll('.cb-siswa-cetak');
+    checkboxes.forEach(cb => cb.checked = checked);
+}
+
+function applyBulkRuang() {
+    var newVal = document.getElementById('bulkRuangInput').value;
+    var checkboxes = document.querySelectorAll('.cb-siswa-cetak:checked');
+    if (checkboxes.length === 0) {
+        showToast('Pilih minimal 1 siswa', 'error');
+        return;
+    }
+    checkboxes.forEach(cb => {
+        var id = cb.value;
+        var siswa = dataSiswaCetak.find(s => s.id === id);
+        if(siswa) siswa.ruang = newVal;
+    });
+    renumberPerRuang();
+    renderTabelCetakKartu();
+    showToast('Ruang berhasil diterapkan & nomor peserta di-reset per ruang', 'success');
+}
+
+// Renumber nomor peserta per ruang: setiap ruang mulai dari 001
+function renumberPerRuang() {
+    // Kelompokkan siswa berdasarkan ruang
+    var ruangMap = {};
+    dataSiswaCetak.forEach(s => {
+        var r = s.ruang || '01';
+        if (!ruangMap[r]) ruangMap[r] = [];
+        ruangMap[r].push(s);
+    });
+    // Assign nomor urut per ruang
+    Object.keys(ruangMap).forEach(r => {
+        ruangMap[r].forEach((s, idx) => {
+            s.nomorPeserta = (idx + 1).toString().padStart(3, '0');
+        });
+    });
+}
+
 function acakNomorPeserta() {
     if (dataSiswaCetak.length === 0) return;
     
-    // Extract current numbers
-    var numbers = dataSiswaCetak.map(s => s.nomorPeserta);
+    // Acak per ruang: setiap ruang diacak terpisah
+    var ruangMap = {};
+    dataSiswaCetak.forEach(s => {
+        var r = s.ruang || '01';
+        if (!ruangMap[r]) ruangMap[r] = [];
+        ruangMap[r].push(s);
+    });
     
-    // Fisher-Yates shuffle
-    for (let i = numbers.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
-    }
-    
-    // Assign back
-    dataSiswaCetak.forEach((s, i) => {
-        s.nomorPeserta = numbers[i];
+    Object.keys(ruangMap).forEach(r => {
+        var siswaInRoom = ruangMap[r];
+        var numbers = siswaInRoom.map(s => s.nomorPeserta);
+        // Fisher-Yates shuffle
+        for (let i = numbers.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+        }
+        siswaInRoom.forEach((s, i) => {
+            s.nomorPeserta = numbers[i];
+        });
     });
     
     renderTabelCetakKartu();
-    showToast('Nomor peserta berhasil diacak!', 'success');
+    showToast('Nomor peserta berhasil diacak per ruang!', 'success');
 }
 
 var kartuTtdBase64 = '';
@@ -14118,9 +14418,9 @@ function handleTtdUpload(input) {
 
 function buildKartuHTML(siswa) {
     var judul = document.getElementById('kartuJudul').value || 'KARTU PESERTA UJIAN';
-    var kelasName = document.getElementById('kartuKelasSelect').value || '-';
+    var kelasName = siswa.kelasName || '-';
     var namaPanitia = document.getElementById('kartuKetuaPanitia').value || '______________________';
-    var ruangUjian = document.getElementById('kartuRuang') ? document.getElementById('kartuRuang').value : '01';
+    var ruangUjian = siswa.ruang || '01';
     var masaBerlaku = document.getElementById('kartuMasaBerlaku') ? document.getElementById('kartuMasaBerlaku').value : '';
     var today = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     
@@ -14178,14 +14478,14 @@ function buildKartuHTML(siswa) {
 var jadwalUjianDays = [];
 
 function tambahJadwalHari() {
-    var newSesi = [{ waktu: '', mapel: '', pengawas: '' }];
+    var newSesi = [{ waktu: '', mapel: '', pengawas: '', pengawas2: '', pengawas3: '' }];
     
     // Jika sudah ada hari sebelumnya, copy waktu sesi-nya
     if (jadwalUjianDays.length > 0) {
         var prevDay = jadwalUjianDays[jadwalUjianDays.length - 1];
         if (prevDay.sesi && prevDay.sesi.length > 0) {
             newSesi = prevDay.sesi.map(function(s) {
-                return { waktu: s.waktu || '', mapel: '', pengawas: '' };
+                return { waktu: s.waktu || '', mapel: '', pengawas: '', pengawas2: '', pengawas3: '' };
             });
         }
     }
@@ -14200,7 +14500,7 @@ function hapusJadwalHari(dayIdx) {
 }
 
 function tambahJadwalSesi(dayIdx) {
-    jadwalUjianDays[dayIdx].sesi.push({ waktu: '', mapel: '', pengawas: '' });
+    jadwalUjianDays[dayIdx].sesi.push({ waktu: '', mapel: '', pengawas: '', pengawas2: '', pengawas3: '' });
     renderJadwalForm();
 }
 
@@ -14364,33 +14664,20 @@ function renderJadwalForm() {
     
     var html = '';
     jadwalUjianDays.forEach(function(day, dIdx) {
-        html += `<div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f8fafc;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem;">
-                <div style="flex-grow:1; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                    <label style="font-weight:600; font-size:0.9rem; color:#334155; margin:0; min-width:100px;">Pilih Tanggal:</label>
-                    <input type="date" class="form-input" style="height:34px; max-width:200px;" value="${day.hariRaw || ''}" onchange="updateJadwalHari(${dIdx}, this.value)" />
-                    <span style="font-size:0.85rem; font-weight:600; color:#2563eb; margin-left:8px;">${day.hari || ''}</span>
-                </div>
-                <button class="btn-icon btn-icon-red" onclick="hapusJadwalHari(${dIdx})" title="Hapus Hari Ini">
-                    <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
-                </button>
-            </div>
-            
-            <div style="padding-left:1rem; border-left:2px solid #e2e8f0;">
-                <table style="width:100%; border-collapse:collapse; margin-bottom:0.5rem;">
-                    <thead>
-                        <tr style="font-size:0.85rem; color:#64748b;">
-                            <th style="text-align:left; padding-bottom:6px; width:130px;">Waktu</th>
-                            <th style="text-align:left; padding-bottom:6px;">Mata Pelajaran</th>
-                            <th style="text-align:left; padding-bottom:6px;">Pengawas</th>
-                            <th style="text-align:center; padding-bottom:6px; width:40px;">Hapus</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
+        html += '<div style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: #f8fafc;">';
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.8rem; flex-wrap:wrap; gap:0.5rem;">';
+        html += '<div style="flex-grow:1; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">';
+        html += '<label style="font-weight:600; font-size:0.9rem; color:#334155; margin:0; min-width:100px;">Pilih Tanggal:</label>';
+        html += '<input type="date" class="form-input" style="height:34px; max-width:200px;" value="' + (day.hariRaw || '') + '" onchange="updateJadwalHari(' + dIdx + ', this.value)" />';
+        html += '<span style="font-size:0.85rem; font-weight:600; color:#2563eb; margin-left:8px;">' + (day.hari || '') + '</span>';
+        html += '</div>';
+        html += '<button class="btn-icon btn-icon-red" onclick="hapusJadwalHari(' + dIdx + ')" title="Hapus Hari Ini"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>';
+        html += '</div>';
+        html += '<div style="padding-left:0.5rem; border-left:2px solid #e2e8f0;">';
         
         // Bangun opsi dropdown Mata Pelajaran dari master data
         var mapelOptions = '<option value="">-- Pilih Mapel --</option>';
-        mapelOptions += '<option value="ISTIRAHAT"' + ('ISTIRAHAT' === '___' ? '' : '') + '>☕ ISTIRAHAT</option>';
+        mapelOptions += '<option value="ISTIRAHAT">☕ ISTIRAHAT</option>';
         if (typeof masterMapelList !== 'undefined' && masterMapelList.length > 0) {
             masterMapelList.forEach(function(m) {
                 mapelOptions += '<option value="' + m.nama_mapel + '">' + m.nama_mapel + '</option>';
@@ -14406,33 +14693,28 @@ function renderJadwalForm() {
         }
 
         day.sesi.forEach(function(s, sIdx) {
-            // Set selected option untuk mapel
             var mapelOpts = mapelOptions.replace('value="' + s.mapel + '"', 'value="' + s.mapel + '" selected');
-            // Set selected option untuk pengawas
             var pengawasOpts = pengawasOptions.replace('value="' + s.pengawas + '"', 'value="' + s.pengawas + '" selected');
+            var pengawas2Opts = pengawasOptions.replace('value="' + (s.pengawas2 || '') + '"', 'value="' + (s.pengawas2 || '') + '" selected');
+            var pengawas3Opts = pengawasOptions.replace('value="' + (s.pengawas3 || '') + '"', 'value="' + (s.pengawas3 || '') + '" selected');
 
-            html += `
-                        <tr>
-                            <td style="padding-right:6px; padding-bottom:6px; width:130px;"><input type="text" class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" value="${s.waktu}" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'waktu', this.value)" placeholder="07:30-09:30" /></td>
-                            <td style="padding-right:6px; padding-bottom:6px;"><select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'mapel', this.value)">${mapelOpts}</select></td>
-                            <td style="padding-right:6px; padding-bottom:6px;"><select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px;" onchange="updateJadwalSesi(${dIdx}, ${sIdx}, 'pengawas', this.value)">${pengawasOpts}</select></td>
-                            <td style="padding-bottom:6px; text-align:center;">
-                                <button class="btn-icon btn-icon-red" onclick="hapusJadwalSesi(${dIdx}, ${sIdx})" style="width:28px;height:28px;padding:0;">
-                                    <i data-lucide="x" style="width:14px;height:14px;"></i>
-                                </button>
-                            </td>
-                        </tr>
-            `;
+            html += '<div class="jadwal-sesi-row" style="display:flex; flex-wrap:wrap; gap:6px; align-items:flex-end; margin-bottom:8px; padding:8px; background:#fff; border-radius:6px; border:1px solid #e2e8f0;">';
+            html += '<div style="flex:1 1 120px; min-width:100px;"><label style="font-size:0.75rem; color:#64748b; display:block; margin-bottom:2px;">Waktu</label>';
+            html += '<input type="text" class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px; width:100%;" value="' + s.waktu + '" onchange="updateJadwalSesi(' + dIdx + ', ' + sIdx + ', \'waktu\', this.value)" placeholder="07:30-09:30" /></div>';
+            html += '<div style="flex:1 1 140px; min-width:120px;"><label style="font-size:0.75rem; color:#64748b; display:block; margin-bottom:2px;">Mata Pelajaran</label>';
+            html += '<select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px; width:100%;" onchange="updateJadwalSesi(' + dIdx + ', ' + sIdx + ', \'mapel\', this.value)">' + mapelOpts + '</select></div>';
+            html += '<div style="flex:1 1 140px; min-width:120px;"><label style="font-size:0.75rem; color:#64748b; display:block; margin-bottom:2px;">Pengawas (R.01)</label>';
+            html += '<select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px; width:100%;" onchange="updateJadwalSesi(' + dIdx + ', ' + sIdx + ', \'pengawas\', this.value)">' + pengawasOpts + '</select></div>';
+            html += '<div style="flex:1 1 140px; min-width:120px;"><label style="font-size:0.75rem; color:#64748b; display:block; margin-bottom:2px;">Pengawas (R.02)</label>';
+            html += '<select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px; width:100%;" onchange="updateJadwalSesi(' + dIdx + ', ' + sIdx + ', \'pengawas2\', this.value)">' + pengawas2Opts + '</select></div>';
+            html += '<div style="flex:1 1 140px; min-width:120px;"><label style="font-size:0.75rem; color:#64748b; display:block; margin-bottom:2px;">Pengawas (R.03)</label>';
+            html += '<select class="form-input" style="height:38px; font-size:0.85rem; padding:4px 8px; width:100%;" onchange="updateJadwalSesi(' + dIdx + ', ' + sIdx + ', \'pengawas3\', this.value)">' + pengawas3Opts + '</select></div>';
+            html += '<div style="flex:0 0 auto;"><button class="btn-icon btn-icon-red" onclick="hapusJadwalSesi(' + dIdx + ', ' + sIdx + ')" style="width:36px;height:36px;padding:0;" title="Hapus Sesi"><i data-lucide="x" style="width:14px;height:14px;"></i></button></div>';
+            html += '</div>';
         });
         
-        html += `
-                    </tbody>
-                </table>
-                <button class="btn btn-outline" style="font-size:0.8rem; padding:0.25rem 0.5rem;" onclick="tambahJadwalSesi(${dIdx})">
-                    <i data-lucide="plus" style="width:12px;height:12px;"></i> Tambah Sesi
-                </button>
-            </div>
-        </div>`;
+        html += '<button class="btn btn-outline" style="font-size:0.8rem; padding:0.25rem 0.5rem;" onclick="tambahJadwalSesi(' + dIdx + ')"><i data-lucide="plus" style="width:12px;height:12px;"></i> Tambah Sesi</button>';
+        html += '</div></div>';
     });
     
     container.innerHTML = html;
@@ -14441,6 +14723,8 @@ function renderJadwalForm() {
 
 function buildJadwalHTML(siswa) {
     var judul = document.getElementById('kartuJudul').value || 'JADWAL UJIAN';
+    var lblYear = document.getElementById('lblActiveYear');
+    var tahun = lblYear ? lblYear.textContent : '2026/2027';
     
     var tableRows = '';
     var no = 1;
@@ -14452,9 +14736,18 @@ function buildJadwalHTML(siswa) {
     
     if (validDays.length === 0) {
         tableRows = '<tr><td colspan="5" style="text-align:center; padding:8px; color:#94a3b8;">Jadwal belum diisi</td></tr>';
+        var maxPengawas = 1;
     } else {
+        var maxPengawas = 1;
         validDays.forEach(function(day) {
-            var sesiValid = day.sesi.filter(s => s.waktu || s.mapel || s.pengawas);
+            day.sesi.forEach(function(s) {
+                if (s.pengawas3) maxPengawas = Math.max(maxPengawas, 3);
+                else if (s.pengawas2) maxPengawas = Math.max(maxPengawas, 2);
+            });
+        });
+
+        validDays.forEach(function(day) {
+            var sesiValid = day.sesi.filter(s => s.waktu || s.mapel || s.pengawas || s.pengawas2 || s.pengawas3);
             if (sesiValid.length === 0) return;
             
             // Gunakan rowspan untuk hari
@@ -14468,15 +14761,23 @@ function buildJadwalHTML(siswa) {
                 var waktuText = s.waktu ? s.waktu : '-';
                 var mapelText = s.mapel ? s.mapel : '-';
                 var pengawasText = s.pengawas ? s.pengawas : '';
+                var pengawas2Text = s.pengawas2 ? s.pengawas2 : '';
+                var pengawas3Text = s.pengawas3 ? s.pengawas3 : '';
                 
                 // Jika mapel mengandung kata ISTIRAHAT, gabungkan kolom
                 if (mapelText.toUpperCase().includes('ISTIRAHAT')) {
                     tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center; overflow:hidden;">' + waktuText + '</td>';
-                    tableRows += '<td colspan="2" style="border: 1px solid #1e293b; padding: 1px; text-align:center; font-style:italic; font-weight:bold; background:#f1f5f9; overflow:hidden;">' + mapelText + '</td>';
+                    tableRows += '<td colspan="' + (1 + maxPengawas) + '" style="border: 1px solid #1e293b; padding: 1px; text-align:center; font-style:italic; font-weight:bold; background:#f1f5f9; overflow:hidden;">' + mapelText + '</td>';
                 } else {
                     tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; text-align:center; overflow:hidden;">' + waktuText + '</td>';
                     tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + mapelText + '</td>';
                     tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + pengawasText + '</td>';
+                    if (maxPengawas > 1) {
+                        tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + pengawas2Text + '</td>';
+                    }
+                    if (maxPengawas > 2) {
+                        tableRows += '<td style="border: 1px solid #1e293b; padding: 1px; overflow:hidden; word-break:break-word;">' + pengawas3Text + '</td>';
+                    }
                 }
                 
                 tableRows += '</tr>';
@@ -14485,19 +14786,43 @@ function buildJadwalHTML(siswa) {
         });
     }
 
+    var headerPengawas = '';
+    if (maxPengawas === 1) {
+        headerPengawas = `
+                    <tr>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:12px; text-align:center;">No</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:44px; text-align:center;">Hari/Tanggal</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:38px; text-align:center;">Waktu</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; width:56px; text-align:center;">Mata Pelajaran</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Pengawas (R.01)</th>
+                    </tr>
+        `;
+    } else {
+        headerPengawas = `
+                    <tr>
+                        <th rowspan="2" style="border: 1px solid #1e293b; padding: 1px; width:12px; text-align:center; vertical-align:middle;">No</th>
+                        <th rowspan="2" style="border: 1px solid #1e293b; padding: 1px; width:44px; text-align:center; vertical-align:middle;">Hari/Tanggal</th>
+                        <th rowspan="2" style="border: 1px solid #1e293b; padding: 1px; width:38px; text-align:center; vertical-align:middle;">Waktu</th>
+                        <th rowspan="2" style="border: 1px solid #1e293b; padding: 1px; width:56px; text-align:center; vertical-align:middle;">Mata Pelajaran</th>
+                        <th colspan="${maxPengawas}" style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Pengawas</th>
+                    </tr>
+                    <tr>
+                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">R.01</th>
+                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">R.02</th>
+                        ${maxPengawas > 2 ? '<th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">R.03</th>' : ''}
+                    </tr>
+        `;
+    }
+
     return `
         <div class="kartu-ujian" style="display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding: 8px 10px;">
             <div class="kartu-jadwal" style="width: 100%;">
-                <div class="jadwal-title" style="margin-top:0; margin-bottom:4px; font-size:9px; text-align:center; font-weight:800; color:var(--primary-dark);">JADWAL ${judul}</div>
+                <div class="jadwal-title" style="margin-top:0; margin-bottom:0px; font-size:9px; text-align:center; font-weight:800; color:var(--primary-dark); text-transform:uppercase;">JADWAL ${judul}</div>
+                <div style="font-size:10px; text-align:center; font-weight:800; color:#b45309; margin-bottom:0px;">SMP IT AL FATHONAH BABAKAN</div>
+                <div style="font-size:7.5px; text-align:center; font-weight:600; color:#475569; margin-bottom:4px;">TAHUN PELAJARAN ${tahun}</div>
             <table class="jadwal-table" style="width: 100%; border-collapse: collapse; font-size: 6px; line-height: 1.05; table-layout: fixed;">
                 <thead>
-                    <tr>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:12px; text-align:center;">No</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:58px;">Hari/Tanggal</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:44px; text-align:center;">Waktu</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; width:68px; text-align:center;">Mata Pelajaran</th>
-                        <th style="border: 1px solid #1e293b; padding: 1px; text-align:center;">Pengawas</th>
-                    </tr>
+                    ${headerPengawas}
                 </thead>
                 <tbody>
                     ${tableRows}
@@ -14531,14 +14856,17 @@ function cetakSatuKartu(siswaId) {
 }
 
 function cetakSemuaKartu() {
-    if (dataSiswaCetak.length === 0) {
-        showToast('Tidak ada siswa untuk dicetak!', 'warning');
+    var checkedIds = Array.from(document.querySelectorAll('.cb-siswa-cetak:checked')).map(cb => cb.value);
+    var siswaToprint = dataSiswaCetak.filter(s => checkedIds.includes(s.id));
+    
+    if (siswaToprint.length === 0) {
+        showToast('Pilih minimal 1 siswa untuk dicetak!', 'warning');
         return;
     }
     
     // Cetak semua kartu depan
     var htmlDepan = '';
-    dataSiswaCetak.forEach(siswa => {
+    siswaToprint.forEach(siswa => {
         htmlDepan += buildKartuHTML(siswa);
     });
     
@@ -14546,8 +14874,11 @@ function cetakSemuaKartu() {
 }
 
 function cetakSemuaJadwal() {
-    if (dataSiswaCetak.length === 0) {
-        showToast('Tidak ada siswa untuk dicetak!', 'warning');
+    var checkedIds = Array.from(document.querySelectorAll('.cb-siswa-cetak:checked')).map(cb => cb.value);
+    var siswaToprint = dataSiswaCetak.filter(s => checkedIds.includes(s.id));
+    
+    if (siswaToprint.length === 0) {
+        showToast('Pilih minimal 1 siswa untuk dicetak!', 'warning');
         return;
     }
     
@@ -14558,7 +14889,7 @@ function cetakSemuaJadwal() {
     //        [3][4]                                [4][3]
     
     var jadwalCards = [];
-    dataSiswaCetak.forEach(siswa => {
+    siswaToprint.forEach(siswa => {
         jadwalCards.push(buildJadwalHTML(siswa));
     });
     

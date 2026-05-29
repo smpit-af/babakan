@@ -21,6 +21,9 @@
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <!-- SheetJS for Excel Import/Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body class="dashboard-body">
@@ -1085,14 +1088,18 @@
 
     <!-- SECTION DATA INDUK SISWA -->
     <section id="sectionSiswa" class="dash-section">
-      <div class="dash-header" style="display:flex;justify-content:space-between;align-items:center;">
-        <h2>Data Induk Siswa</h2>
-        <button class="btn btn-primary" onclick="openSiswaModal()"><i data-lucide="plus"
-            style="width:16px;height:16px;"></i> Tambah Siswa</button>
+      <div class="dash-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+        <h2 style="margin:0;">Data Induk Siswa</h2>
+        <div class="mobile-stack" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-outline" onclick="downloadTemplateExcelSiswa()" title="Download format Excel"><i data-lucide="download" style="width:16px;height:16px;"></i> Template</button>
+            <button class="btn btn-outline" onclick="document.getElementById('importSiswaExcel').click()" style="border-color:#10b981; color:#10b981;"><i data-lucide="upload" style="width:16px;height:16px;"></i> Import Excel</button>
+            <input type="file" id="importSiswaExcel" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleImportSiswaExcel(event)" />
+            <button class="btn btn-primary" onclick="openSiswaModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Siswa</button>
+        </div>
       </div>
       <!-- Filter Toolbar -->
       <div class="card" style="margin-bottom:1rem;">
-        <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
+        <div class="mobile-stack" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
           <div class="form-group" style="margin-bottom:0;flex:1;min-width:200px;">
             <label class="form-label">Pencarian</label>
             <input type="text" id="filterSiswaSearch" class="form-input" placeholder="Cari nama atau NISN..."
@@ -1136,26 +1143,24 @@
               <tr>
                 <th>No</th>
                 <th>Foto</th>
-                <th>Asal Sekolah</th>
                 <th>NISN</th>
                 <th>Nama</th>
                 <th>JK</th>
+                <th>Agama</th>
                 <th>Kelas</th>
                 <th>Mondok</th>
                 <th>Nama Ayah</th>
-                <th>NIK Ayah</th>
                 <th>Nama Ibu</th>
-                <th>NIK Ibu</th>
                 <th>No HP</th>
                 <th>Email</th>
                 <th>Alamat</th>
                 <th>Status</th>
-                <th style="width:120px;text-align:center;">Aksi</th>
+                <th style="width:160px;text-align:center;">Aksi</th>
               </tr>
             </thead>
             <tbody id="siswaTableBody">
               <tr>
-                <td colspan="17" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
+                <td colspan="15" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
               </tr>
             </tbody>
           </table>
@@ -1193,18 +1198,15 @@
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label" style="font-weight:600; color:#475569;">Pilih Kelas</label>
-            <select id="kartuKelasSelect" class="form-input" onchange="loadSiswaCetakKartu()">
-              <option value="">-- Pilih Kelas --</option>
-            </select>
+            <div id="kartuKelasContainer" style="display:flex; flex-wrap:wrap; gap:10px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; max-height: 80px; overflow-y:auto; background: #fff;">
+              <div style="color:#94a3b8; font-size:0.9rem;">Memuat kelas...</div>
+            </div>
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label" style="font-weight:600; color:#475569;">Nama Ketua Panitia</label>
             <input type="text" id="kartuKetuaPanitia" class="form-input" placeholder="Masukkan Nama & Gelar" />
           </div>
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; color:#475569;">Ruang Ujian</label>
-            <input type="text" id="kartuRuang" class="form-input" placeholder="Contoh: 01" value="01" />
-          </div>
+
           <div class="form-group" style="margin:0;">
             <label class="form-label" style="font-weight:600; color:#475569;">Upload Tanda Tangan</label>
             <input type="file" id="kartuTtdInput" class="form-input" accept="image/png, image/jpeg"
@@ -1225,6 +1227,11 @@
             <i data-lucide="users" style="width:20px;height:20px; color:#10b981;"></i> Daftar Peserta
           </h3>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+            <input type="text" id="bulkRuangInput" class="form-input" style="width:70px; padding:0.4rem; text-align:center;" value="01" placeholder="01" title="Set Ruang Massal" />
+            <button class="btn btn-outline" onclick="applyBulkRuang()" style="font-weight:600; font-size:0.85rem; padding:0.5rem 1rem;">
+               Set Ruang
+            </button>
+            <div style="width:1px; height:24px; background:#e2e8f0; margin:0 4px;"></div>
             <input type="number" id="kartuJumlahMeja" class="form-input" style="width: 70px; padding: 0.4rem;"
               placeholder="Jml" title="Jumlah Nomor Meja" min="1" />
             <button class="btn btn-outline" onclick="cetakNomorMeja()"
@@ -1254,16 +1261,18 @@
           <table class="dash-table">
             <thead>
               <tr>
+                <th style="width:40px; text-align:center;"><input type="checkbox" id="cbSiswaCetakAll" checked onchange="toggleAllSiswaCetak(this.checked)" /></th>
                 <th style="width:40px; text-align:center;">No</th>
                 <th>Nama Lengkap</th>
                 <th style="width:50px; text-align:center;">L/P</th>
-                <th style="width:200px;">Nomor Peserta</th>
+                <th style="width:160px;">Nomor Peserta</th>
+                <th style="width:100px;">Ruang</th>
                 <th style="width:120px; text-align:center;">Aksi</th>
               </tr>
             </thead>
             <tbody id="kartuSiswaTbody">
               <tr>
-                <td colspan="5" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih kelas untuk memuat
+                <td colspan="7" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih kelas untuk memuat
                   daftar siswa.</td>
               </tr>
             </tbody>
@@ -1974,7 +1983,7 @@
         <h2>Data Mutasi Siswa</h2>
         <p>Kelola data siswa mutasi masuk dan keluar. Data akan otomatis terintegrasi dengan Data Induk Siswa.</p>
       </div>
-      <div class="dash-toolbar" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <div class="dash-toolbar mobile-stack" style="display:flex;gap:.5rem;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="openMutasiMasukModal()">
           <i data-lucide="user-plus" style="width:18px;height:18px"></i>
           Mutasi Masuk
@@ -1992,19 +2001,16 @@
               <tr>
                 <th style="width:40px">No</th>
                 <th>Tipe</th>
-                <th>Asal Sekolah</th>
-                <th>Sekolah Tujuan</th>
                 <th>NISN</th>
                 <th>Nama</th>
                 <th>JK</th>
+                <th>Agama</th>
                 <th>Kelas</th>
-                <th>Mondok</th>
+                <th>Asal Sekolah</th>
+                <th>Sekolah Tujuan</th>
                 <th>Nama Ayah</th>
-                <th>NIK Ayah</th>
                 <th>Nama Ibu</th>
-                <th>NIK Ibu</th>
                 <th>No HP</th>
-                <th>Email</th>
                 <th>Alamat</th>
                 <th style="width:110px">Tgl Mutasi</th>
                 <th>Keterangan</th>
@@ -2013,7 +2019,7 @@
             </thead>
             <tbody id="mutasiTableBody">
               <tr>
-                <td colspan="19" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
+                <td colspan="16" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
               </tr>
             </tbody>
           </table>
@@ -6138,40 +6144,33 @@
       <div class="modal-body">
         <input type="hidden" id="formSiswaId" />
         <div class="grid-responsive">
-          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formSiswaNama"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formSiswaJK"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formSiswaNama" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formSiswaNISN" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formSiswaNIK" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formSiswaKK" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formSiswaJK" class="form-input">
               <option value="">Pilih</option>
               <option value="L">Laki-laki</option>
               <option value="P">Perempuan</option>
             </select></div>
+          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formSiswaAgama" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text" id="formSiswaTempatLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date" id="formSiswaTanggalLahir" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Kelas</label><select id="formSiswaKelas" class="form-input">
               <option value="">Pilih Kelas</option>
             </select></div>
-          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formSiswaNISN"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Asal Sekolah</label><input type="text" id="formSiswaAsal"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Mondok</label><select id="formSiswaMondok"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Asal Sekolah</label><input type="text" id="formSiswaAsal" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formSiswaMondok" class="form-input">
               <option value="Tidak">Tidak</option>
               <option value="Iya">Iya</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formSiswaAyah"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formSiswaNIKAyah"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formSiswaIbu"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formSiswaNIKIbu"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formSiswaHP"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formSiswaEmail"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Status</label><select id="formSiswaStatus"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formSiswaAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formSiswaNIKAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formSiswaIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formSiswaNIKIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formSiswaHP" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formSiswaEmail" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Status</label><select id="formSiswaStatus" class="form-input">
               <option value="Aktif">Aktif</option>
               <option value="Tidak Aktif">Tidak Aktif</option>
             </select></div>
@@ -6188,7 +6187,7 @@
         <div class="form-group"><label class="form-label">Alamat</label><textarea id="formSiswaAlamat"
             class="form-input" rows="2"></textarea></div>
       </div>
-      <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline"
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-danger"
           onclick="closeSiswaModal()">Batal</button> <button class="btn btn-primary"
           onclick="saveSiswa()">Simpan</button></div>
     </div>
@@ -6354,48 +6353,38 @@
       </div>
       <div class="modal-body">
         <div class="grid-responsive">
-          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text"
-              id="formMutasiMasukNama" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formMutasiMasukJK"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formMutasiMasukNama" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formMutasiMasukNISN" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formMutasiMasukNIK" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formMutasiMasukKK" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formMutasiMasukJK" class="form-input">
               <option value="">Pilih</option>
               <option value="L">Laki-laki</option>
               <option value="P">Perempuan</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Kelas Tujuan *</label><select id="formMutasiMasukKelas"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formMutasiMasukAgama" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text" id="formMutasiMasukTempatLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date" id="formMutasiMasukTanggalLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Kelas Tujuan *</label><select id="formMutasiMasukKelas" class="form-input">
               <option value="">Pilih Kelas</option>
             </select></div>
-          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formMutasiMasukNISN"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Sekolah Asal *</label><input type="text"
-              id="formMutasiMasukSekolahAsal" class="form-input" placeholder="Nama sekolah asal" /></div>
-          <div class="form-group"><label class="form-label">Mondok</label><select id="formMutasiMasukMondok"
-              class="form-input">
+          <div class="form-group"><label class="form-label">Sekolah Asal *</label><input type="text" id="formMutasiMasukSekolahAsal" class="form-input" placeholder="Nama sekolah asal" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formMutasiMasukMondok" class="form-input">
               <option value="Tidak">Tidak</option>
               <option value="Iya">Iya</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date"
-              id="formMutasiMasukTanggal" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formMutasiMasukAyah"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text"
-              id="formMutasiMasukNIKAyah" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formMutasiMasukIbu"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formMutasiMasukNIKIbu"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formMutasiMasukHP"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formMutasiMasukEmail"
-              class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Keterangan</label><input type="text"
-              id="formMutasiMasukKeterangan" class="form-input" placeholder="Alasan pindah, dll" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date" id="formMutasiMasukTanggal" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formMutasiMasukAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formMutasiMasukNIKAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formMutasiMasukIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formMutasiMasukNIKIbu" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formMutasiMasukHP" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formMutasiMasukEmail" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="formMutasiMasukKeterangan" class="form-input" placeholder="Alasan pindah, dll" /></div>
         </div>
-        <div class="form-group"><label class="form-label">Alamat</label><textarea id="formMutasiMasukAlamat"
-            class="form-input" rows="2"></textarea></div>
+        <div class="form-group"><label class="form-label">Alamat</label><textarea id="formMutasiMasukAlamat" class="form-input" rows="2"></textarea></div>
       </div>
-      <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline"
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-danger"
           onclick="closeMutasiMasukModal()">Batal</button> <button class="btn btn-primary"
           onclick="saveMutasiMasuk()">Simpan Mutasi Masuk</button></div>
     </div>
@@ -6424,7 +6413,7 @@
         <div class="form-group"><label class="form-label">Keterangan</label><textarea id="formMutasiKeluarKeterangan"
             class="form-input" rows="2" placeholder="Alasan pindah, dll"></textarea></div>
       </div>
-      <div class="modal-footer" style="text-align:right;"><button class="btn btn-outline"
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn class-outline" style="border:1px solid #cbd5e1;"
           onclick="closeMutasiKeluarModal()">Batal</button> <button class="btn btn-danger"
           onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
     </div>
@@ -7413,16 +7402,16 @@
         width: max-content;
         margin: 0 auto;
         display: grid;
-        grid-template-columns: repeat(2, 9.6cm);
+        grid-template-columns: repeat(2, 9.8cm);
         column-gap: 6mm;
         row-gap: 6mm;
         justify-content: center;
       }
 
-      /* ===== DESAIN KARTU (8 PER HALAMAN) ===== */
+      /* ===== DESAIN KARTU (6 PER HALAMAN) ===== */
       .kartu-ujian {
-        width: 9.6cm;
-        height: 6.8cm;
+        width: 9.8cm;
+        height: 8.8cm;
         border: 2px solid #1e3a5f;
         border-radius: 6px;
         padding: 6px 8px;
@@ -7508,8 +7497,8 @@
       }
 
       .kartu-logo {
-        width: 42px;
-        height: 42px;
+        width: 50px;
+        height: 50px;
         object-fit: contain;
         margin-right: 8px;
       }
@@ -7522,7 +7511,7 @@
 
       .kartu-header-text h4 {
         margin: 0;
-        font-size: 8.5px;
+        font-size: 9.5px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -7531,7 +7520,7 @@
 
       .kartu-header-text h3 {
         margin: 2px 0 2px 0;
-        font-size: 14.5px;
+        font-size: 15.5px;
         font-weight: 800;
         color: #1e3a5f;
         letter-spacing: 0.3px;
@@ -7541,8 +7530,8 @@
         text-align: center;
         font-weight: 800;
         font-size: 13px;
-        margin-bottom: 2px;
-        margin-top: 4px;
+        margin-bottom: 6px;
+        margin-top: 12px;
         text-transform: uppercase;
         text-decoration: underline;
         color: #0f172a;
@@ -7553,7 +7542,7 @@
         text-align: center;
         font-weight: 800;
         font-size: 13px;
-        margin-bottom: 4px;
+        margin-bottom: 10px;
         text-transform: uppercase;
         color: #1e293b;
         letter-spacing: 0.3px;
@@ -7565,10 +7554,12 @@
         align-items: flex-start;
         margin-left: 4px;
         margin-right: 4px;
+        margin-top: 8px;
       }
 
       .kartu-data {
         flex: 1;
+        margin-left: 10px;
       }
 
       .kartu-data table {
@@ -7577,7 +7568,7 @@
       }
 
       .kartu-data td {
-        padding: 1px 2px;
+        padding: 4px 2px;
         vertical-align: top;
         font-size: 11px;
         line-height: 1.4;
@@ -7591,7 +7582,7 @@
 
       .kartu-footer-container {
         position: absolute;
-        bottom: 6px;
+        bottom: 12px;
         left: 14px;
         right: 14px;
         display: flex;
@@ -7600,8 +7591,8 @@
       }
 
       .kartu-foto-box {
-        width: 56px;
-        height: 74px;
+        width: 70px;
+        height: 94px;
         border: 1px solid #94a3b8;
         border-radius: 4px;
         display: flex;
@@ -7629,6 +7620,7 @@
         color: #1e293b;
         line-height: 1.15;
         width: 120px;
+        margin-right: 15px;
       }
 
       .kartu-ttd-area>div {
@@ -7649,7 +7641,7 @@
       }
 
       .kartu-notes {
-        font-size: 8px;
+        font-size: 9.5px;
         color: #475569;
         line-height: 1.3;
         text-align: left;
@@ -8138,6 +8130,45 @@
           <p><strong>Tanggal:</strong> <span id="detailUtilitasTanggal"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailUtilitasKeterangan"></span></p>
           <p><strong>Jumlah Pembayaran:</strong> <span id="detailUtilitasTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detail Siswa -->
+  <div class="modal-overlay" id="detailSiswaModal">
+    <div class="modal modal-wide" style="position:relative;">
+      <button class="modal-close" onclick="closeDetailSiswaModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <div class="modal-header">
+        <h3>Detail Siswa</h3>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+          <div style="display:flex; justify-content:center;">
+            <img id="detailSiswaFoto" src="" style="width:120px;height:150px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;display:none;" />
+            <div id="detailSiswaFotoPlaceholder" style="width:120px;height:150px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;border:1px dashed #cbd5e1;">Tidak Ada Foto</div>
+          </div>
+          <div class="grid-responsive" style="gap:1rem;">
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Lengkap</label><div id="detailSiswaNama" style="font-weight:600;font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NISN</label><div id="detailSiswaNISN" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK</label><div id="detailSiswaNIK" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor KK</label><div id="detailSiswaKK" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Jenis Kelamin</label><div id="detailSiswaJK" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Agama</label><div id="detailSiswaAgama" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Tempat Lahir</label><div id="detailSiswaTempatLahir" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Tanggal Lahir</label><div id="detailSiswaTanggalLahir" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Kelas</label><div id="detailSiswaKelas" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Asal Sekolah</label><div id="detailSiswaAsal" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Mondok</label><div id="detailSiswaMondok" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Status</label><div id="detailSiswaStatus" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ayah</label><div id="detailSiswaAyah" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ayah</label><div id="detailSiswaNIKAyah" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ibu</label><div id="detailSiswaIbu" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ibu</label><div id="detailSiswaNIKIbu" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor HP</label><div id="detailSiswaHP" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Email</label><div id="detailSiswaEmail" style="font-size:0.95rem;">-</div></div>
+          </div>
+          <div><label style="font-size:0.75rem;color:var(--text-light);">Alamat</label><div id="detailSiswaAlamat" style="font-size:0.95rem;">-</div></div>
         </div>
       </div>
     </div>
