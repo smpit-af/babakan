@@ -5896,7 +5896,7 @@ async function loadHasilUjianSaya() {
                 var kkmValue = kkmObj ? kkmObj.kkm : 75; // Default 75 jika admin belum mengatur KKM
                 
                 var nilaiColor = h.nilai_akhir >= kkmValue ? '#22c55e' : '#ef4444';
-                var nilaiIcon = h.nilai_akhir >= kkmValue ? '✅' : 'Ã¢ÂÅ’';
+                var nilaiIcon = h.nilai_akhir >= kkmValue ? '✅' : '❌';
                 var bgGrad = h.nilai_akhir >= kkmValue ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fef2f2,#fee2e2)';
                 var borderCol = h.nilai_akhir >= kkmValue ? '#bbf7d0' : '#fecaca';
 
