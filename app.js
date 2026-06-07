@@ -927,6 +927,12 @@ function applyRoleVisibility() {
         el.style.display = isAkademik ? '' : 'none';
     });
 
+    // Arsip, Hasil & Analisis, Sampah Asesmen — khusus admin/kurikulum saja
+    var isAdminKurikulum = ['admin', 'kurikulum'].includes(role);
+    document.querySelectorAll('.role-admin-kurikulum').forEach(function (el) {
+        el.style.display = isAdminKurikulum ? '' : 'none';
+    });
+
     // Input Penilaian
     var isPenilaian = ['admin', 'kurikulum', 'kesiswaan', 'wali_kelas', 'guru_mapel', 'operator_sekolah'].includes(role);
     document.querySelectorAll('.role-penilaian').forEach(function (el) {
