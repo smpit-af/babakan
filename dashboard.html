@@ -1095,13 +1095,19 @@
 
     <!-- SECTION DATA INDUK SISWA -->
     <section id="sectionSiswa" class="dash-section">
-      <div class="dash-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+      <div class="dash-header"
+        style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
         <h2 style="margin:0;">Data Induk Siswa</h2>
         <div class="mobile-stack" style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-            <button class="btn btn-outline" onclick="downloadTemplateExcelSiswa()" title="Download format Excel"><i data-lucide="download" style="width:16px;height:16px;"></i> Template</button>
-            <button class="btn btn-outline" onclick="document.getElementById('importSiswaExcel').click()" style="border-color:#10b981; color:#10b981;"><i data-lucide="upload" style="width:16px;height:16px;"></i> Import Excel</button>
-            <input type="file" id="importSiswaExcel" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleImportSiswaExcel(event)" />
-            <button class="btn btn-primary" onclick="openSiswaModal()"><i data-lucide="plus" style="width:16px;height:16px;"></i> Tambah Siswa</button>
+          <button class="btn btn-outline" onclick="downloadTemplateExcelSiswa()" title="Download format Excel"><i
+              data-lucide="download" style="width:16px;height:16px;"></i> Template</button>
+          <button class="btn btn-outline" onclick="document.getElementById('importSiswaExcel').click()"
+            style="border-color:#10b981; color:#10b981;"><i data-lucide="upload" style="width:16px;height:16px;"></i>
+            Import Excel</button>
+          <input type="file" id="importSiswaExcel" accept=".xlsx, .xls, .csv" style="display:none;"
+            onchange="handleImportSiswaExcel(event)" />
+          <button class="btn btn-primary" onclick="openSiswaModal()"><i data-lucide="plus"
+              style="width:16px;height:16px;"></i> Tambah Siswa</button>
         </div>
       </div>
       <!-- Filter Toolbar -->
@@ -1205,7 +1211,8 @@
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label" style="font-weight:600; color:#475569;">Pilih Kelas</label>
-            <div id="kartuKelasContainer" style="display:flex; flex-wrap:wrap; gap:10px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; max-height: 80px; overflow-y:auto; background: #fff;">
+            <div id="kartuKelasContainer"
+              style="display:flex; flex-wrap:wrap; gap:10px; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; max-height: 80px; overflow-y:auto; background: #fff;">
               <div style="color:#94a3b8; font-size:0.9rem;">Memuat kelas...</div>
             </div>
           </div>
@@ -1234,9 +1241,12 @@
             <i data-lucide="users" style="width:20px;height:20px; color:#10b981;"></i> Daftar Peserta
           </h3>
           <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-            <input type="text" id="bulkRuangInput" class="form-input" style="width:70px; padding:0.4rem; text-align:center;" value="01" placeholder="01" title="Set Ruang Massal" />
-            <button class="btn btn-outline" onclick="applyBulkRuang()" style="font-weight:600; font-size:0.85rem; padding:0.5rem 1rem;">
-               Set Ruang
+            <input type="text" id="bulkRuangInput" class="form-input"
+              style="width:70px; padding:0.4rem; text-align:center;" value="01" placeholder="01"
+              title="Set Ruang Massal" />
+            <button class="btn btn-outline" onclick="applyBulkRuang()"
+              style="font-weight:600; font-size:0.85rem; padding:0.5rem 1rem;">
+              Set Ruang
             </button>
             <div style="width:1px; height:24px; background:#e2e8f0; margin:0 4px;"></div>
             <input type="number" id="kartuJumlahMeja" class="form-input" style="width: 70px; padding: 0.4rem;"
@@ -1268,7 +1278,8 @@
           <table class="dash-table">
             <thead>
               <tr>
-                <th style="width:40px; text-align:center;"><input type="checkbox" id="cbSiswaCetakAll" checked onchange="toggleAllSiswaCetak(this.checked)" /></th>
+                <th style="width:40px; text-align:center;"><input type="checkbox" id="cbSiswaCetakAll" checked
+                    onchange="toggleAllSiswaCetak(this.checked)" /></th>
                 <th style="width:40px; text-align:center;">No</th>
                 <th>Nama Lengkap</th>
                 <th style="width:50px; text-align:center;">L/P</th>
@@ -3060,7 +3071,8 @@
               <h4
                 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: flex-start; gap: 0.5rem;">
                 <i data-lucide="sliders" style="width:18px;height:18px; color:#10b981; flex-shrink:0;"></i> Detail Ujian
-                & Pembobotan</h4>
+                & Pembobotan
+              </h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label"
@@ -3247,7 +3259,8 @@
               <h4
                 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: flex-start; gap: 0.5rem;">
                 <i data-lucide="sliders" style="width:18px;height:18px; color:#7c3aed; flex-shrink:0;"></i> Detail Ujian
-                & Pembobotan</h4>
+                & Pembobotan
+              </h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label"
@@ -3458,7 +3471,8 @@
               <h4
                 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #92400e; display: flex; align-items: flex-start; gap: 0.5rem;">
                 <i data-lucide="sliders" style="width:18px;height:18px; color:#d97706; flex-shrink:0;"></i> Detail Ujian
-                & Link</h4>
+                & Link
+              </h4>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label"
@@ -3919,23 +3933,9 @@
         <div>
           <h2><i data-lucide="wallet"
               style="width:26px;height:26px;vertical-align:middle;margin-right:8px;"></i>Transaksi Universal</h2>
-          <p>Pusat kontrol tagihan siswa (Pemasukan) dan pengeluaran rutin (Kas Keluar) sekolah.</p>
+          <p>Kelola tagihan siswa dan pengeluaran per kegiatan. Klik <strong>Detail</strong> pada tagihan untuk melihat
+            pemasukan & pengeluaran.</p>
         </div>
-      </div>
-
-      <!-- TABS NAVIGATION -->
-      <div class="universal-tabs"
-        style="display:flex; gap:8px; margin-bottom:1.5rem; border-bottom:2px solid var(--border-color); padding-bottom:0.5rem;">
-        <button class="btn" id="tabBtnUniversalTagihan"
-          style="flex:1; background:#10b981; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;"
-          onclick="switchUniversalTab('tagihan')">
-          <i data-lucide="download" style="width:16px;height:16px;"></i> Pemasukan
-        </button>
-        <button class="btn" id="tabBtnUniversalKasKeluar"
-          style="flex:1; background:transparent; color:var(--text-light); border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;"
-          onclick="switchUniversalTab('pengeluaran')">
-          <i data-lucide="upload" style="width:16px;height:16px;"></i> Pengeluaran
-        </button>
       </div>
 
       <div id="tabUniversalTagihan">
@@ -3982,8 +3982,9 @@
           </div>
         </div>
 
-        <!-- DETAIL SISWA TRANSAKSI UNIVERSAL -->
+        <!-- DETAIL SISWA TRANSAKSI UNIVERSAL (EVENT-BASED LEDGER) -->
         <div class="card" id="detailTableContainerUniversal" style="display:none; margin-top:1.5rem;">
+          <!-- Header Detail -->
           <div
             style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
             <div style="display:flex; gap:1rem; align-items:center;">
@@ -3995,7 +3996,31 @@
                 <p style="margin:0; font-size:0.85rem; color:var(--text-light);" id="lblDetailInfoUniversal">-</p>
               </div>
             </div>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          </div>
+
+          <!-- Ringkasan Saldo Kegiatan -->
+          <div id="detailUniversalSaldo"
+            style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:1rem; margin-bottom:1.5rem;">
+          </div>
+
+          <!-- Tab Internal: Pemasukan Siswa / Pengeluaran Kegiatan -->
+          <div class="universal-tabs"
+            style="display:flex; gap:8px; margin-bottom:1.5rem; border-bottom:2px solid var(--border-color); padding-bottom:0.5rem;">
+            <button class="btn" id="tabBtnDetailPemasukan"
+              style="flex:1; background:#10b981; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;"
+              onclick="switchDetailUniversalTab('pemasukan')">
+              <i data-lucide="download" style="width:16px;height:16px;"></i> Pemasukan Siswa
+            </button>
+            <button class="btn" id="tabBtnDetailPengeluaran"
+              style="flex:1; background:transparent; color:var(--text-light); border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; font-size:0.9rem; white-space:nowrap;"
+              onclick="switchDetailUniversalTab('pengeluaran')">
+              <i data-lucide="upload" style="width:16px;height:16px;"></i> Pengeluaran Kegiatan
+            </button>
+          </div>
+
+          <!-- TAB INTERNAL 1: PEMASUKAN SISWA -->
+          <div id="tabDetailPemasukan">
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem; justify-content:flex-end;">
               <button class="btn btn-outline" onclick="printLaporanTagihan('universal')">
                 <i data-lucide="printer" style="width:16px;height:16px;"></i> Cetak Laporan
               </button>
@@ -4008,95 +4033,93 @@
                 <i data-lucide="settings" style="width:16px;height:16px;"></i>
               </button>
             </div>
-          </div>
 
-          <div style="margin-bottom:1rem;">
-            <input type="text" id="searchDetailUniversal" class="form-input" placeholder="Cari nama siswa..."
-              onkeyup="renderDetailSiswaTable('universal')">
-          </div>
-
-          <div class="table-container">
-            <table class="data-table" id="tableDetailSiswaUniversal">
-              <thead>
-                <tr>
-                  <th style="width:50px;">No</th>
-                  <th>Nama Siswa</th>
-                  <th>Kelas</th>
-                  <th>Status</th>
-                  <th>Terbayar</th>
-                  <th>Sisa Tagihan</th>
-                  <th style="text-align:right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div> <!-- END tabUniversalTagihan -->
-
-      <!-- TAB 2: KAS KELUAR -->
-      <div id="tabUniversalKasKeluar" style="display:none;">
-        <!-- Summary Cards (ALL kas keluar universal) -->
-        <div id="kasKeluarSummary"
-          style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;">
-        </div>
-
-        <!-- Pilih Kategori -->
-        <div class="card" style="margin-bottom:1rem; padding:1rem 1.2rem;">
-          <label class="form-label" style="margin-bottom:0.5rem; font-weight:600; color:var(--primary-dark);"><i
-              data-lucide="layers" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Pilih
-            Kategori Pengeluaran</label>
-          <select id="selectUnivKategoriPengeluaran" class="form-input" style="margin:0; max-width:350px;"
-            onchange="switchUnivKategoriPengeluaran(this.value)">
-            <option value="">— Pilih Kategori —</option>
-            <option value="Honor">Honor</option>
-            <option value="Konsumsi">Konsumsi</option>
-            <option value="Lainnya">Lainnya</option>
-          </select>
-        </div>
-
-        <!-- Dynamic Category Content Container -->
-        <div id="univKategoriContentContainer" style="display:none;">
-          <!-- Filter + Tombol Tambah -->
-          <div class="mobile-stack"
-            style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
-            <div class="mobile-stack"
-              style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
-              <input type="text" id="searchUnivKategori" class="form-input" placeholder="Cari..."
-                style="width:100%; max-width:280px; margin:0;" oninput="renderUnivKategoriTable()" />
-              <input type="month" id="filterBulanUnivKategori" class="form-input" onchange="renderUnivKategoriTable()"
-                style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+            <div style="margin-bottom:1rem;">
+              <input type="text" id="searchDetailUniversal" class="form-input" placeholder="Cari nama siswa..."
+                onkeyup="renderDetailSiswaTable('universal')">
             </div>
-            <div class="mobile-stack" style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
-              <button class="btn btn-primary" onclick="openKasKeluarModal()" style="white-space:nowrap;">
-                <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
-              </button>
-              <button class="btn btn-outline" onclick="printLaporanUnivKategori()" style="white-space:nowrap;">
-                <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
-              </button>
-            </div>
-          </div>
 
-          <!-- Dynamic Table -->
-          <div class="card">
-            <h3 id="univKategoriTableTitle" style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);">
-            </h3>
             <div class="table-container">
-              <table class="data-table" id="tableUnivKategori">
-                <thead id="theadUnivKategori"></thead>
-                <tbody id="tbodyUnivKategori"></tbody>
+              <table class="data-table" id="tableDetailSiswaUniversal">
+                <thead>
+                  <tr>
+                    <th style="width:50px;">No</th>
+                    <th>Nama Siswa</th>
+                    <th>Kelas</th>
+                    <th>Status</th>
+                    <th>Terbayar</th>
+                    <th>Sisa Tagihan</th>
+                    <th style="text-align:right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
               </table>
             </div>
           </div>
-        </div>
 
-        <!-- Placeholder when no category selected -->
-        <div id="univKategoriPlaceholder" style="text-align:center; padding:3rem 1rem; color:var(--text-light);">
-          <i data-lucide="folder-open"
-            style="width:48px;height:48px;opacity:0.3;margin-bottom:1rem;display:block;margin-left:auto;margin-right:auto;"></i>
-          <p style="font-size:1rem;">Pilih kategori pengeluaran di atas untuk melihat riwayat transaksi.</p>
+          <!-- TAB INTERNAL 2: PENGELUARAN KEGIATAN -->
+          <div id="tabDetailPengeluaran" style="display:none;">
+            <!-- Pilih Kategori Pengeluaran -->
+            <div class="card" style="margin-bottom:1rem; padding:1rem 1.2rem;">
+              <label class="form-label" style="margin-bottom:0.5rem; font-weight:600; color:var(--primary-dark);"><i
+                  data-lucide="layers" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></i> Pilih
+                Kategori Pengeluaran</label>
+              <select id="selectUnivKategoriPengeluaran" class="form-input" style="margin:0; max-width:350px;"
+                onchange="switchUnivKategoriPengeluaran(this.value)">
+                <option value="">— Pilih Kategori —</option>
+                <option value="Honor">Honor</option>
+                <option value="Konsumsi">Konsumsi</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+
+            <!-- Dynamic Category Content Container -->
+            <div id="univKategoriContentContainer" style="display:none;">
+              <!-- Filter + Tombol Tambah -->
+              <div class="mobile-stack"
+                style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
+                <div class="mobile-stack"
+                  style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+                  <input type="text" id="searchUnivKategori" class="form-input" placeholder="Cari..."
+                    style="width:100%; max-width:280px; margin:0;" oninput="renderUnivKategoriTable()" />
+                  <input type="month" id="filterBulanUnivKategori" class="form-input"
+                    onchange="renderUnivKategoriTable()"
+                    style="width:100%; max-width:160px; margin:0; padding:0.4rem 0.8rem;" />
+                </div>
+                <div class="mobile-stack" style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
+                  <button class="btn btn-primary" onclick="openKasKeluarModal()" style="white-space:nowrap;">
+                    <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+                  </button>
+                  <button class="btn btn-outline" onclick="printLaporanUnivKategori()" style="white-space:nowrap;">
+                    <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
+                  </button>
+                </div>
+              </div>
+
+              <!-- Dynamic Table -->
+              <div class="card">
+                <h3 id="univKategoriTableTitle"
+                  style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);">
+                </h3>
+                <div class="table-container">
+                  <table class="data-table" id="tableUnivKategori">
+                    <thead id="theadUnivKategori"></thead>
+                    <tbody id="tbodyUnivKategori"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Placeholder when no category selected -->
+            <div id="univKategoriPlaceholder" style="text-align:center; padding:3rem 1rem; color:var(--text-light);">
+              <i data-lucide="folder-open"
+                style="width:48px;height:48px;opacity:0.3;margin-bottom:1rem;display:block;margin-left:auto;margin-right:auto;"></i>
+              <p style="font-size:1rem;">Pilih kategori pengeluaran di atas untuk melihat riwayat transaksi.</p>
+            </div>
+          </div>
+
         </div>
-      </div>
+      </div> <!-- END tabUniversalTagihan -->
     </section>
 
 
@@ -4117,7 +4140,9 @@
       </div>
 
       <!-- SUMMARY PENDAFTARAN -->
-      <div id="pendaftaranSummary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;"></div>
+      <div id="pendaftaranSummary"
+        style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;">
+      </div>
 
       <!-- MASTER TABLE PENDAFTARAN -->
       <div class="card" id="masterTableContainerPendaftaran">
@@ -4227,7 +4252,8 @@
         <!-- Filter & Actions -->
         <div class="mobile-stack"
           style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:1rem;">
-          <div class="mobile-stack" style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
+          <div class="mobile-stack"
+            style="display:flex; gap:0.75rem; flex-wrap:nowrap; align-items:center; flex:1; min-width:300px;">
             <input type="text" id="searchOpPemasukan" class="form-input" placeholder="Cari keterangan..."
               oninput="renderOperasionalPemasukanTable()" style="width:100%; max-width:280px; margin:0;" />
             <input type="month" id="filterBulanOpPemasukan" class="form-input"
@@ -4245,7 +4271,8 @@
         </div>
 
         <div class="card">
-          <h3 style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);">Riwayat Pemasukan Transaksi Operasional (Dana BOS)</h3>
+          <h3 style="margin-bottom:1rem; font-size:1.05rem; color:var(--primary-dark);">Riwayat Pemasukan Transaksi
+            Operasional (Dana BOS)</h3>
           <div class="table-container">
             <table class="data-table" id="tableOperasionalPemasukan">
               <thead>
@@ -4621,7 +4648,8 @@
           </div>
           <div
             style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(239,68,68,0.15);">
-            <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Pengeluaran Operasional</h4>
+            <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Pengeluaran Operasional
+            </h4>
             <h2 id="bkOpTotalPengeluaran" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
           </div>
           <div
@@ -4647,7 +4675,8 @@
               </thead>
               <tbody id="tbodyBukuKasOp">
                 <tr>
-                  <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih tab untuk melihat data.</td>
+                  <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih tab untuk melihat
+                    data.</td>
                 </tr>
               </tbody>
             </table>
@@ -4689,7 +4718,8 @@
           </div>
           <div
             style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 1.25rem; border-radius:12px; color:white; box-shadow:0 4px 6px rgba(239,68,68,0.15);">
-            <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Pengeluaran Internal</h4>
+            <h4 style="font-size:0.85rem; font-weight:600; opacity:0.9; margin-bottom:0.25rem;">Pengeluaran Internal
+            </h4>
             <h2 id="bkIntTotalPengeluaran" style="font-size:1.5rem; font-weight:800; margin:0;">Rp 0</h2>
           </div>
           <div
@@ -4715,7 +4745,8 @@
               </thead>
               <tbody id="tbodyBukuKasInt">
                 <tr>
-                  <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih tab untuk melihat data.</td>
+                  <td colspan="6" style="text-align:center;padding:2rem;color:var(--text-light)">Pilih tab untuk melihat
+                    data.</td>
                 </tr>
               </tbody>
             </table>
@@ -5164,42 +5195,45 @@
       </div>
     </section>
 
-  <!-- ========== SECTION: STEMPEL DOKUMEN ========== -->
-  <section class="dash-section" id="sectionStempelDokumen">
-    <div class="dash-section-header">
-      <h2>Dokumen Arkas</h2>
-      <p>Bubuhkan tanda tangan dan stempel secara otomatis ke dokumen PDF.</p>
-    </div>
-
-    <div class="card" style="padding: 2rem;">
-      <div class="form-group" style="margin-bottom: 1.5rem;">
-        <label class="form-label">Pilih Jenis Dokumen</label>
-        <select id="docTypeSelect" class="form-input" onchange="toggleNomorSuratInput()">
-          <option value="sptjm">SPTJM</option>
-          <option value="bku">Buku Kas Umum (BKU)</option>
-          <option value="buku_pajak">Buku Pembantu Pajak</option>
-          <option value="rekapitulasi">Rekapitulasi Realisasi</option>
-        </select>
+    <!-- ========== SECTION: STEMPEL DOKUMEN ========== -->
+    <section class="dash-section" id="sectionStempelDokumen">
+      <div class="dash-section-header">
+        <h2>Dokumen Arkas</h2>
+        <p>Bubuhkan tanda tangan dan stempel secara otomatis ke dokumen PDF.</p>
       </div>
 
-      <div class="form-group" id="nomorSuratGroup" style="margin-bottom: 1.5rem;">
-        <label class="form-label">Nomor Surat (Khusus SPTJM)</label>
-        <input type="text" id="docNomorSurat" class="form-input" placeholder="Contoh: 421.2/247/SMPIT-AF/III/2026" />
-      </div>
+      <div class="card" style="padding: 2rem;">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label">Pilih Jenis Dokumen</label>
+          <select id="docTypeSelect" class="form-input" onchange="toggleNomorSuratInput()">
+            <option value="sptjm">SPTJM</option>
+            <option value="bku">Buku Kas Umum (BKU)</option>
+            <option value="buku_pajak">Buku Pembantu Pajak</option>
+            <option value="rekapitulasi">Rekapitulasi Realisasi</option>
+          </select>
+        </div>
 
-      <div class="form-group" style="margin-bottom: 2rem;">
-        <label class="form-label">Pilih File PDF</label>
-        <input type="file" id="docPdfInput" class="form-input" accept="application/pdf" style="padding: 0.5rem;" />
-        <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
-          Pastikan gambar <strong style="color:var(--text-dark);">stempel.png</strong>, <strong style="color:var(--text-dark);">ttd_kepsek.png</strong>, dan <strong style="color:var(--text-dark);">ttd_bendahara.png</strong> sudah ada di dalam folder <code>img</code>.
-        </p>
-      </div>
+        <div class="form-group" id="nomorSuratGroup" style="margin-bottom: 1.5rem;">
+          <label class="form-label">Nomor Surat (Khusus SPTJM)</label>
+          <input type="text" id="docNomorSurat" class="form-input" placeholder="Contoh: 421.2/247/SMPIT-AF/III/2026" />
+        </div>
 
-      <button class="btn btn-primary" onclick="prosesStempelDokumen()" style="width: 100%; justify-content: center;" id="btnProsesStempel">
-        <i data-lucide="download" style="width:18px;height:18px"></i> Proses & Download PDF
-      </button>
-    </div>
-  </section>
+        <div class="form-group" style="margin-bottom: 2rem;">
+          <label class="form-label">Pilih File PDF</label>
+          <input type="file" id="docPdfInput" class="form-input" accept="application/pdf" style="padding: 0.5rem;" />
+          <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
+            Pastikan gambar <strong style="color:var(--text-dark);">stempel.png</strong>, <strong
+              style="color:var(--text-dark);">ttd_kepsek.png</strong>, dan <strong
+              style="color:var(--text-dark);">ttd_bendahara.png</strong> sudah ada di dalam folder <code>img</code>.
+          </p>
+        </div>
+
+        <button class="btn btn-primary" onclick="prosesStempelDokumen()" style="width: 100%; justify-content: center;"
+          id="btnProsesStempel">
+          <i data-lucide="download" style="width:18px;height:18px"></i> Proses & Download PDF
+        </button>
+      </div>
+    </section>
 
   </main>
 
@@ -6186,33 +6220,50 @@
       <div class="modal-body">
         <input type="hidden" id="formSiswaId" />
         <div class="grid-responsive">
-          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formSiswaNama" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formSiswaNISN" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formSiswaNIK" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formSiswaKK" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formSiswaJK" class="form-input">
+          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formSiswaNama"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formSiswaNISN"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formSiswaNIK"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formSiswaKK"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formSiswaJK"
+              class="form-input">
               <option value="">Pilih</option>
               <option value="L">Laki-laki</option>
               <option value="P">Perempuan</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formSiswaAgama" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text" id="formSiswaTempatLahir" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date" id="formSiswaTanggalLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formSiswaAgama"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text"
+              id="formSiswaTempatLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date"
+              id="formSiswaTanggalLahir" class="form-input" /></div>
           <div class="form-group"><label class="form-label">Kelas</label><select id="formSiswaKelas" class="form-input">
               <option value="">Pilih Kelas</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Asal Sekolah</label><input type="text" id="formSiswaAsal" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Mondok</label><select id="formSiswaMondok" class="form-input">
+          <div class="form-group"><label class="form-label">Asal Sekolah</label><input type="text" id="formSiswaAsal"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formSiswaMondok"
+              class="form-input">
               <option value="Tidak">Tidak</option>
               <option value="Iya">Iya</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formSiswaAyah" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formSiswaNIKAyah" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formSiswaIbu" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formSiswaNIKIbu" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formSiswaHP" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formSiswaEmail" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Status</label><select id="formSiswaStatus" class="form-input">
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formSiswaAyah"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formSiswaNIKAyah"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formSiswaIbu"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formSiswaNIKIbu"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formSiswaHP"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formSiswaEmail"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Status</label><select id="formSiswaStatus"
+              class="form-input">
               <option value="Aktif">Aktif</option>
               <option value="Tidak Aktif">Tidak Aktif</option>
             </select></div>
@@ -6395,36 +6446,56 @@
       </div>
       <div class="modal-body">
         <div class="grid-responsive">
-          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text" id="formMutasiMasukNama" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formMutasiMasukNISN" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formMutasiMasukNIK" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formMutasiMasukKK" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formMutasiMasukJK" class="form-input">
+          <div class="form-group"><label class="form-label">Nama Lengkap *</label><input type="text"
+              id="formMutasiMasukNama" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NISN</label><input type="text" id="formMutasiMasukNISN"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK</label><input type="text" id="formMutasiMasukNIK"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor KK</label><input type="text" id="formMutasiMasukKK"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Jenis Kelamin</label><select id="formMutasiMasukJK"
+              class="form-input">
               <option value="">Pilih</option>
               <option value="L">Laki-laki</option>
               <option value="P">Perempuan</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formMutasiMasukAgama" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text" id="formMutasiMasukTempatLahir" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date" id="formMutasiMasukTanggalLahir" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Kelas Tujuan *</label><select id="formMutasiMasukKelas" class="form-input">
+          <div class="form-group"><label class="form-label">Agama</label><input type="text" id="formMutasiMasukAgama"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tempat Lahir</label><input type="text"
+              id="formMutasiMasukTempatLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Lahir</label><input type="date"
+              id="formMutasiMasukTanggalLahir" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Kelas Tujuan *</label><select id="formMutasiMasukKelas"
+              class="form-input">
               <option value="">Pilih Kelas</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Sekolah Asal *</label><input type="text" id="formMutasiMasukSekolahAsal" class="form-input" placeholder="Nama sekolah asal" /></div>
-          <div class="form-group"><label class="form-label">Mondok</label><select id="formMutasiMasukMondok" class="form-input">
+          <div class="form-group"><label class="form-label">Sekolah Asal *</label><input type="text"
+              id="formMutasiMasukSekolahAsal" class="form-input" placeholder="Nama sekolah asal" /></div>
+          <div class="form-group"><label class="form-label">Mondok</label><select id="formMutasiMasukMondok"
+              class="form-input">
               <option value="Tidak">Tidak</option>
               <option value="Iya">Iya</option>
             </select></div>
-          <div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date" id="formMutasiMasukTanggal" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formMutasiMasukAyah" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text" id="formMutasiMasukNIKAyah" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formMutasiMasukIbu" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formMutasiMasukNIKIbu" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formMutasiMasukHP" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formMutasiMasukEmail" class="form-input" /></div>
-          <div class="form-group"><label class="form-label">Keterangan</label><input type="text" id="formMutasiMasukKeterangan" class="form-input" placeholder="Alasan pindah, dll" /></div>
+          <div class="form-group"><label class="form-label">Tanggal Mutasi</label><input type="date"
+              id="formMutasiMasukTanggal" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ayah</label><input type="text" id="formMutasiMasukAyah"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ayah</label><input type="text"
+              id="formMutasiMasukNIKAyah" class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nama Ibu</label><input type="text" id="formMutasiMasukIbu"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">NIK Ibu</label><input type="text" id="formMutasiMasukNIKIbu"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Nomor HP</label><input type="text" id="formMutasiMasukHP"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" id="formMutasiMasukEmail"
+              class="form-input" /></div>
+          <div class="form-group"><label class="form-label">Keterangan</label><input type="text"
+              id="formMutasiMasukKeterangan" class="form-input" placeholder="Alasan pindah, dll" /></div>
         </div>
-        <div class="form-group"><label class="form-label">Alamat</label><textarea id="formMutasiMasukAlamat" class="form-input" rows="2"></textarea></div>
+        <div class="form-group"><label class="form-label">Alamat</label><textarea id="formMutasiMasukAlamat"
+            class="form-input" rows="2"></textarea></div>
       </div>
       <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn btn-danger"
           onclick="closeMutasiMasukModal()">Batal</button> <button class="btn btn-primary"
@@ -6455,9 +6526,9 @@
         <div class="form-group"><label class="form-label">Keterangan</label><textarea id="formMutasiKeluarKeterangan"
             class="form-input" rows="2" placeholder="Alasan pindah, dll"></textarea></div>
       </div>
-      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button class="btn class-outline" style="border:1px solid #cbd5e1;"
-          onclick="closeMutasiKeluarModal()">Batal</button> <button class="btn btn-danger"
-          onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
+      <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:10px;"><button
+          class="btn class-outline" style="border:1px solid #cbd5e1;" onclick="closeMutasiKeluarModal()">Batal</button>
+        <button class="btn btn-danger" onclick="saveMutasiKeluar()">Proses Mutasi Keluar</button></div>
     </div>
   </div>
 
@@ -6740,7 +6811,8 @@
             <div
               style="display:flex; justify-content:space-between; padding-top:0.5rem; border-top:1px solid var(--border-color);">
               <span style="color:var(--text-light);">Sisa Tagihan:</span> <strong id="pembayaranSisaTagihan"
-                style="color:var(--danger);">Rp 0</strong></div>
+                style="color:var(--danger);">Rp 0</strong>
+            </div>
           </div>
 
           <h4 style="font-size:1rem; margin-bottom:1rem; color:var(--primary-dark);">Catat Pembayaran Baru</h4>
@@ -6846,16 +6918,14 @@
         </div>
         <div class="form-group" style="margin:0;">
           <label class="form-label">Catatan (Opsional)</label>
-          <textarea id="formKonsumsiCatatan" class="form-input" rows="2"
-            placeholder="Detail tambahan..."></textarea>
+          <textarea id="formKonsumsiCatatan" class="form-input" rows="2" placeholder="Detail tambahan..."></textarea>
         </div>
       </div>
       <div class="modal-footer modal-footer-responsive"
         style="border-top: 1px solid var(--border-color); padding-top:1.5rem; margin-top:0.5rem;">
-        <button class="btn btn-primary"
-          style="display:flex; justify-content:center; align-items:center; gap:0.5rem;"
-          onclick="saveKonsumsiPengeluaran()"><i data-lucide="check"
-            style="width:16px;height:16px;"></i> Simpan</button>
+        <button class="btn btn-primary" style="display:flex; justify-content:center; align-items:center; gap:0.5rem;"
+          onclick="saveKonsumsiPengeluaran()"><i data-lucide="check" style="width:16px;height:16px;"></i>
+          Simpan</button>
         <button class="btn btn-danger" onclick="closeKonsumsiModal()">Batal</button>
       </div>
     </div>
@@ -7721,8 +7791,10 @@
         </div>
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeOperasionalPemasukanModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveOperasionalPemasukan()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-danger" onclick="closeOperasionalPemasukanModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPemasukan()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7738,30 +7810,37 @@
         <!-- Form fields will be generated dynamically by JS based on category -->
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeOperasionalPengeluaranModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveOperasionalPengeluaran()" style="flex:1; justify-content:center;">Simpan Pengeluaran</button>
+        <button class="btn btn-danger" onclick="closeOperasionalPengeluaranModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan Pengeluaran</button>
       </div>
     </div>
   </div>
-  
+
   <!-- MODAL PENGELUARAN HONOR -->
   <div class="modal-overlay" id="honorPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeHonorModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeHonorModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3 id="honorKeluarModalTitle">Tambah Pengeluaran: Honor</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
-        
-        <div id="honorRecipientsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
+      <div class="modal-body"
+        style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
+
+        <div id="honorRecipientsContainer"
+          style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Kontainer untuk form multi penerima honor -->
         </div>
-        
+
         <div style="margin-bottom:1.5rem;">
-          <button class="btn btn-outline" onclick="addHonorRecipient()" style="width:100%; border-style:dashed;">+ Tambahkan Penerima Honor</button>
+          <button class="btn btn-outline" onclick="addHonorRecipient()" style="width:100%; border-style:dashed;">+
+            Tambahkan Penerima Honor</button>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
+        <div
+          style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
           <span>Total Jumlah:</span>
           <span id="honorTotalJumlahRp">Rp 0</span>
         </div>
@@ -7772,12 +7851,15 @@
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan / Detail <span style="color:red;">*</span></label>
-          <textarea id="formHonorKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembayaran honor bulan Maret"></textarea>
+          <textarea id="formHonorKeterangan" class="form-input" rows="2"
+            placeholder="Contoh: Pembayaran honor bulan Maret"></textarea>
         </div>
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeHonorModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveHonorPengeluaran()" style="flex:1; justify-content:center;">Simpan Honor</button>
+        <button class="btn btn-danger" onclick="closeHonorModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveHonorPengeluaran()" style="flex:1; justify-content:center;">Simpan
+          Honor</button>
       </div>
     </div>
   </div>
@@ -7785,7 +7867,8 @@
   <!-- MODAL PENGELUARAN EKSTRAKURIKULER -->
   <div class="modal-overlay" id="ekskulPengeluaranModal">
     <div class="modal" style="max-width:500px;position:relative;">
-      <button class="modal-close" onclick="closeEkskulPengeluaranModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeEkskulPengeluaranModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3 id="ekskulKeluarModalTitle">Tambah Pengeluaran: Ekstrakurikuler</h3>
       </div>
@@ -7804,12 +7887,15 @@
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan / Detail <span style="color:red;">*</span></label>
-          <textarea id="formEkskulKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembelian perlengkapan / honor pelatih"></textarea>
+          <textarea id="formEkskulKeterangan" class="form-input" rows="2"
+            placeholder="Contoh: Pembelian perlengkapan / honor pelatih"></textarea>
         </div>
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeEkskulPengeluaranModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveEkskulPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-danger" onclick="closeEkskulPengeluaranModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveEkskulPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7817,7 +7903,8 @@
   <!-- MODAL DETAIL HONOR PENGELUARAN -->
   <div class="modal-overlay" id="detailHonorPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailHonorModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailHonorModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Pengeluaran Honor</h3>
       </div>
@@ -7825,7 +7912,8 @@
         <div style="margin-bottom:1rem; font-size:0.95rem;">
           <p><strong>Tanggal:</strong> <span id="detailHonorTanggal"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailHonorKeterangan"></span></p>
-          <p><strong>Total Jumlah:</strong> <span id="detailHonorTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Total Jumlah:</strong> <span id="detailHonorTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
         <table class="data-table" style="font-size:0.9rem;">
           <thead>
@@ -7849,7 +7937,8 @@
   <!-- MODAL PENGELUARAN UTILITAS (LISTRIK & WIFI) -->
   <div class="modal-overlay" id="utilitasPengeluaranModal">
     <div class="modal" style="max-width:500px;position:relative;">
-      <button class="modal-close" onclick="closeUtilitasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeUtilitasModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Utilitas (Listrik & Wifi)</h3>
       </div>
@@ -7864,12 +7953,15 @@
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan <span style="color:red;">*</span></label>
-          <textarea id="formUtilitasKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembayaran listrik bulan Maret / Tagihan Wifi bulan April"></textarea>
+          <textarea id="formUtilitasKeterangan" class="form-input" rows="2"
+            placeholder="Contoh: Pembayaran listrik bulan Maret / Tagihan Wifi bulan April"></textarea>
         </div>
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeUtilitasModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveUtilitasPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-danger" onclick="closeUtilitasModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveUtilitasPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7877,18 +7969,22 @@
   <!-- MODAL PENGELUARAN ATK -->
   <div class="modal-overlay" id="atkPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeAtkModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeAtkModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Alat Tulis Kantor (ATK)</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
+      <div class="modal-body"
+        style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
 
-        <div id="atkItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
+        <div id="atkItemsContainer"
+          style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input barang/item -->
         </div>
 
         <div style="margin-bottom:1.5rem;">
-          <button class="btn btn-outline" onclick="addAtkItem()" style="width:100%; border-style:dashed;">+ Tambah Barang / Item</button>
+          <button class="btn btn-outline" onclick="addAtkItem()" style="width:100%; border-style:dashed;">+ Tambah
+            Barang / Item</button>
         </div>
 
         <div class="form-group" style="margin-bottom:1rem;">
@@ -7897,10 +7993,12 @@
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan <span style="color:red;">*</span></label>
-          <textarea id="formAtkKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembelian ATK untuk kebutuhan kantor bulan April"></textarea>
+          <textarea id="formAtkKeterangan" class="form-input" rows="2"
+            placeholder="Contoh: Pembelian ATK untuk kebutuhan kantor bulan April"></textarea>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
+        <div
+          style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
           <span>Total Jumlah:</span>
           <span id="atkTotalJumlahRp">Rp 0</span>
         </div>
@@ -7908,7 +8006,8 @@
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
         <button class="btn btn-danger" onclick="closeAtkModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveAtkPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-primary" onclick="saveAtkPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7916,7 +8015,8 @@
   <!-- MODAL DETAIL ATK PENGELUARAN -->
   <div class="modal-overlay" id="detailAtkPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailAtkModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailAtkModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Pengeluaran ATK</h3>
       </div>
@@ -7924,7 +8024,8 @@
         <div style="margin-bottom:1rem; font-size:0.95rem;">
           <p><strong>Tanggal:</strong> <span id="detailAtkTanggal"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailAtkKeterangan"></span></p>
-          <p><strong>Total Jumlah:</strong> <span id="detailAtkTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Total Jumlah:</strong> <span id="detailAtkTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
         <table class="data-table" style="font-size:0.9rem;">
           <thead>
@@ -7947,37 +8048,43 @@
   <!-- MODAL PENGELUARAN PERJALANAN DINAS -->
   <div class="modal-overlay" id="dinasPengeluaranModal">
     <div class="modal" style="max-width:600px;position:relative;">
-      <button class="modal-close" onclick="closeDinasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDinasModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Perjalanan Dinas</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:65vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
-        <label class="form-label" style="font-weight:600;">Yang Melakukan Perjalanan <span style="color:red;">*</span></label>
-        <div id="dinasNamesContainer" style="margin-bottom:0.5rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
+      <div class="modal-body"
+        style="padding-top:0.5rem; max-height:65vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
+        <label class="form-label" style="font-weight:600;">Yang Melakukan Perjalanan <span
+            style="color:red;">*</span></label>
+        <div id="dinasNamesContainer"
+          style="margin-bottom:0.5rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input nama -->
         </div>
         <div style="margin-bottom:1.5rem;">
-          <button class="btn btn-outline" onclick="addDinasName()" style="width:100%; border-style:dashed;">+ Tambahkan Nama</button>
+          <button class="btn btn-outline" onclick="addDinasName()" style="width:100%; border-style:dashed;">+ Tambahkan
+            Nama</button>
         </div>
 
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Tujuan <span style="color:red;">*</span></label>
-          <input type="text" id="formDinasTujuan" class="form-input" placeholder="Contoh: Dinas Pendidikan Kota Cirebon">
+          <input type="text" id="formDinasTujuan" class="form-input"
+            placeholder="Contoh: Dinas Pendidikan Kota Cirebon">
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Agenda / Acara <span style="color:red;">*</span></label>
           <input type="text" id="formDinasAgenda" class="form-input" placeholder="Contoh: Rapat Koordinasi BOS">
         </div>
-        
+
         <div class="mobile-stack" style="display:flex; gap:10px; margin-bottom:1rem;">
-            <div class="form-group" style="flex:1;">
-                <label class="form-label">Tanggal Berangkat <span style="color:red;">*</span></label>
-                <input type="date" id="formDinasTanggalBerangkat" class="form-input">
-            </div>
-            <div class="form-group" style="flex:1;">
-                <label class="form-label">Tanggal Kembali <span style="color:red;">*</span></label>
-                <input type="date" id="formDinasTanggalKembali" class="form-input">
-            </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Tanggal Berangkat <span style="color:red;">*</span></label>
+            <input type="date" id="formDinasTanggalBerangkat" class="form-input">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Tanggal Kembali <span style="color:red;">*</span></label>
+            <input type="date" id="formDinasTanggalKembali" class="form-input">
+          </div>
         </div>
 
         <div class="form-group" style="margin-bottom:1rem;">
@@ -7987,13 +8094,16 @@
 
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan Tambahan</label>
-          <textarea id="formDinasKeterangan" class="form-input" rows="2" placeholder="Informasi tambahan jika ada"></textarea>
+          <textarea id="formDinasKeterangan" class="form-input" rows="2"
+            placeholder="Informasi tambahan jika ada"></textarea>
         </div>
 
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeDinasModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveDinasPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-danger" onclick="closeDinasModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveDinasPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -8001,7 +8111,8 @@
   <!-- MODAL DETAIL PERJALANAN DINAS -->
   <div class="modal-overlay" id="detailDinasPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailDinasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailDinasModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Perjalanan Dinas</h3>
       </div>
@@ -8011,7 +8122,8 @@
           <p><strong>Agenda:</strong> <span id="detailDinasAgenda"></span></p>
           <p><strong>Waktu:</strong> <span id="detailDinasWaktu"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailDinasKeterangan"></span></p>
-          <p><strong>Total Jumlah:</strong> <span id="detailDinasTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Total Jumlah:</strong> <span id="detailDinasTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
         <table class="data-table" style="font-size:0.9rem;">
           <thead>
@@ -8034,18 +8146,22 @@
   <!-- MODAL PENGELUARAN LAINNYA -->
   <div class="modal-overlay" id="lainnyaPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeLainnyaModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeLainnyaModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Lainnya</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
+      <div class="modal-body"
+        style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
 
-        <div id="lainnyaItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
+        <div id="lainnyaItemsContainer"
+          style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input barang/item -->
         </div>
 
         <div style="margin-bottom:1.5rem;">
-          <button class="btn btn-outline" onclick="addLainnyaItem()" style="width:100%; border-style:dashed;">+ Tambah Barang / Item</button>
+          <button class="btn btn-outline" onclick="addLainnyaItem()" style="width:100%; border-style:dashed;">+ Tambah
+            Barang / Item</button>
         </div>
 
         <div class="form-group" style="margin-bottom:1rem;">
@@ -8054,18 +8170,22 @@
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Keterangan Tambahan <span style="color:red;">*</span></label>
-          <textarea id="formLainnyaKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembelian perlengkapan..."></textarea>
+          <textarea id="formLainnyaKeterangan" class="form-input" rows="2"
+            placeholder="Contoh: Pembelian perlengkapan..."></textarea>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
+        <div
+          style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1rem; margin-bottom:1rem; padding:0.5rem; background:rgba(37,99,235,0.1); border-radius:4px; color:var(--primary-dark);">
           <span>Total Jumlah:</span>
           <span id="lainnyaTotalJumlahRp">Rp 0</span>
         </div>
 
       </div>
       <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-danger" onclick="closeLainnyaModal()" style="flex:1; justify-content:center;">Batal</button>
-        <button class="btn btn-primary" onclick="saveLainnyaPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
+        <button class="btn btn-danger" onclick="closeLainnyaModal()"
+          style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveLainnyaPengeluaran()"
+          style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -8073,7 +8193,8 @@
   <!-- MODAL DETAIL LAINNYA PENGELUARAN -->
   <div class="modal-overlay" id="detailLainnyaPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailLainnyaModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailLainnyaModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Pengeluaran Lainnya</h3>
       </div>
@@ -8081,7 +8202,8 @@
         <div style="margin-bottom:1rem; font-size:0.95rem;">
           <p><strong>Tanggal:</strong> <span id="detailLainnyaTanggal"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailLainnyaKeterangan"></span></p>
-          <p><strong>Total Jumlah:</strong> <span id="detailLainnyaTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Total Jumlah:</strong> <span id="detailLainnyaTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
         <table class="data-table" style="font-size:0.9rem;">
           <thead>
@@ -8146,7 +8268,8 @@
   <!-- Modal Detail Ekstrakurikuler -->
   <div class="modal-overlay" id="detailEkskulPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailEkskulModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailEkskulModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Pengeluaran Ekstrakurikuler</h3>
       </div>
@@ -8155,7 +8278,8 @@
           <p><strong>Tanggal:</strong> <span id="detailEkskulTanggal"></span></p>
           <p><strong>Nama Pelatih:</strong> <span id="detailEkskulPelatih"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailEkskulKeterangan"></span></p>
-          <p><strong>Total Jumlah:</strong> <span id="detailEkskulTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Total Jumlah:</strong> <span id="detailEkskulTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
       </div>
     </div>
@@ -8164,7 +8288,8 @@
   <!-- Modal Detail Utilitas -->
   <div class="modal-overlay" id="detailUtilitasPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
-      <button class="modal-close" onclick="closeDetailUtilitasModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailUtilitasModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Rincian Pengeluaran Utilitas (Listrik & Wifi)</h3>
       </div>
@@ -8172,7 +8297,8 @@
         <div style="margin-bottom:1rem; font-size:0.95rem;">
           <p><strong>Tanggal:</strong> <span id="detailUtilitasTanggal"></span></p>
           <p><strong>Keterangan:</strong> <span id="detailUtilitasKeterangan"></span></p>
-          <p><strong>Jumlah Pembayaran:</strong> <span id="detailUtilitasTotal" style="font-weight:bold; color:var(--primary-dark);"></span></p>
+          <p><strong>Jumlah Pembayaran:</strong> <span id="detailUtilitasTotal"
+              style="font-weight:bold; color:var(--primary-dark);"></span></p>
         </div>
       </div>
     </div>
@@ -8181,37 +8307,79 @@
   <!-- Modal Detail Siswa -->
   <div class="modal-overlay" id="detailSiswaModal">
     <div class="modal modal-wide" style="position:relative;">
-      <button class="modal-close" onclick="closeDetailSiswaModal()"><i data-lucide="x" style="width:22px;height:22px;"></i></button>
+      <button class="modal-close" onclick="closeDetailSiswaModal()"><i data-lucide="x"
+          style="width:22px;height:22px;"></i></button>
       <div class="modal-header">
         <h3>Detail Siswa</h3>
       </div>
       <div class="modal-body">
         <div style="display:flex; flex-direction:column; gap:1.5rem;">
           <div style="display:flex; justify-content:center;">
-            <img id="detailSiswaFoto" src="" style="width:120px;height:150px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;display:none;" />
-            <div id="detailSiswaFotoPlaceholder" style="width:120px;height:150px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;border:1px dashed #cbd5e1;">Tidak Ada Foto</div>
+            <img id="detailSiswaFoto" src=""
+              style="width:120px;height:150px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;display:none;" />
+            <div id="detailSiswaFotoPlaceholder"
+              style="width:120px;height:150px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12px;border:1px dashed #cbd5e1;">
+              Tidak Ada Foto</div>
           </div>
           <div class="grid-responsive" style="gap:1rem;">
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Lengkap</label><div id="detailSiswaNama" style="font-weight:600;font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">NISN</label><div id="detailSiswaNISN" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK</label><div id="detailSiswaNIK" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor KK</label><div id="detailSiswaKK" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Jenis Kelamin</label><div id="detailSiswaJK" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Agama</label><div id="detailSiswaAgama" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Tempat Lahir</label><div id="detailSiswaTempatLahir" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Tanggal Lahir</label><div id="detailSiswaTanggalLahir" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Kelas</label><div id="detailSiswaKelas" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Asal Sekolah</label><div id="detailSiswaAsal" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Mondok</label><div id="detailSiswaMondok" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Status</label><div id="detailSiswaStatus" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ayah</label><div id="detailSiswaAyah" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ayah</label><div id="detailSiswaNIKAyah" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ibu</label><div id="detailSiswaIbu" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ibu</label><div id="detailSiswaNIKIbu" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor HP</label><div id="detailSiswaHP" style="font-size:0.95rem;">-</div></div>
-            <div><label style="font-size:0.75rem;color:var(--text-light);">Email</label><div id="detailSiswaEmail" style="font-size:0.95rem;">-</div></div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Lengkap</label>
+              <div id="detailSiswaNama" style="font-weight:600;font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NISN</label>
+              <div id="detailSiswaNISN" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK</label>
+              <div id="detailSiswaNIK" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor KK</label>
+              <div id="detailSiswaKK" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Jenis Kelamin</label>
+              <div id="detailSiswaJK" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Agama</label>
+              <div id="detailSiswaAgama" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Tempat Lahir</label>
+              <div id="detailSiswaTempatLahir" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Tanggal Lahir</label>
+              <div id="detailSiswaTanggalLahir" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Kelas</label>
+              <div id="detailSiswaKelas" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Asal Sekolah</label>
+              <div id="detailSiswaAsal" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Mondok</label>
+              <div id="detailSiswaMondok" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Status</label>
+              <div id="detailSiswaStatus" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ayah</label>
+              <div id="detailSiswaAyah" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ayah</label>
+              <div id="detailSiswaNIKAyah" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nama Ibu</label>
+              <div id="detailSiswaIbu" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">NIK Ibu</label>
+              <div id="detailSiswaNIKIbu" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Nomor HP</label>
+              <div id="detailSiswaHP" style="font-size:0.95rem;">-</div>
+            </div>
+            <div><label style="font-size:0.75rem;color:var(--text-light);">Email</label>
+              <div id="detailSiswaEmail" style="font-size:0.95rem;">-</div>
+            </div>
           </div>
-          <div><label style="font-size:0.75rem;color:var(--text-light);">Alamat</label><div id="detailSiswaAlamat" style="font-size:0.95rem;">-</div></div>
+          <div><label style="font-size:0.75rem;color:var(--text-light);">Alamat</label>
+            <div id="detailSiswaAlamat" style="font-size:0.95rem;">-</div>
+          </div>
         </div>
       </div>
     </div>
