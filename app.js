@@ -801,7 +801,7 @@ async function initDashboard() {
         const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
         if (error || !profile) { await supabaseClient.auth.signOut(); window.location.href = 'index.html'; return; }
 
-        currentUser = { id: session.user.id, email: session.user.email, name: profile.full_name };
+        currentUser = { id: session.user.id, email: session.user.email, name: profile.full_name, role: profile.role };
         currentRole = profile.role;
 
         // Cek mode simulasi (Admin Only)
@@ -18986,3 +18986,423 @@ function viewDetailUtilitas(id) {
 function closeDetailUtilitasModal() {
     document.getElementById('detailUtilitasPengeluaranModal').classList.remove('active');
 }
+
+// ============================================================
+// PDF STEMPEL & TTD BENDAHARA LOGIC
+// ============================================================
+function toggleNomorSuratInput() {
+    var docType = document.getElementById('docTypeSelect').value;
+    var group = document.getElementById('nomorSuratGroup');
+    if (docType === 'sptjm') {
+        group.style.display = 'block';
+    } else {
+        group.style.display = 'none';
+    }
+}
+
+async function fetchImageAsUint8Array(url) {
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('Gagal memuat gambar: ' + url + '. Pastikan gambar sudah diletakkan di folder img.');
+    var buffer = await res.arrayBuffer();
+    return new Uint8Array(buffer);
+}
+
+function viewDetailLainnya(id) {
+    let d = dOperasional.find(x => x.id === id);
+    if(!d) return;
+    
+    document.getElementById('detailLainnyaTanggal').innerText = formatTanggalIndo(d.tanggal);
+    
+    let ket = d.keterangan || '';
+    let j = null;
+    try {
+        if(ket.startsWith('{')) j = JSON.parse(ket);
+    } catch(e) {}
+    
+    let total = parseInt(d.nominal) || 0;
+    document.getElementById('detailLainnyaTotal').innerText = 'Rp ' + formatRupiah(total);
+    
+    let tbody = document.getElementById('tbodyDetailLainnya');
+    tbody.innerHTML = '';
+    
+    if(j && j.items && Array.isArray(j.items)) {
+        document.getElementById('detailLainnyaKeterangan').innerText = j.deskripsi || '-';
+        j.items.forEach((p, i) => {
+            let amt = parseInt(p.harga) || 0;
+            tbody.innerHTML += '<tr><td style="text-align:center;">' + (i+1) + '</td><td>' + p.nama + '</td><td style="text-align:right;">Rp ' + formatRupiah(amt) + '</td></tr>';
+        });
+    } else {
+        document.getElementById('detailLainnyaKeterangan').innerText = ket;
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1rem;">Rincian barang tidak tersedia.</td></tr>';
+    }
+    
+    document.getElementById('detailLainnyaPengeluaranModal').classList.add('active');
+}
+
+function closeDetailLainnyaModal() {
+    document.getElementById('detailLainnyaPengeluaranModal').classList.remove('active');
+}
+
+window.editingOperasionalId = null;
+
+function editOperasional(id) {
+    let d = dOperasional.find(x => x.id === id);
+    if (!d) return;
+    
+    window.editingOperasionalId = d.id;
+    let ket = d.keterangan || '';
+    let j = null;
+    try {
+        if(ket.startsWith('{')) j = JSON.parse(ket);
+    } catch(e) {}
+
+    if (d.kategori === 'Honor') {
+        window.honorSource = 'Operasional';
+        localStorage.removeItem('honorFormCache');
+        let obj = {
+            recipients: j && j.penerima ? j.penerima : [],
+            tanggal: d.tanggal,
+            keterangan: j ? (j.deskripsi || '') : ''
+        };
+        localStorage.setItem('honorFormCache', JSON.stringify(obj));
+        openHonorModal();
+    } 
+    else if (d.kategori === 'Ekstrakurikuler') {
+        localStorage.removeItem('ekskulFormCache');
+        let pelatih = '';
+        let deskripsi = ket;
+        if(ket.startsWith("Pelatih: ")) {
+            let parts = ket.split(" | Ket: ");
+            pelatih = parts[0].replace("Pelatih: ", "");
+            if(parts.length > 1) deskripsi = parts[1];
+            else deskripsi = "";
+        }
+        let obj = {
+            pelatih: pelatih,
+            tanggal: d.tanggal,
+            jumlah: parseInt(d.nominal) || '',
+            keterangan: deskripsi
+        };
+        localStorage.setItem('ekskulFormCache', JSON.stringify(obj));
+        openEkskulPengeluaranModal();
+    }
+    else if (d.kategori === 'Utilitas (listrik & wifi)') {
+        localStorage.removeItem('utilitasFormCache');
+        let obj = {
+            jumlah: parseInt(d.nominal) || '',
+            tanggal: d.tanggal,
+            keterangan: ket
+        };
+        localStorage.setItem('utilitasFormCache', JSON.stringify(obj));
+        openUtilitasModal();
+    }
+    else if (d.kategori === 'Alat Tulis Kantor (ATK)') {
+        localStorage.removeItem('atkFormCache');
+        let obj = {
+            items: (j && j.items ? j.items : []).map(p => ({ nama: p.nama, harga: p.harga })),
+            tanggal: d.tanggal,
+            keterangan: j ? (j.deskripsi || '') : ''
+        };
+        localStorage.setItem('atkFormCache', JSON.stringify(obj));
+        openAtkModal();
+    }
+    else if (d.kategori === 'Perjalanan Dinas') {
+        localStorage.removeItem('dinasFormCache');
+        let peserta = j ? (j.peserta || j.penerima || []) : [];
+        let pList = peserta.map(p => typeof p === 'string' ? p : p.nama);
+        let obj = {
+            names: pList,
+            tujuan: j ? (j.tujuan || '') : '',
+            agenda: j ? (j.agenda || '') : '',
+            tanggal_berangkat: d.tanggal,
+            tanggal_kembali: j ? (j.tanggal_kembali || d.tanggal) : d.tanggal,
+            jumlah: parseInt(d.nominal) || '',
+            keterangan: j ? (j.deskripsi || '') : ''
+        };
+        localStorage.setItem('dinasFormCache', JSON.stringify(obj));
+        openDinasModal();
+    }
+    else if (d.kategori === 'Lainnya') {
+        localStorage.removeItem('lainnyaFormCache');
+        let obj = {
+            items: (j && j.items ? j.items : []).map(p => ({ nama: p.nama, harga: p.harga })),
+            tanggal: d.tanggal,
+            keterangan: j ? (j.deskripsi || '') : ''
+        };
+        localStorage.setItem('lainnyaFormCache', JSON.stringify(obj));
+        openLainnyaModal();
+    }
+}
+
+function viewDetailEkskul(id) {
+    let d = dOperasional.find(x => x.id === id);
+    if(!d) return;
+    
+    document.getElementById('detailEkskulTanggal').innerText = formatTanggalIndo(d.tanggal);
+    
+    let ket = d.keterangan || '';
+    let pelatih = '-';
+    let deskripsi = ket;
+    if(ket.startsWith("Pelatih: ")) {
+        let parts = ket.split(" | Ket: ");
+        pelatih = parts[0].replace("Pelatih: ", "");
+        if(parts.length > 1) deskripsi = parts[1];
+        else deskripsi = "";
+    }
+    
+    document.getElementById('detailEkskulPelatih').innerText = pelatih;
+    document.getElementById('detailEkskulKeterangan').innerText = deskripsi;
+    
+    let total = parseInt(d.nominal) || 0;
+    document.getElementById('detailEkskulTotal').innerText = 'Rp ' + formatRupiah(total);
+    
+    document.getElementById('detailEkskulPengeluaranModal').classList.add('active');
+}
+
+function closeDetailEkskulModal() {
+    document.getElementById('detailEkskulPengeluaranModal').classList.remove('active');
+}
+
+function viewDetailUtilitas(id) {
+    let d = dOperasional.find(x => x.id === id);
+    if(!d) return;
+    
+    document.getElementById('detailUtilitasTanggal').innerText = formatTanggalIndo(d.tanggal);
+    document.getElementById('detailUtilitasKeterangan').innerText = d.keterangan || '-';
+    
+    let total = parseInt(d.nominal) || 0;
+    document.getElementById('detailUtilitasTotal').innerText = 'Rp ' + formatRupiah(total);
+    
+    document.getElementById('detailUtilitasPengeluaranModal').classList.add('active');
+}
+
+function closeDetailUtilitasModal() {
+    document.getElementById('detailUtilitasPengeluaranModal').classList.remove('active');
+}
+
+// ============================================================
+// PDF STEMPEL & TTD BENDAHARA LOGIC
+// ============================================================
+function toggleNomorSuratInput() {
+    var docType = document.getElementById('docTypeSelect').value;
+    var group = document.getElementById('nomorSuratGroup');
+    if (docType === 'sptjm') {
+        group.style.display = 'block';
+    } else {
+        group.style.display = 'none';
+    }
+}
+
+async function fetchImageAsUint8Array(url) {
+    var res = await fetch(url);
+    if (!res.ok) throw new Error('Gagal memuat gambar: ' + url + '. Pastikan gambar sudah diletakkan di folder img.');
+    var buffer = await res.arrayBuffer();
+    return new Uint8Array(buffer);
+}
+
+async function prosesStempelDokumen() {
+    var fileInput = document.getElementById('docPdfInput');
+    var docType = document.getElementById('docTypeSelect').value;
+    var nomorSurat = document.getElementById('docNomorSurat').value;
+    var btn = document.getElementById('btnProsesStempel');
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('Silakan pilih file PDF terlebih dahulu.', 'warning');
+        return;
+    }
+    if (docType === 'sptjm' && !nomorSurat) {
+        showToast('Mohon isi Nomor Surat untuk dokumen SPTJM.', 'warning');
+        return;
+    }
+
+    var file = fileInput.files[0];
+    if (file.type !== 'application/pdf') {
+        showToast('File harus berupa PDF.', 'warning');
+        return;
+    }
+
+    btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:18px;height:18px;vertical-align:middle;margin-right:8px;"></i> Sedang Memproses...';
+    btn.disabled = true;
+
+    try {
+        if (typeof PDFLib === 'undefined') {
+            throw new Error('Library PDF-Lib tidak ditemukan. Pastikan koneksi internet aktif.');
+        }
+
+        var fileBuffer = await file.arrayBuffer();
+        var pdfDoc = await PDFLib.PDFDocument.load(fileBuffer);
+
+        // Load images
+        var stempelBytes = await fetchImageAsUint8Array('img/stempel.png');
+        var ttdKepsekBytes = await fetchImageAsUint8Array('img/ttd_kepsek.png');
+        
+        var stempelImage = await pdfDoc.embedPng(stempelBytes);
+        var ttdKepsekImage = await pdfDoc.embedPng(ttdKepsekBytes);
+
+        var ttdBendaharaImage = null;
+        if (docType !== 'sptjm') {
+            var ttdBendaharaBytes = await fetchImageAsUint8Array('img/ttd_bendahara.png');
+            ttdBendaharaImage = await pdfDoc.embedPng(ttdBendaharaBytes);
+        }
+
+        // Get the last page
+        var pages = pdfDoc.getPages();
+        var lastPage = pages[pages.length - 1];
+
+        // Standard scaling for images (preserve aspect ratio)
+        var stempelScale = 100 / stempelImage.width;
+        var stempelDims = stempelImage.scale(stempelScale);
+
+        var ttdScale = 150 / ttdKepsekImage.width;
+        var ttdKepsekDims = ttdKepsekImage.scale(ttdScale);
+
+        var ttdBendaharaDims = null;
+        if (ttdBendaharaImage) {
+            var bendaharaScale = 90 / ttdBendaharaImage.width;
+            ttdBendaharaDims = ttdBendaharaImage.scale(bendaharaScale);
+        }
+
+        if (docType === 'sptjm') {
+            // Draw Nomor Surat on first page (or last if 1 page)
+            var firstPage = pages[0];
+            
+            // Draw white rectangle to hide ".................." only (not "Nomor :")
+            firstPage.drawRectangle({
+                x: 245,
+                y: 672,
+                width: 235,
+                height: 18,
+                color: PDFLib.rgb(1, 1, 1),
+            });
+            
+            // Draw the actual Nomor Surat (centered-ish on the dots)
+            firstPage.drawText(nomorSurat, {
+                x: 250,
+                y: 673,
+                size: 11,
+                color: PDFLib.rgb(0, 0, 0),
+            });
+
+            // Draw Stamp (Kanan Bawah, digeser ke atas sedikit)
+            lastPage.drawImage(stempelImage, {
+                x: 350,
+                y: 89,
+                width: stempelDims.width,
+                height: stempelDims.height,
+            });
+            
+            // Draw Kepsek Signature (digeser ke bawah dan sedikit ke kiri)
+            lastPage.drawImage(ttdKepsekImage, {
+                x: 395,
+                y: -26,
+                width: ttdKepsekDims.width,
+                height: ttdKepsekDims.height,
+            });
+        } else if (docType === 'buku_pajak') {
+            // Buku Pembantu Pajak
+            var bkuKepsekScale = 170 / ttdKepsekImage.width;
+            var bkuKepsekDims = ttdKepsekImage.scale(bkuKepsekScale);
+
+            lastPage.drawImage(stempelImage, {
+                x: 30,
+                y: 245,
+                width: stempelDims.width,
+                height: stempelDims.height,
+            });
+            lastPage.drawImage(ttdKepsekImage, {
+                x: 70,
+                y: 105,
+                width: bkuKepsekDims.width,
+                height: bkuKepsekDims.height,
+            });
+            
+            if (ttdBendaharaImage && ttdBendaharaDims) {
+                lastPage.drawImage(ttdBendaharaImage, {
+                    x: 630,
+                    y: 245,
+                    width: ttdBendaharaDims.width,
+                    height: ttdBendaharaDims.height,
+                });
+            }
+        } else if (docType === 'rekapitulasi') {
+            // Rekapitulasi Realisasi
+            var bkuKepsekScale = 170 / ttdKepsekImage.width;
+            var bkuKepsekDims = ttdKepsekImage.scale(bkuKepsekScale);
+
+            lastPage.drawImage(stempelImage, {
+                x: 20,
+                y: 70,
+                width: stempelDims.width,
+                height: stempelDims.height,
+            });
+            lastPage.drawImage(ttdKepsekImage, {
+                x: 60,
+                y: -70,
+                width: bkuKepsekDims.width,
+                height: bkuKepsekDims.height,
+            });
+            
+            if (ttdBendaharaImage && ttdBendaharaDims) {
+                lastPage.drawImage(ttdBendaharaImage, {
+                    x: 650,
+                    y: 70,
+                    width: ttdBendaharaDims.width,
+                    height: ttdBendaharaDims.height,
+                });
+            }
+        } else {
+            // BKU (2 signatures)
+            // Kiri: Kepsek + Stempel. Kanan: Bendahara.
+            var bkuKepsekScale = 170 / ttdKepsekImage.width;
+            var bkuKepsekDims = ttdKepsekImage.scale(bkuKepsekScale);
+
+            lastPage.drawImage(stempelImage, {
+                x: 50,
+                y: 200,
+                width: stempelDims.width,
+                height: stempelDims.height,
+            });
+            lastPage.drawImage(ttdKepsekImage, {
+                x: 90,
+                y: 60,
+                width: bkuKepsekDims.width,
+                height: bkuKepsekDims.height,
+            });
+            
+            if (ttdBendaharaImage && ttdBendaharaDims) {
+                lastPage.drawImage(ttdBendaharaImage, {
+                    x: 620,
+                    y: 200,
+                    width: ttdBendaharaDims.width,
+                    height: ttdBendaharaDims.height,
+                });
+            }
+        }
+
+        var modifiedPdfBytes = await pdfDoc.save();
+        
+        // Trigger download
+        var blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function() {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+
+        showToast('Dokumen berhasil diproses dan diunduh!', 'success');
+        
+    } catch (err) {
+        console.error(err);
+        showToast('Gagal memproses PDF: ' + err.message, 'error');
+    } finally {
+        btn.innerHTML = '<i data-lucide="download" style="width:18px;height:18px;vertical-align:middle;margin-right:8px;"></i> Proses & Download PDF';
+        btn.disabled = false;
+        if(window.lucide) lucide.createIcons();
+    }
+}
+

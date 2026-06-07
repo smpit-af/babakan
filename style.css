@@ -957,6 +957,7 @@ body.has-ticker {
   padding: 2.5rem;
   width: 90%;
   max-width: 420px;
+  box-sizing: border-box;
   max-height: calc(100vh - 4rem);
   overflow-y: auto;
   box-shadow: var(--shadow-xl);

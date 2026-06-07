@@ -24,6 +24,9 @@
 
   <!-- SheetJS for Excel Import/Export -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <!-- PDF-Lib for PDF manipulation -->
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
 </head>
 
 <body class="dashboard-body">
@@ -232,11 +235,15 @@
         <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionArsipTransaksi', this)">
           <i data-lucide="archive" style="width:18px;height:18px"></i>
           <span>Arsip Transaksi</span>
-          <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionPusatPengaturan', this)">
-            <i data-lucide="settings-2" style="width:18px;height:18px"></i>
-            <span>Pusat Pengaturan</span>
-          </a>
-      </div>
+        </a>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionStempelDokumen', this)">
+          <i data-lucide="stamp" style="width:18px;height:18px"></i>
+          <span>Dokumen Arkas</span>
+        </a>
+        <a href="#" class="sidebar-link role-bendahara" onclick="showSection('sectionPusatPengaturan', this)">
+          <i data-lucide="settings-2" style="width:18px;height:18px"></i>
+          <span>Pusat Pengaturan</span>
+        </a>
       </div>
 
       <div class="sidebar-nav-group role-operasional">
@@ -4295,7 +4302,7 @@
             </div>
             <div class="mobile-stack" style="display:flex; gap:0.5rem; flex-wrap:nowrap;">
               <button class="btn btn-primary" onclick="openOperasionalPengeluaranModal()" style="white-space:nowrap;">
-                <i data-lucide="plus" style="width:18px;height:18px;"></i> Tambah Catatan Pengeluaran
+                <i data-lucide="plus" style="width:18px;height:18px;"></i> Catatan Pengeluaran
               </button>
               <button class="btn btn-outline" onclick="printLaporanOperasional()" style="white-space:nowrap;">
                 <i data-lucide="printer" style="width:18px;height:18px;"></i> Cetak Laporan
@@ -5157,7 +5164,42 @@
       </div>
     </section>
 
+  <!-- ========== SECTION: STEMPEL DOKUMEN ========== -->
+  <section class="dash-section" id="sectionStempelDokumen">
+    <div class="dash-section-header">
+      <h2>Dokumen Arkas</h2>
+      <p>Bubuhkan tanda tangan dan stempel secara otomatis ke dokumen PDF.</p>
+    </div>
 
+    <div class="card" style="padding: 2rem;">
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label class="form-label">Pilih Jenis Dokumen</label>
+        <select id="docTypeSelect" class="form-input" onchange="toggleNomorSuratInput()">
+          <option value="sptjm">SPTJM</option>
+          <option value="bku">Buku Kas Umum (BKU)</option>
+          <option value="buku_pajak">Buku Pembantu Pajak</option>
+          <option value="rekapitulasi">Rekapitulasi Realisasi</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="nomorSuratGroup" style="margin-bottom: 1.5rem;">
+        <label class="form-label">Nomor Surat (Khusus SPTJM)</label>
+        <input type="text" id="docNomorSurat" class="form-input" placeholder="Contoh: 421.2/247/SMPIT-AF/III/2026" />
+      </div>
+
+      <div class="form-group" style="margin-bottom: 2rem;">
+        <label class="form-label">Pilih File PDF</label>
+        <input type="file" id="docPdfInput" class="form-input" accept="application/pdf" style="padding: 0.5rem;" />
+        <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
+          Pastikan gambar <strong style="color:var(--text-dark);">stempel.png</strong>, <strong style="color:var(--text-dark);">ttd_kepsek.png</strong>, dan <strong style="color:var(--text-dark);">ttd_bendahara.png</strong> sudah ada di dalam folder <code>img</code>.
+        </p>
+      </div>
+
+      <button class="btn btn-primary" onclick="prosesStempelDokumen()" style="width: 100%; justify-content: center;" id="btnProsesStempel">
+        <i data-lucide="download" style="width:18px;height:18px"></i> Proses & Download PDF
+      </button>
+    </div>
+  </section>
 
   </main>
 
@@ -7678,9 +7720,9 @@
           <input type="text" id="formOpMasukKet" class="form-input" placeholder="Keterangan pemasukan (opsional)" />
         </div>
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-outline" onclick="closeOperasionalPemasukanModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveOperasionalPemasukan()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeOperasionalPemasukanModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPemasukan()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7695,9 +7737,9 @@
       <div class="modal-body" id="opKeluarModalBody" style="padding-top:0.5rem;">
         <!-- Form fields will be generated dynamically by JS based on category -->
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-outline" onclick="closeOperasionalPengeluaranModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveOperasionalPengeluaran()">Simpan Pengeluaran</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeOperasionalPengeluaranModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveOperasionalPengeluaran()" style="flex:1; justify-content:center;">Simpan Pengeluaran</button>
       </div>
     </div>
   </div>
@@ -7709,9 +7751,9 @@
       <div class="modal-header">
         <h3 id="honorKeluarModalTitle">Tambah Pengeluaran: Honor</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto;">
+      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
         
-        <div id="honorRecipientsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+        <div id="honorRecipientsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Kontainer untuk form multi penerima honor -->
         </div>
         
@@ -7733,9 +7775,9 @@
           <textarea id="formHonorKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembayaran honor bulan Maret"></textarea>
         </div>
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeHonorModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveHonorPengeluaran()">Simpan Honor</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeHonorModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveHonorPengeluaran()" style="flex:1; justify-content:center;">Simpan Honor</button>
       </div>
     </div>
   </div>
@@ -7765,9 +7807,9 @@
           <textarea id="formEkskulKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembelian perlengkapan / honor pelatih"></textarea>
         </div>
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeEkskulPengeluaranModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveEkskulPengeluaran()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeEkskulPengeluaranModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveEkskulPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7825,9 +7867,9 @@
           <textarea id="formUtilitasKeterangan" class="form-input" rows="2" placeholder="Contoh: Pembayaran listrik bulan Maret / Tagihan Wifi bulan April"></textarea>
         </div>
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeUtilitasModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveUtilitasPengeluaran()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeUtilitasModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveUtilitasPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7839,9 +7881,9 @@
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Alat Tulis Kantor (ATK)</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto;">
+      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
 
-        <div id="atkItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+        <div id="atkItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input barang/item -->
         </div>
 
@@ -7864,9 +7906,9 @@
         </div>
 
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeAtkModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveAtkPengeluaran()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeAtkModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveAtkPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7909,9 +7951,9 @@
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Perjalanan Dinas</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:65vh; overflow-y:auto;">
+      <div class="modal-body" style="padding-top:0.5rem; max-height:65vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
         <label class="form-label" style="font-weight:600;">Yang Melakukan Perjalanan <span style="color:red;">*</span></label>
-        <div id="dinasNamesContainer" style="margin-bottom:0.5rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+        <div id="dinasNamesContainer" style="margin-bottom:0.5rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input nama -->
         </div>
         <div style="margin-bottom:1.5rem;">
@@ -7949,9 +7991,9 @@
         </div>
 
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeDinasModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveDinasPengeluaran()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeDinasModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveDinasPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
@@ -7988,6 +8030,7 @@
     </div>
   </div>
 
+
   <!-- MODAL PENGELUARAN LAINNYA -->
   <div class="modal-overlay" id="lainnyaPengeluaranModal">
     <div class="modal" style="max-width:550px;position:relative;">
@@ -7995,9 +8038,9 @@
       <div class="modal-header">
         <h3>Tambah Pengeluaran: Lainnya</h3>
       </div>
-      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto;">
+      <div class="modal-body" style="padding-top:0.5rem; max-height:60vh; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; width:100%;">
 
-        <div id="lainnyaItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px;">
+        <div id="lainnyaItemsContainer" style="margin-bottom:1rem; border:1px solid var(--border-color); padding:1rem; border-radius:8px; box-sizing:border-box; width:100%;">
           <!-- Multi-input barang/item -->
         </div>
 
@@ -8020,9 +8063,9 @@
         </div>
 
       </div>
-      <div class="modal-footer" style="text-align:right;">
-        <button class="btn btn-danger" onclick="closeLainnyaModal()">Batal</button>
-        <button class="btn btn-primary" onclick="saveLainnyaPengeluaran()">Simpan</button>
+      <div class="modal-footer mobile-stack" style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-danger" onclick="closeLainnyaModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button class="btn btn-primary" onclick="saveLainnyaPengeluaran()" style="flex:1; justify-content:center;">Simpan</button>
       </div>
     </div>
   </div>
