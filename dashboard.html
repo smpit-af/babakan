@@ -3791,6 +3791,10 @@
             <button class="btn btn-success" onclick="sinkronisasiKeNilaiResmi()" id="btnSinkronHasil">
               <i data-lucide="upload-cloud" style="width:16px;height:16px;"></i> Simpan ke Nilai Rapor
             </button>
+            <button class="btn" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:white;border:none;"
+              onclick="triggerManualRegrade()" id="btnSyncSheet" title="Paksa Google Apps Script mengoreksi ulang semua jawaban dan mengisi sheet Hasil Koreksi">
+              <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Sinkronkan Sheet
+            </button>
             <button class="btn" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:white;border:none;"
               onclick="publikasikanHasilKeSiswa()" id="btnPublikasikanSiswa">
               <i data-lucide="megaphone" style="width:16px;height:16px;"></i> Publikasikan ke Siswa
@@ -3804,17 +3808,20 @@
               <tr>
                 <th style="width:40px;">No</th>
                 <th>Siswa (Database)</th>
-                <th>Siswa (Google Form)</th>
+                <th>Akun Google Form</th>
                 <th style="text-align:center;">Benar PG</th>
-                <th style="text-align:center;">Total Poin PG</th>
-                <th style="text-align:center;">Poin Essay</th>
-                <th style="text-align:center;">Nilai Akhir Keseluruhan</th>
-                <th style="width:100px;text-align:center;">Status Cocok</th>
+                <th style="text-align:center;">Salah PG</th>
+                <th style="text-align:center;">Skor PG</th>
+                <th style="text-align:center;">Benar Essay</th>
+                <th style="text-align:center;">Salah Essay</th>
+                <th style="text-align:center;">Skor Essay</th>
+                <th style="text-align:center;">Nilai Akhir</th>
+                <th style="width:100px;text-align:center;">Status</th>
               </tr>
             </thead>
             <tbody id="hasilAsesmenTbody">
               <tr>
-                <td colspan="8" style="text-align:center;padding:2rem;">Memuat...</td>
+              <td colspan="11" style="text-align:center;padding:2rem;">Memuat...</td>
               </tr>
             </tbody>
           </table>

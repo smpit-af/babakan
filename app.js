@@ -6412,112 +6412,547 @@ async function loadDataHasilAsesmen() {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;">Mengunduh dan mencocokkan data...</td></tr>';
 
     try {
-        // 1. Get Students in the Class
-        const { data: siswaData, error: errS } = await supabaseClient.from('siswa').select('id, nama_lengkap').eq('kelas_id', kelasId).not('status', 'in', '("Pindah","Lulus")').order('nama_lengkap');
+        // 1. Get Students in the Class (Hanya yang Aktif/Pindahan)
+        const { data: siswaData, error: errS } = await supabaseClient.from('siswa').select('id, nama_lengkap, email').eq('kelas_id', kelasId).in('status', ['Aktif', 'Pindahan']).order('nama_lengkap');
         if (errS) throw errS;
         hasilAsesmenState.siswaList = siswaData || [];
 
         // 2. Fetch CSV from Google Sheets
         // Menargetkan sheet khusus "Hasil Koreksi" jika ada, jika tidak otomatis sheet pertama
-        var csvUrl = 'https://docs.google.com/spreadsheets/d/' + fileId + '/gviz/tq?tqx=out:csv&sheet=Hasil%20Koreksi';
+        var csvText = '';
+        var sheetSource = '';
+        var fetchSuccess = false;
+        var cacheBuster = '&_cb=' + Date.now();
 
-        var response = await fetch(csvUrl);
-        if (!response.ok) {
-            // Coba ambil sheet default (pertama) jika "Hasil Koreksi" tidak ditemukan
-            csvUrl = 'https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv';
-            response = await fetch(csvUrl);
-            if (!response.ok) throw new Error('Gagal mengakses Spreadsheet. Pastikan aksesnya "Siapa saja yang memiliki link".');
+        // Coba 1: Ambil sheet "Hasil Koreksi" via gviz API
+        var possibleSheetNames = [
+            'Hasil Koreksi',
+            'hasil koreksi',
+            'HASIL KOREKSI',
+            'Hasil Koreksi ',
+            'Hasil_Koreksi'
+        ];
+
+        for (var i = 0; i < possibleSheetNames.length; i++) {
+            if (fetchSuccess) break;
+            try {
+                var sheetNameAttempt = possibleSheetNames[i];
+                var csvUrl1 = 'https://docs.google.com/spreadsheets/d/' + fileId + '/gviz/tq?tqx=out:csv&sheet=' + encodeURIComponent(sheetNameAttempt) + cacheBuster;
+                var response1 = await fetch(csvUrl1);
+                if (response1.ok) {
+                    var text1 = await response1.text();
+                    // gviz API mengembalikan 200 walaupun sheet tidak ada — responsnya berupa JS bukan CSV
+                    // Deteksi: CSV asli dimulai dengan karakter " atau huruf, bukan 'google.visualization' atau '<!DOCTYPE'
+                    if (text1 && !text1.trim().startsWith('google.visualization') && !text1.trim().startsWith('<!') && !text1.trim().startsWith('<html')) {
+                        csvText = text1;
+                        sheetSource = sheetNameAttempt;
+                        fetchSuccess = true;
+                    }
+                }
+            } catch (e1) { /* lanjut ke percobaan berikutnya */ }
         }
 
-        var csvText = await response.text();
+        // Coba 2: Export via gid (sheet kedua biasanya "Hasil Koreksi" di gid=1 dst)
+        if (!fetchSuccess) {
+            try {
+                // Coba export sheet bernama "Hasil Koreksi" melalui export endpoint
+                var csvUrl2 = 'https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv&gid=0';
+                // Kita coba beberapa gid karena "Hasil Koreksi" bisa di gid 1, 2, dst
+                for (var gidAttempt = 0; gidAttempt <= 5 && !fetchSuccess; gidAttempt++) {
+                    try {
+                        var urlGid = 'https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv&gid=' + gidAttempt + cacheBuster;
+                        var respGid = await fetch(urlGid);
+                        if (respGid.ok) {
+                            var textGid = await respGid.text();
+                            if (textGid && !textGid.trim().startsWith('<!') && !textGid.trim().startsWith('<html')) {
+                                var firstLine = textGid.split('\n')[0].toLowerCase();
+                                // Cek apakah sheet ini mengandung kolom "nilai akhir keseluruhan"
+                                if (firstLine.indexOf('nilai akhir') !== -1) {
+                                    csvText = textGid;
+                                    sheetSource = 'Sheet gid=' + gidAttempt;
+                                    fetchSuccess = true;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (eg) { /* lanjut coba gid berikutnya */ }
+                }
+            } catch (e2) { /* lanjut ke fallback terakhir */ }
+        }
+
+        // Coba 3: Fallback — ambil sheet pertama dan coba parse
+        if (!fetchSuccess) {
+            try {
+                var csvUrl3 = 'https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv' + cacheBuster;
+                var response3 = await fetch(csvUrl3);
+                if (!response3.ok) throw new Error('HTTP ' + response3.status);
+                var text3 = await response3.text();
+                if (text3 && !text3.trim().startsWith('<!') && !text3.trim().startsWith('<html')) {
+                    csvText = text3;
+                    sheetSource = 'Sheet pertama (Form Responses)';
+                    fetchSuccess = true;
+                }
+            } catch (e3) { /* gagal total */ }
+        }
+
+        if (!fetchSuccess || !csvText.trim()) {
+            throw new Error('Gagal mengakses Spreadsheet. Pastikan:\n1. Link yang dimasukkan adalah URL Google Sheets yang benar.\n2. Opsi sharing sudah diset "Siapa saja yang memiliki link" → Pelihat (Viewer).\n3. Spreadsheet sudah memiliki data jawaban siswa (minimal 1 siswa sudah submit).');
+        }
+
         var rows = parseCSV(csvText);
 
         if (rows.length <= 1) {
-            throw new Error('Spreadsheet kosong atau gagal dibaca.');
+            // Sheet Hasil Koreksi ditemukan tapi kosong. Coba ambil sheet pertama (Form Responses)
+            try {
+                var response3 = await fetch('https://docs.google.com/spreadsheets/d/' + fileId + '/export?format=csv&gid=0' + cacheBuster);
+                if (response3.ok) {
+                    var text3 = await response3.text();
+                    var fallbackRows = parseCSV(text3);
+                    if (fallbackRows.length > 1) {
+                        rows = fallbackRows;
+                        sheetSource = 'Fallback ke Sheet Form Responses (gid=0)';
+                    } else {
+                        throw new Error('Belum ada siswa yang mengumpulkan jawaban ujian.');
+                    }
+                }
+            } catch(e) {
+                throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban melalui Google Form.');
+            }
         }
 
         var headers = rows[0].map(h => (h || '').trim().toLowerCase());
+        console.log('[Hasil Asesmen] Sheet source:', sheetSource);
+        console.log('[Hasil Asesmen] Headers ditemukan:', headers);
 
-        // Identify columns based on Google Apps Script output structure
+        // Identify columns — gunakan pencarian fleksibel untuk mengakomodasi variasi nama kolom
         var idxNama = headers.findIndex(h => h === 'nama');
+        if (idxNama === -1) idxNama = headers.findIndex(h => h === 'nama lengkap');
         if (idxNama === -1) idxNama = headers.findIndex(h => h.indexOf('nama') !== -1);
 
+        var idxEmail = headers.findIndex(h => h === 'email address' || h === 'alamat email' || h === 'email');
+
         var idxBenarPG = headers.findIndex(h => h === 'benar pg');
+        var idxSalahPG = headers.findIndex(h => h === 'salah pg');
         var idxSkorPG = headers.findIndex(h => h === 'total poin pg');
         var idxTotalEssay = headers.findIndex(h => h === 'total poin essay');
         var idxNilaiAkhir = headers.findIndex(h => h === 'nilai akhir keseluruhan');
+        if (idxNilaiAkhir === -1) idxNilaiAkhir = headers.findIndex(h => h.indexOf('nilai akhir') !== -1);
+        if (idxNilaiAkhir === -1) idxNilaiAkhir = headers.findIndex(h => h === 'skor' || h === 'score' || h === 'nilai');
 
-        if (idxNama === -1 || idxNilaiAkhir === -1) {
-            throw new Error('Format Spreadsheet tidak dikenali. Kolom "Nama" atau "Nilai Akhir Keseluruhan" tidak ditemukan.');
+        if (idxNama === -1) {
+            throw new Error('Kolom "Nama" atau "Nama Lengkap" tidak ditemukan di Spreadsheet.');
         }
 
-        hasilAsesmenState.data = [];
-        var matchedCount = 0;
+        // ==========================================
+        // CARI FORM URL DARI SUPABASE (UNTUK REGRADE)
+        // ==========================================
+        var formUrlForRegrade = null;
+        try {
+            if (fileId) {
+                const { data: asmByUrl } = await supabaseClient
+                    .from('asesmen')
+                    .select('id, google_form_url')
+                    .ilike('google_sheet_url', '%' + fileId + '%')
+                    .limit(1);
+                if (asmByUrl && asmByUrl.length > 0 && asmByUrl[0].google_form_url) {
+                    formUrlForRegrade = asmByUrl[0].google_form_url;
+                }
+            }
+        } catch(eUrl) { console.warn('Gagal mencari form URL untuk regrade:', eUrl); }
 
-        var html = '';
-        // Map data per student in database
-        hasilAsesmenState.siswaList.forEach(function (s, i) {
-            var namaDb = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9]/g, '');
-            var bestMatch = null;
+        // ==========================================
+        // AUTO-GRADING LOKAL (JIKA HASIL KOREKSI TIDAK ADA)
+        // ==========================================
+        var isLocalGrading = false;
+        var kunciPGMap = {};
+        var kunciEssayMap = {};
+        var isOrLogicMap = {};
+        var bobotPG = 2;
+        var bobotEssay = 5;
+        var columnSoalIndexMap = {};
+        var localGradingFormUrl = null;
+        var jmlEssayLokal = 0;
 
-            for (var r = 1; r < rows.length; r++) {
-                if (!rows[r] || rows[r].length < idxNilaiAkhir) continue;
-                var namaSheet = (rows[r][idxNama] || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (namaSheet && (namaDb.indexOf(namaSheet) !== -1 || namaSheet.indexOf(namaDb) !== -1 || namaDb === namaSheet)) {
-                    bestMatch = rows[r];
-                    break;
+        if (idxNilaiAkhir === -1) {
+            isLocalGrading = true;
+            // Map index kolom soal (contoh: "soal 1. bentuk sederhana...")
+            for (var c = 0; c < headers.length; c++) {
+                var match = headers[c].match(/^soal\s*(\d+)\./);
+                if (match) {
+                    columnSoalIndexMap[parseInt(match[1])] = c;
                 }
             }
 
-            var rowObj = { siswa_id: s.id, nama_db: s.nama_lengkap, matched: false, nilai_akhir: 0, benar_pg: 0, skor_pg: 0, skor_essay: 0 };
+            // Ambil Kunci Jawaban dari Supabase
+            var tipe = document.getElementById('hasilAsesmenTipe').value;
+            
+            // Dapatkan nama mapel dari master_mapel
+            const { data: dataMapel } = await supabaseClient.from('master_mapel').select('nama_mapel').eq('id', mapelId).single();
+            if (!dataMapel) {
+                throw new Error('Mata Pelajaran tidak ditemukan di sistem.');
+            }
+            var namaMapel = dataMapel.nama_mapel;
 
-            var bPg = '-', sPg = '-', sEs = '-', nAkhir = '-';
+            var kelasObj = masterKelasList.find(function (k) { return k.id === kelasId; });
+            var namaKelas = kelasObj ? kelasObj.nama_kelas : '';
+            var tingkat = kelasObj ? kelasObj.tingkat : 0;
+            
+            let asesmenData = null;
+
+            // 0. Paling Akurat: Cari berdasarkan URL Spreadsheet yang diinput user!
+            if (fileId) {
+                const { data: asmByUrl } = await supabaseClient
+                    .from('asesmen')
+                    .select('id, google_form_url')
+                    .ilike('google_sheet_url', '%' + fileId + '%')
+                    .limit(1);
+                if (asmByUrl && asmByUrl.length > 0) {
+                    asesmenData = asmByUrl;
+                }
+            }
+            
+            // 1. Jika gagal via URL, cari yang match persis parameter Mapel & Kelas
+            if (!asesmenData) {
+                const { data: exactData } = await supabaseClient
+                    .from('asesmen')
+                    .select('id, google_form_url')
+                    .eq('mata_pelajaran', namaMapel)
+                    .eq('kelas', namaKelas)
+                    .eq('semester', semester)
+                    .eq('tipe_ujian', tipe)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (exactData && exactData.length > 0) {
+                    asesmenData = exactData;
+                }
+            }
+            
+            // 2. Fallback: Cari asesmen di kelas lain tapi satu tingkat
+            if (!asesmenData && tingkat > 0) {
+                    const { data: allAsesmen } = await supabaseClient
+                        .from('asesmen')
+                        .select('id, kelas, google_form_url')
+                        .eq('mata_pelajaran', namaMapel)
+                        .eq('semester', semester)
+                        .eq('tipe_ujian', tipe)
+                        .order('created_at', { ascending: false });
+                        
+                    if (allAsesmen && allAsesmen.length > 0) {
+                        for (var i = 0; i < allAsesmen.length; i++) {
+                            // Cek apakah string kelas di asesmen ini memiliki tingkat yang sama
+                            var aClass = masterKelasList.find(function(k) { return k.nama_kelas === allAsesmen[i].kelas; });
+                            if (aClass && aClass.tingkat === tingkat) {
+                                asesmenData = [ { id: allAsesmen[i].id } ];
+                                break;
+                            }
+                        }
+                    }
+                }
+
+            if (!asesmenData || asesmenData.length === 0) {
+                throw new Error('Sheet "Hasil Koreksi" tidak ditemukan ATAU belum di-generate oleh Google Apps Script.\n\nSistem mencoba melakukan Koreksi Otomatis secara lokal, namun gagal karena Kunci Jawaban (Master Soal) untuk Mapel, Tingkat Kelas, Semester, dan Tipe Ujian ini belum dibuat di menu Asesmen Builder.\n\nPastikan Anda sudah membuat Naskah Soal Ujian ini melalui menu "Buat Asesmen". Jika Anda membuat form ujian secara manual, sistem tidak memiliki Kunci Jawaban untuk mengoreksi.');
+            }
+
+            // Simpan google_form_url ke outer scope agar bisa diakses untuk regrade
+            localGradingFormUrl = (asesmenData[0] && asesmenData[0].google_form_url) ? asesmenData[0].google_form_url : null;
+
+            const { data: soalData } = await supabaseClient
+                .from('asesmen_soal')
+                .select('*')
+                .eq('asesmen_id', asesmenData[0].id)
+                .order('nomor_soal', { ascending: true });
+
+            var globalBobotPG = asesmenData[0].bobot_pg || 2;
+            var globalBobotEssay = asesmenData[0].bobot_essay || 5;
+
+            if (soalData && soalData.length > 0) {
+                soalData.forEach(soal => {
+                    var kunciLower = (soal.kunci_jawaban || '').trim().toLowerCase();
+                    if ((soal.tipe_soal || '').toUpperCase() === 'PG') {
+                        kunciPGMap[soal.nomor_soal] = kunciLower.charAt(0);
+                        bobotPG = parseFloat(soal.bobot) || globalBobotPG;
+                    } else {
+                        var isOrLogic = kunciLower.indexOf('[or]') === 0;
+                        var cleanKey = isOrLogic ? kunciLower.substring(4) : kunciLower;
+                        var kws = cleanKey.split(',').map(k => k.trim()).filter(k => k.length > 0);
+                        kunciEssayMap[soal.nomor_soal] = kws;
+                        isOrLogicMap[soal.nomor_soal] = isOrLogic;
+                        bobotEssay = parseFloat(soal.bobot) || globalBobotEssay;
+                    }
+                });
+            } else {
+                throw new Error('Sheet "Hasil Koreksi" tidak ditemukan. Sistem mencoba Koreksi Otomatis lokal, namun Naskah Soal tidak memiliki butir soal yang tersimpan.');
+            }
+        }
+        // ==========================================
+
+        hasilAsesmenState.data = [];
+        var matchedCount = 0;
+        var html = '';
+
+        var availableRows = [];
+        for (var r = 1; r < rows.length; r++) {
+            if (!rows[r]) continue;
+            if (!isLocalGrading && rows[r].length < idxNilaiAkhir) continue;
+            availableRows.push({ rowIndex: r, row: rows[r], claimedBy: null });
+        }
+
+        hasilAsesmenState.availableRows = availableRows;
+
+        var siswaMatchMap = {};
+
+        if (!hasilAsesmenState.manualOverrides) {
+            hasilAsesmenState.manualOverrides = {};
+        }
+
+        // Pass 0: Manual Overrides
+        hasilAsesmenState.siswaList.forEach(function (s) {
+            var manualRowIdx = hasilAsesmenState.manualOverrides[s.id];
+            if (manualRowIdx !== undefined && manualRowIdx !== null && manualRowIdx !== "-1" && manualRowIdx !== -1) {
+                var item = availableRows.find(ar => ar.rowIndex === parseInt(manualRowIdx));
+                if (item) {
+                    item.claimedBy = s.id;
+                    siswaMatchMap[s.id] = item.row;
+                }
+            }
+        });
+
+        // Pass 1: Prioritas Tertinggi (Email Match atau Exact Nama)
+        hasilAsesmenState.siswaList.forEach(function (s) {
+            var namaDb = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            var emailDb = (s.email || '').toLowerCase().trim();
+            var namaDbNoSpace = namaDb.replace(/\s/g, '');
+
+            for (var a = 0; a < availableRows.length; a++) {
+                var item = availableRows[a];
+                if (item.claimedBy) continue;
+                
+                var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+                var emailSheet = idxEmail !== -1 ? (item.row[idxEmail] || '').toLowerCase().trim() : '';
+                var namaSheetNoSpace = namaSheet.replace(/\s/g, '');
+
+                if ((emailDb && emailSheet && emailDb === emailSheet) || (namaSheetNoSpace && namaDbNoSpace === namaSheetNoSpace)) {
+                    item.claimedBy = s.id;
+                    siswaMatchMap[s.id] = item.row;
+                    break;
+                }
+            }
+        });
+
+        // Pass 2: Substring Match
+        hasilAsesmenState.siswaList.forEach(function (s) {
+            if (siswaMatchMap[s.id]) return;
+            var namaDb = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+            var namaDbNoSpace = namaDb.replace(/\s/g, '');
+
+            for (var a = 0; a < availableRows.length; a++) {
+                var item = availableRows[a];
+                if (item.claimedBy) continue;
+                
+                var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+                var namaSheetNoSpace = namaSheet.replace(/\s/g, '');
+
+                // Hanya cek substring jika panjang nama minimal 4 karakter (menghindari false positive spt "al" match dgn "alan")
+                if (namaSheetNoSpace.length >= 4 && (namaDbNoSpace.indexOf(namaSheetNoSpace) !== -1 || namaSheetNoSpace.indexOf(namaDbNoSpace) !== -1)) {
+                    item.claimedBy = s.id;
+                    siswaMatchMap[s.id] = item.row;
+                    break;
+                }
+            }
+        });
+
+        // Pass 3: Fuzzy Word Match Berbasis Skor
+        hasilAsesmenState.siswaList.forEach(function (s) {
+            if (siswaMatchMap[s.id]) return;
+            var dbWords = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().split(/\s+/);
+            
+            var bestRowIdx = -1;
+            var maxScore = 0;
+
+            for (var a = 0; a < availableRows.length; a++) {
+                var item = availableRows[a];
+                if (item.claimedBy) continue;
+                
+                var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+                if (!namaSheet) continue;
+                
+                var sheetWords = namaSheet.split(/\s+/);
+                var score = 0;
+
+                for (var w = 0; w < sheetWords.length; w++) {
+                    var word = sheetWords[w];
+                    if (word.length < 3) continue;
+                    
+                    for (var dw = 0; dw < dbWords.length; dw++) {
+                        if (dbWords[dw] === word) {
+                            score += 10; break;
+                        } else if (dbWords[dw].indexOf(word) === 0 || word.indexOf(dbWords[dw]) === 0) {
+                            score += 5; break;
+                        }
+                    }
+                }
+
+                // Threshold skor minimal 5 (minimal 1 kata parsial cocok)
+                if (score > maxScore && score >= 5) {
+                    // Jika total kata di database banyak (>2), butuh skor lebih tinggi agar tidak salah ambil
+                    if (dbWords.length > 2 && score < 10 && sheetWords.length <= 2) {
+                        continue;
+                    }
+                    maxScore = score;
+                    bestRowIdx = a;
+                }
+            }
+
+            if (bestRowIdx !== -1) {
+                availableRows[bestRowIdx].claimedBy = s.id;
+                siswaMatchMap[s.id] = availableRows[bestRowIdx].row;
+            }
+        });
+
+        hasilAsesmenState.siswaList.forEach(function (s, i) {
+            var bestMatch = siswaMatchMap[s.id] || null;
+
+            var rowObj = { siswa_id: s.id, nama_db: s.nama_lengkap, matched: false, nilai_akhir: 0, benar_pg: 0, skor_pg: 0, skor_essay: 0 };
+            
+            var bPg = 0, salahPg = 0, sPg = 0, bEs = 0, salahEs = 0, sEs = 0, nAkhir = 0;
             var namaAsliSheet = '-';
+            var isMatchedThisStudent = false;
 
             if (bestMatch) {
                 namaAsliSheet = bestMatch[idxNama] || '';
-                bPg = idxBenarPG !== -1 ? (bestMatch[idxBenarPG] || '0') : '-';
-                sPg = idxSkorPG !== -1 ? (bestMatch[idxSkorPG] || '0') : '-';
-                sEs = idxTotalEssay !== -1 ? (bestMatch[idxTotalEssay] || '0') : '-';
-                nAkhir = bestMatch[idxNilaiAkhir] || '0';
+                isMatchedThisStudent = true;
+                matchedCount++;
+
+                if (isLocalGrading) {
+                    // Lakukan koreksi lokal
+                    for (var noSoal in columnSoalIndexMap) {
+                        var colIdx = columnSoalIndexMap[noSoal];
+                        var jawabanSiswa = (bestMatch[colIdx] || '').trim().toLowerCase();
+                        
+                        if (kunciPGMap[noSoal]) {
+                            var kunciPG = kunciPGMap[noSoal];
+                            var jwbPG = jawabanSiswa.charAt(0);
+                            if (jwbPG === kunciPG) {
+                                bPg++;
+                                sPg += bobotPG;
+                            } else {
+                                salahPg++;
+                            }
+                        } else if (kunciEssayMap[noSoal]) {
+                            var kws = kunciEssayMap[noSoal];
+                            var isOr = isOrLogicMap[noSoal];
+                            var matchKws = 0;
+                            for (var w = 0; w < kws.length; w++) {
+                                if (jawabanSiswa.indexOf(kws[w]) > -1) {
+                                    matchKws++;
+                                    if (isOr) break;
+                                }
+                            }
+                            var skorSatuEssay = 0;
+                            if (kws.length > 0) {
+                                if (isOr) {
+                                    skorSatuEssay = (matchKws > 0) ? bobotEssay : 0;
+                                } else {
+                                    skorSatuEssay = (matchKws / kws.length) * bobotEssay;
+                                }
+                            }
+                            sEs += skorSatuEssay;
+                            if (skorSatuEssay > 0) {
+                                bEs++;
+                            } else {
+                                salahEs++;
+                            }
+                        }
+                    }
+                    nAkhir = sPg + sEs;
+
+                } else {
+                    // Mode normal, baca dari Hasil Koreksi
+                    bPg = idxBenarPG !== -1 ? (parseInt(bestMatch[idxBenarPG]) || 0) : 0;
+                    salahPg = idxSalahPG !== -1 ? (parseInt(bestMatch[idxSalahPG]) || 0) : 0;
+                    sPg = idxSkorPG !== -1 ? (parseFloat(bestMatch[idxSkorPG]) || 0) : 0;
+                    sEs = idxTotalEssay !== -1 ? (parseFloat(bestMatch[idxTotalEssay]) || 0) : 0;
+                    nAkhir = parseFloat(bestMatch[idxNilaiAkhir]) || 0;
+                    
+                    // Jika ini dari sheet default Google Form yg hanya ada "Skor", jadikan skor itu sebagai Skor PG
+                    if (idxSkorPG === -1 && idxNilaiAkhir !== -1 && idxTotalEssay === -1) {
+                        sPg = nAkhir;
+                    }
+                    // Estimasi Essay benar/salah dari total poin jika tersedia
+                    if (sEs > 0) bEs = 1; else salahEs = 1; 
+                }
 
                 rowObj.matched = true;
-                rowObj.nilai_akhir = parseFloat(nAkhir) || 0;
-                rowObj.benar_pg = parseInt(bPg) || 0;
-                rowObj.skor_pg = parseFloat(sPg) || 0;
-                rowObj.skor_essay = parseFloat(sEs) || 0;
-                matchedCount++;
+                rowObj.nilai_akhir = Math.round(nAkhir);
+                rowObj.benar_pg = bPg;
+                rowObj.skor_pg = Math.round(sPg);
+                rowObj.skor_essay = Math.round(sEs);
             }
 
             hasilAsesmenState.data.push(rowObj);
 
-            var statusBadge = rowObj.matched ? '<span style="color:#16a34a;font-weight:bold;">Cocok</span>' : '<span style="color:#dc2626;font-size:0.8rem;">Isi Manual</span>';
+            var statusBadge = rowObj.matched ? 
+                (isLocalGrading ? '<span style="color:#0ea5e9;font-weight:bold;font-size:0.75rem;">Koreksi Lokal</span>' : '<span style="color:#16a34a;font-weight:bold;">Cocok</span>') 
+                : '<span style="color:#dc2626;font-size:0.8rem;">Isi Manual</span>';
             var trStyle = rowObj.matched ? '' : 'background:rgba(220,38,38,0.05);';
 
-            var bPgHtml = rowObj.matched ? bPg : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_pg\', this.value)">';
-            var sPgHtml = rowObj.matched ? sPg : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_pg\', this.value)">';
-            var sEsHtml = rowObj.matched ? sEs : '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_essay\', this.value)">';
-            var nAkhirHtml = rowObj.matched ? nAkhir : '<input type="number" min="0" max="100" class="form-input" style="width:70px;padding:4px;margin:0 auto;font-size:0.9rem;font-weight:bold;color:var(--primary);text-align:center;" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'nilai_akhir\', this.value)">';
+            // Buat options untuk dropdown manual override
+            var selectOptionsHtml = '<option value="-1">-- Tidak Ditemukan --</option>';
+            if (hasilAsesmenState.availableRows) {
+                hasilAsesmenState.availableRows.forEach(function(ar) {
+                    var nama = ar.row[idxNama] || ('Baris ' + (ar.rowIndex + 1));
+                    var email = idxEmail !== -1 && ar.row[idxEmail] ? (' - ' + ar.row[idxEmail]) : '';
+                    var isSelected = (bestMatch && bestMatch === ar.row) ? 'selected' : '';
+                    selectOptionsHtml += '<option value="' + ar.rowIndex + '" ' + isSelected + '>' + nama + email + '</option>';
+                });
+            }
+
+            var akunDropdownHtml = '<select class="form-input" style="padding:4px; font-size:0.8rem; height:auto; min-width:140px; max-width:200px; margin:0;" onchange="overrideSiswaMatch(\'' + s.id + '\', this.value)">' + selectOptionsHtml + '</select>';
+
+            // FORMAT HTML UNTUK MASING-MASING KOLOM (Semua Editable)
+            var bPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#16a34a;font-weight:bold;':'') + '" value="' + (rowObj.matched ? bPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_pg\', this.value)">';
+            var salahPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#dc2626;font-weight:bold;':'') + '" value="' + (rowObj.matched ? salahPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_pg\', this.value)">';
+            var sPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;font-weight:bold;" value="' + (rowObj.matched ? Math.round(sPg) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_pg\', this.value)">';
+            
+            var bEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#16a34a;font-weight:bold;':'') + '" value="' + (rowObj.matched ? bEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_essay\', this.value)">';
+            var salahEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#dc2626;font-weight:bold;':'') + '" value="' + (rowObj.matched ? salahEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_essay\', this.value)">';
+            var sEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;font-weight:bold;" value="' + (rowObj.matched ? Math.round(sEs) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_essay\', this.value)">';
+            
+            var nAkhirHtml = '<input type="number" min="0" max="100" class="form-input" style="width:70px;padding:4px;margin:0 auto;font-size:0.9rem;font-weight:bold;color:var(--primary);text-align:center;" value="' + (rowObj.matched ? Math.round(nAkhir) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'nilai_akhir\', this.value)">';
 
             html += '<tr style="' + trStyle + '" data-siswa="' + s.id + '">' +
                 '<td style="text-align:center;">' + (i + 1) + '</td>' +
                 '<td style="font-weight:600;">' + s.nama_lengkap + '</td>' +
-                '<td style="font-size:0.8rem;color:var(--text-light);">' + (rowObj.matched ? namaAsliSheet : '-') + '</td>' +
+                '<td>' + akunDropdownHtml + '</td>' +
                 '<td style="text-align:center;">' + bPgHtml + '</td>' +
-                '<td style="text-align:center;">' + sPgHtml + '</td>' +
-                '<td style="text-align:center;">' + sEsHtml + '</td>' +
+                '<td style="text-align:center;">' + salahPgHtml + '</td>' +
+                '<td style="text-align:center;font-weight:bold;">' + sPgHtml + '</td>' +
+                '<td style="text-align:center;">' + (isLocalGrading || idxTotalEssay !== -1 ? bEsHtml : '-') + '</td>' +
+                '<td style="text-align:center;">' + (isLocalGrading || idxTotalEssay !== -1 ? salahEsHtml : '-') + '</td>' +
+                '<td style="text-align:center;font-weight:bold;">' + sEsHtml + '</td>' +
                 '<td style="text-align:center;font-weight:bold;font-size:1.1rem;color:var(--primary);">' + nAkhirHtml + '</td>' +
                 '<td style="text-align:center;">' + statusBadge + '</td>' +
                 '</tr>';
         });
 
         tbody.innerHTML = html;
-        document.getElementById('hasilAsesmenStats').innerHTML = '<strong>' + matchedCount + '</strong> dari ' + hasilAsesmenState.siswaList.length + ' siswa ditemukan di Spreadsheet.';
+        var infoStats = '<strong>' + matchedCount + '</strong> dari ' + hasilAsesmenState.siswaList.length + ' siswa ditemukan di Spreadsheet.';
+        if (isLocalGrading) {
+            infoStats += ' <span style="color:#0ea5e9;font-weight:600;margin-left:10px;"><i data-lucide="cpu" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i> Auto-Grading Lokal Aktif</span>';
+        }
+
+        // NOTE: Background regrade dihapus. Sinkronisasi sheet "Hasil Koreksi" HANYA dilakukan
+        // melalui tombol "Sinkronkan Sheet" (triggerManualRegrade) untuk mencegah race condition
+        // yang menyebabkan data di sheet tertimpa/hilang.
+        document.getElementById('hasilAsesmenStats').innerHTML = infoStats;
         if (window.lucide) lucide.createIcons();
 
     } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#ef4444;padding:2rem;">Gagal memuat data: ' + e.message + '<br><small>Pastikan opsi "Siapa saja yang memiliki link" pada Google Sheets sudah diset ke "Pelihat (Viewer)".</small></td></tr>';
-        document.getElementById('hasilAsesmenStats').textContent = 'Terjadi kesalahan.';
+        var errMsg = (e.message || e.toString()).replace(/\n/g, '<br>');
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:left;color:#ef4444;padding:2rem;white-space:pre-line;font-size:0.85rem;line-height:1.6;">' + errMsg + '</td></tr>';
+        document.getElementById('hasilAsesmenStats').textContent = 'Terjadi kesalahan saat memuat data.';
+        console.error('[Hasil Asesmen] Error:', e);
     } finally {
         btn.disabled = false;
         btn.innerHTML = origText;
@@ -6525,15 +6960,165 @@ async function loadDataHasilAsesmen() {
     }
 }
 
+window.overrideSiswaMatch = function(siswaId, rowIndex) {
+    if (!hasilAsesmenState.manualOverrides) {
+        hasilAsesmenState.manualOverrides = {};
+    }
+    hasilAsesmenState.manualOverrides[siswaId] = rowIndex;
+    
+    showToast('Memperbarui pencocokan data...', 'info');
+    
+    setTimeout(function() {
+        loadDataHasilAsesmen();
+    }, 100);
+};
+
+window.triggerManualRegrade = async function() {
+    var link = document.getElementById('hasilAsesmenLink').value.trim();
+    if (!link) {
+        showToast('Link Spreadsheet belum diisi!', 'warning');
+        return;
+    }
+    
+    var fileId = extractFileId(link);
+    if (!fileId) return;
+    
+    var formUrl = null;
+    var matchGid = link.match(/[#&?]gid=([0-9]+)/);
+    var sheetGid = matchGid ? matchGid[1] : '0';
+    var payloadData = { action: 'regrade', sheet_gid: sheetGid };
+    
+    try {
+        const { data } = await supabaseClient
+            .from('asesmen')
+            .select('*')
+            .ilike('google_sheet_url', '%' + fileId + '%')
+            .limit(1);
+            
+        if (data && data.length > 0) {
+            var asm = data[0];
+            formUrl = asm.google_form_url;
+            payloadData.formUrl = formUrl;
+            payloadData.sheet_id = fileId;
+            payloadData.bobot_pg = asm.bobot_pg || 2;
+            payloadData.bobot_essay = asm.bobot_essay || 5;
+            payloadData.mata_pelajaran = asm.mata_pelajaran;
+            payloadData.kelas = asm.kelas;
+            payloadData.tipe_ujian = asm.tipe_ujian;
+            payloadData.tahun_pelajaran = asm.tahun_pelajaran;
+            payloadData.semester = asm.semester;
+            
+            // Fetch soal from asesmen_soal table
+            var pgKunci = {};
+            var essayKunci = {};
+            var jmlEssay = 0;
+            
+            const { data: soalData } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', asm.id);
+            if (soalData && soalData.length > 0) {
+                for (var i = 0; i < soalData.length; i++) {
+                    var s = soalData[i];
+                    if (s.tipe_soal === 'pg' && s.kunci_jawaban) {
+                        pgKunci['soal_' + s.nomor_soal] = String(s.kunci_jawaban).trim().toUpperCase().charAt(0);
+                    } else if (s.tipe_soal === 'essay') {
+                        jmlEssay++;
+                        if (s.kunci_jawaban && String(s.kunci_jawaban).trim().length > 0) {
+                            essayKunci['soal_' + s.nomor_soal] = s.kunci_jawaban;
+                        }
+                    }
+                }
+            }
+            
+            // Hanya attach jika kunci tidak kosong (agar GAS bisa fallback ke PropertiesService jika DB kosong)
+            if (Object.keys(pgKunci).length > 0 || jmlEssay > 0) {
+                payloadData.kunci = pgKunci;
+                payloadData.essay_kunci = essayKunci;
+                payloadData.jml_essay = jmlEssay;
+            }
+        }
+    } catch(e) { console.error('Gagal fetch asesmen:', e); }
+    
+    if (!formUrl) {
+        showToast('Form URL tidak ditemukan di database untuk link spreadsheet ini.', 'error');
+        return;
+    }
+    
+    var btn = document.getElementById('btnSyncSheet');
+    var origHtml = btn.innerHTML;
+    btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:16px;height:16px;"></i> Memproses...';
+    btn.disabled = true;
+    if (window.lucide) lucide.createIcons();
+    
+    try {
+        const { data: resData } = await supabaseClient.from('system_settings').select('value').eq('key', 'gas_web_app_url').maybeSingle();
+        if (resData && resData.value) {
+            fetch(resData.value, {
+                method: 'POST',
+                redirect: 'follow',
+                body: JSON.stringify(payloadData)
+            }).then(function(r) { return r.text(); }).then(function(t) {
+                var isError = false;
+                var errorMsg = '';
+                try {
+                    var parsed = JSON.parse(t);
+                    if (parsed.status === 'error') {
+                        isError = true;
+                        errorMsg = parsed.message;
+                    }
+                } catch(e) {}
+                
+                if (isError) {
+                    showToast('Gagal: ' + errorMsg, 'error');
+                    console.error('[Hasil Asesmen] Regrade Error:', errorMsg);
+                } else {
+                    showToast('Perintah sinkronisasi selesai diproses. Memuat ulang data...', 'success');
+                }
+                
+                setTimeout(function() {
+                    btn.innerHTML = origHtml;
+                    btn.disabled = false;
+                    loadDataHasilAsesmen(); // Refresh data setelah selesai
+                }, 5000);
+            }).catch(function(e) {
+                console.error(e);
+                showToast('Gagal menghubungi Google Apps Script. Pastikan URL Web App valid.', 'error');
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
+            });
+        }
+    } catch(err) {
+        console.error(err);
+        btn.innerHTML = origHtml;
+        btn.disabled = false;
+    }
+};
+
 function updateHasilAsesmenManual(siswaId, field, value) {
     if (!hasilAsesmenState.data) return;
     var item = hasilAsesmenState.data.find(function (d) { return d.siswa_id === siswaId; });
     if (item) {
         item[field] = parseFloat(value) || 0;
+        
+        // Auto-kalkulasi nilai_akhir ketika skor_pg atau skor_essay berubah
+        if (field === 'skor_pg' || field === 'skor_essay') {
+            var skorPg = item.skor_pg || 0;
+            var skorEs = item.skor_essay || 0;
+            item.nilai_akhir = Math.round(skorPg + skorEs);
+            
+            // Update input nilai akhir di tabel secara visual
+            var tr = document.querySelector('#hasilAsesmenTbody tr[data-siswa="' + siswaId + '"]');
+            if (tr) {
+                var inputs = tr.querySelectorAll('input[type="number"]');
+                // Input terakhir adalah Nilai Akhir
+                if (inputs.length > 0) {
+                    var nAkhirInput = inputs[inputs.length - 1];
+                    nAkhirInput.value = item.nilai_akhir;
+                }
+            }
+        }
+        
         // Tandai sebagai matched agar ikut disimpan ke nilai resmi & dipublikasikan
         if (!item.matched) {
             item.matched = true;
-            // Opsional: update teks badge secara visual jika diperlukan
             var tr = document.querySelector('#hasilAsesmenTbody tr[data-siswa="' + siswaId + '"]');
             if (tr) {
                 var badgeTd = tr.lastElementChild;
