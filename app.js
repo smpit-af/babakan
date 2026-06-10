@@ -7171,16 +7171,18 @@ async function sinkronisasiKeNilaiResmi() {
 
             var payload = [];
             validData.forEach(function (vd) {
-                var ex = existingDict[vd.siswa_id] || {
+                var exDb = existingDict[vd.siswa_id];
+                var ex = {
                     tahun_pelajaran: tahun,
                     semester: semester,
                     kelas_id: kelasId,
                     mapel_id: mapelId,
                     siswa_id: vd.siswa_id,
-                    nilai_sts: null,
-                    nilai_sas: null,
-                    nilai_saj: null,
-                    nilai_sat: null
+                    nilai_sts: exDb ? exDb.nilai_sts : null,
+                    nilai_sas: exDb ? exDb.nilai_sas : null,
+                    nilai_saj: exDb ? exDb.nilai_saj : null,
+                    nilai_sat: exDb ? exDb.nilai_sat : null,
+                    updated_at: new Date().toISOString()
                 };
 
                 if (tipe === 'STS') ex.nilai_sts = vd.nilai_akhir;
@@ -7188,7 +7190,6 @@ async function sinkronisasiKeNilaiResmi() {
                 if (tipe === 'SAJ') ex.nilai_saj = vd.nilai_akhir;
                 if (tipe === 'SAT') ex.nilai_sat = vd.nilai_akhir;
 
-                ex.updated_at = new Date().toISOString();
                 payload.push(ex);
             });
 
@@ -10912,6 +10913,11 @@ Kamu HARUS tahu bahwa aplikasi web ini adalah **Sistem Informasi Sekolah Terpadu
    - **Kembangkan Jurnal Mengajar AI** (BARU) — kembangkan topik/bab singkat menjadi deskripsi kegiatan mengajar harian yang terstruktur.
    - **Asisten Chat AI (Asfa)** — kamu sendiri! Chatbot cerdas yang bisa menjawab pertanyaan seputar aplikasi dan membantu pengguna.
 
+### INFO PENTING TERBARU (Update Perbaikan Bug):
+Jika ada guru yang bertanya tentang kendala **Sheet Hasil Koreksi kosong**, nilai 0, atau **perbedaan nilai antara Koreksi Lokal dengan Sinkron Sheet**, jelaskan dengan bangga bahwa kamu (sistem) sudah memperbaikinya secara tuntas:
+1. **Sheet Kosong / Nilai 0:** Sebelumnya ada "race condition" di mana sistem tanpa sengaja mengkoreksi *form* di latar belakang sebelum siap, sehingga menghapus data di Google Sheets. Sekarang fitur koreksi otomatis di latar belakang sudah dimatikan. Sinkronisasi hanya berjalan saat tombol "Sinkronkan Sheet" ditekan. Selain itu, sistem kini mengecek *Published URL* Form untuk memastikan tidak salah mengkoreksi form lain yang kosong.
+2. **Perbedaan Skor (Koreksi Lokal vs Sinkron):** Sebelumnya, Koreksi Lokal secara kaku menggunakan bobot nilai 2 untuk PG jika poin spesifik tiap soal tidak diisi. Sekarang, Koreksi Lokal sudah cerdas membaca **Bobot Global Ujian** (misal: 4) langsung dari database, sehingga hasil Koreksi Lokal di layar akan 100% konsisten dengan hasil Sinkronisasi di Google Sheets.
+
 9. **Kelola Konten (Konfigurasi)**:
    - Pengaturan URL *Google Apps Script* untuk integrasi *Google Form/Drive*.
    - Pengaturan *Tahun Akademik* aktif.
@@ -11003,10 +11009,49 @@ INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplika
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let fullText = "";
+        
+        let cursorIndex = 0;
+        let isStreamFinished = false;
+
+        // Interval pengetikan agar terlihat natural per huruf
+        let typingInterval = setInterval(() => {
+            if (cursorIndex < fullText.length) {
+                let charsToAdd = 1;
+                let backlog = fullText.length - cursorIndex;
+                
+                // Akselerasi pengetikan jika buffer sudah terlalu panjang
+                if (backlog > 50) charsToAdd = 3;
+                if (backlog > 100) charsToAdd = 5;
+                if (backlog > 200) charsToAdd = 10;
+                
+                cursorIndex += charsToAdd;
+                if (cursorIndex > fullText.length) cursorIndex = fullText.length;
+                
+                let currentRaw = fullText.substring(0, cursorIndex);
+                let renderedText = currentRaw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                    .replace(/\n/g, '<br>');
+                
+                // Tambahkan kursor berkedip saat mengetik
+                msgEl.innerHTML = renderedText + (cursorIndex < fullText.length ? '<span style="border-right: 2px solid var(--primary); margin-left:2px; animation: blink 1s step-end infinite;">&nbsp;</span>' : '');
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } else if (isStreamFinished) {
+                clearInterval(typingInterval);
+                // Render final tanpa kursor
+                let renderedText = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                                    .replace(/\n/g, '<br>');
+                msgEl.innerHTML = renderedText;
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }
+        }, 20); // 20ms per tick
 
         while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                isStreamFinished = true;
+                break;
+            }
 
             const chunk = decoder.decode(value, { stream: true });
             const lines = chunk.split('\n');
@@ -11017,14 +11062,6 @@ INGAT: Kamu juga asisten UMUM. Jika pengguna bertanya hal di luar konteks aplika
                         const data = JSON.parse(line.substring(6));
                         if (data.choices[0].delta.content) {
                             fullText += data.choices[0].delta.content;
-
-                            // Terapkan markdown dasar secara realtime
-                            let renderedText = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                .replace(/\n/g, '<br>');
-
-                            msgEl.innerHTML = renderedText;
-                            chatBody.scrollTop = chatBody.scrollHeight;
                         }
                     } catch (e) {
                         // ignore parse error on incomplete chunks
