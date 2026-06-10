@@ -11659,55 +11659,12 @@ function renderMasterTagihanTable(jenis) {
             filteredData = filteredData.filter(d => d.tanggal && d.tanggal.startsWith(filterBulan));
         }
 
-        // Summary Cards
+        // Summary Cards - sudah dipindahkan ke detail per tagihan,
+        // sembunyikan di halaman utama agar tidak muncul saat refresh
         let summaryEl = document.getElementById('tagihanSummary');
         if (summaryEl) {
-            // Total Kas Masuk (Total Pembayaran dari Tagihan Universal)
-            // Ini bisa didapat dari menghitung total terbayar pada semua tagihan jenis ini
-            let totalTerbayarSemua = 0;
-            let totalTerbayarBulanIni = 0;
-            let bulanIni = new Date().toISOString().slice(0, 7);
-
-            // Mencari nama transaksi terbanyak
-            let namaCounts = {};
-
-            filteredData.forEach(k => {
-                let kodeTagihan = 'insidental_' + k.id;
-                if (typeof dPembayaranSiswa !== 'undefined') {
-                    let matchingPayments = dPembayaranSiswa.filter(p => p.jenis === kodeTagihan);
-                    matchingPayments.forEach(p => {
-                        p.riwayat.forEach(r => {
-                            let nom = parseInt(r.nominal) || 0;
-                            totalTerbayarSemua += nom;
-                            if (r.tanggal && r.tanggal.startsWith(bulanIni)) {
-                                totalTerbayarBulanIni += nom;
-                            }
-                            namaCounts[k.nama] = (namaCounts[k.nama] || 0) + nom;
-                        });
-                    });
-                }
-            });
-
-            let topNama = Object.entries(namaCounts).sort((a, b) => b[1] - a[1])[0];
-
-            summaryEl.innerHTML = `
-                <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #10b981;">
-                    <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Kas Masuk</div>
-                    <div style="font-size:1.3rem; font-weight:700; color:#10b981;">${formatRupiah(totalTerbayarSemua)}</div>
-                </div>
-                <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #f59e0b;">
-                    <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Bulan Ini</div>
-                    <div style="font-size:1.3rem; font-weight:700; color:#f59e0b;">${formatRupiah(totalTerbayarBulanIni)}</div>
-                </div>
-                <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid var(--primary);">
-                    <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Total Transaksi</div>
-                    <div style="font-size:1.3rem; font-weight:700; color:var(--text-dark);">${filteredData.length}</div>
-                </div>
-                <div style="background:var(--bg-lighter); border-radius:12px; padding:1rem 1.2rem; border-left:4px solid #8b5cf6;">
-                    <div style="font-size:0.8rem; color:var(--text-light); margin-bottom:4px;">Terbanyak</div>
-                    <div style="font-size:1rem; font-weight:700; color:#8b5cf6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${topNama ? topNama[0] : '-'}">${topNama ? topNama[0] : '-'}</div>
-                </div>
-            `;
+            summaryEl.innerHTML = '';
+            summaryEl.style.display = 'none';
         }
     } else if (jenis === 'pendaftaran') {
         let summaryEl = document.getElementById('pendaftaranSummary');
