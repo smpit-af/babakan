@@ -5437,6 +5437,8 @@ async function loadPenilaianTable() {
     tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-light)">Mencari data siswa...</td></tr>';
     btnSimpan.style.display = 'none';
     document.getElementById('btnResetNilaiSemua').style.display = 'none';
+    var btnPub = document.getElementById('btnPublikasikanNilaiSemua');
+    if (btnPub) btnPub.style.display = 'none';
 
     try {
         var kelasObj = masterKelasList.find(function (k) { return k.id === filterKelas; });
@@ -5497,7 +5499,7 @@ async function loadPenilaianTable() {
                 '<th style="width:100px;text-align:center;">📋 Rata Smt 1</th>' +
                 '<th style="width:100px;text-align:center;">⭐ Rata Akhir</th>';
         }
-        thead += '<th style="width:100px;text-align:center;">Status</th><th style="width:60px;text-align:center;">Riwayat</th>';
+        thead += '<th style="width:100px;text-align:center;">Status</th><th style="width:90px;text-align:center;">Aksi</th>';
 
         document.getElementById('penilaianTableHeader').innerHTML = thead;
 
@@ -5546,7 +5548,10 @@ async function loadPenilaianTable() {
                 '<td style="text-align:center;font-weight:bold;">' + kkmBadge + '</td>' +
                 cols +
                 '<td class="td-ket" style="text-align:center;font-size:0.8rem;">-</td>' +
-                '<td style="text-align:center;"><button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'var(--primary)\'; this.style.background=\'rgba(30,58,138,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:16px;height:16px"></i></button></td>' +
+                '<td style="text-align:center;">' +
+                    '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'var(--primary)\'; this.style.background=\'rgba(30,58,138,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:16px;height:16px"></i></button>' +
+                    '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'#2563eb\'; this.style.background=\'rgba(37,99,235,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="publikasikanNilaiSiswa(\'' + s.id + '\', \'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Kirim/Publikasikan Nilai ke Siswa"><i data-lucide="send" style="width:16px;height:16px"></i></button>' +
+                '</td>' +
                 '</tr>';
         }).join('');
 
@@ -5555,6 +5560,8 @@ async function loadPenilaianTable() {
 
         btnSimpan.style.display = 'inline-flex';
         document.getElementById('btnResetNilaiSemua').style.display = 'inline-flex';
+        var btnPub = document.getElementById('btnPublikasikanNilaiSemua');
+        if (btnPub) btnPub.style.display = 'inline-flex';
 
         if (window.lucide) lucide.createIcons();
 
@@ -5695,6 +5702,124 @@ async function saveSemuaNilai() {
         btnSimpan.innerHTML = originalText;
         if (window.lucide) lucide.createIcons();
     }
+}
+
+async function publikasikanNilaiSiswa(siswaId, namaLengkap) {
+    var tr = document.querySelector('.tr-penilaian[data-siswa="' + siswaId + '"]');
+    if (!tr) return;
+    
+    var filterTahun = document.getElementById('filterPenilaianTahun').value;
+    var filterSemester = document.getElementById('filterPenilaianSemester').value;
+    var filterKelas = document.getElementById('filterPenilaianKelas').value;
+    var filterMapel = document.getElementById('filterPenilaianMapel').value;
+
+    var inputs = {
+        'STS': tr.querySelector('.val-sts') ? tr.querySelector('.val-sts').value : '',
+        'SAS': tr.querySelector('.val-sas') ? tr.querySelector('.val-sas').value : '',
+        'SAJ': tr.querySelector('.val-saj') ? tr.querySelector('.val-saj').value : '',
+        'SAT': tr.querySelector('.val-sat') ? tr.querySelector('.val-sat').value : ''
+    };
+
+    var payload = [];
+    Object.keys(inputs).forEach(function(tipe) {
+        if (inputs[tipe] && inputs[tipe] !== '') {
+            payload.push({
+                siswa_id: siswaId,
+                kelas_id: filterKelas,
+                mapel_id: filterMapel,
+                tahun_pelajaran: filterTahun,
+                semester: filterSemester,
+                tipe_asesmen: tipe,
+                benar_pg: 0,
+                total_poin_pg: 0,
+                poin_essay: 0,
+                nilai_akhir: parseFloat(inputs[tipe]),
+                dipublikasikan_oleh: currentUser.id
+            });
+        }
+    });
+
+    if (payload.length === 0) {
+        showToast('Tidak ada nilai yang diisi untuk ' + namaLengkap + '!', 'warning');
+        return;
+    }
+
+    showCustomConfirm('Kirim Nilai ke Siswa?', 'Anda akan mempublikasikan ' + payload.length + ' jenis nilai (' + payload.map(function(p){return p.tipe_asesmen}).join(', ') + ') ke dashboard <strong>' + namaLengkap + '</strong>.', 'Ya, Publikasikan', async function() {
+        try {
+            const { error } = await supabaseClient.from('hasil_ujian_siswa').upsert(payload, { onConflict: 'siswa_id, mapel_id, tahun_pelajaran, semester, tipe_asesmen' });
+            if (error) throw error;
+            showToast('Berhasil dipublikasikan ke siswa! 🎉', 'success');
+        } catch(e) {
+            showToast('Gagal mempublikasikan: ' + e.message, 'error');
+        }
+    });
+}
+
+async function publikasikanSemuaNilaiLaporan() {
+    var filterTahun = document.getElementById('filterPenilaianTahun').value;
+    var filterSemester = document.getElementById('filterPenilaianSemester').value;
+    var filterKelas = document.getElementById('filterPenilaianKelas').value;
+    var filterMapel = document.getElementById('filterPenilaianMapel').value;
+
+    var trs = document.querySelectorAll('.tr-penilaian');
+    var payload = [];
+    var siswaCount = 0;
+
+    trs.forEach(function (tr) {
+        var siswaId = tr.getAttribute('data-siswa');
+        var inputs = {
+            'STS': tr.querySelector('.val-sts') ? tr.querySelector('.val-sts').value : '',
+            'SAS': tr.querySelector('.val-sas') ? tr.querySelector('.val-sas').value : '',
+            'SAJ': tr.querySelector('.val-saj') ? tr.querySelector('.val-saj').value : '',
+            'SAT': tr.querySelector('.val-sat') ? tr.querySelector('.val-sat').value : ''
+        };
+        
+        var hasValue = false;
+        Object.keys(inputs).forEach(function(tipe) {
+            if (inputs[tipe] && inputs[tipe] !== '') {
+                hasValue = true;
+                payload.push({
+                    siswa_id: siswaId,
+                    kelas_id: filterKelas,
+                    mapel_id: filterMapel,
+                    tahun_pelajaran: filterTahun,
+                    semester: filterSemester,
+                    tipe_asesmen: tipe,
+                    benar_pg: 0,
+                    total_poin_pg: 0,
+                    poin_essay: 0,
+                    nilai_akhir: parseFloat(inputs[tipe]),
+                    dipublikasikan_oleh: currentUser.id
+                });
+            }
+        });
+        if (hasValue) siswaCount++;
+    });
+
+    if (payload.length === 0) {
+        showToast('Tidak ada satupun nilai yang diisi untuk dipublikasikan!', 'warning');
+        return;
+    }
+
+    showCustomConfirm('Publikasikan Semua Nilai?', 'Anda akan mempublikasikan nilai ke <strong>' + siswaCount + ' siswa</strong> sekaligus. Mereka dapat melihatnya di dashboard masing-masing.', 'Ya, Publikasikan Semua', async function() {
+        var btn = document.getElementById('btnPublikasikanNilaiSemua');
+        var originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:16px;height:16px;"></i> Memproses...';
+        if (window.lucide) lucide.createIcons();
+
+        try {
+            const { error } = await supabaseClient.from('hasil_ujian_siswa').upsert(payload, { onConflict: 'siswa_id, mapel_id, tahun_pelajaran, semester, tipe_asesmen' });
+            if (error) throw error;
+            showToast('Berhasil mempublikasikan nilai ke ' + siswaCount + ' siswa! 🎉', 'success');
+        } catch(e) {
+            showToast('Gagal mempublikasikan: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (window.lucide) lucide.createIcons();
+        }
+    });
 }
 
 // --- RIWAYAT NILAI PER-SISWA ---
