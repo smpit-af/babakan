@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://smpit-af.github.io/babakan/sitemap.xml
