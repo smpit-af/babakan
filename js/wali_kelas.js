@@ -1878,4 +1878,4 @@ function makeDraggable(el, headerEl) {
 }
 setTimeout(() => {
     makeDraggable(document.getElementById('aiChatModal'), document.querySelector('.ai-chat-header'));
-}, 1000);// ============================================================
+}, 1000);// ============================================================
