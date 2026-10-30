@@ -2,38 +2,16 @@
 // ============================================================
 
 async function archiveAsesmen(id) {
-    showCustomConfirm('Arsipkan Asesmen?', 'Asesmen ini akan dipindahkan ke <strong>Arsip</strong>.<br><br>⚠️ <strong>Link Form akan ditutup</strong> (siswa tidak bisa mengakses lagi).<br>Link Rekap Nilai tetap bisa diakses dari menu Arsip.', 'Ya, Arsipkan', async function () {
-        showGlobalLoader('Menutup form dan mengarsipkan...');
+    showCustomConfirm('Arsipkan Asesmen?', 'Asesmen ini akan dipindahkan ke <strong>Arsip</strong>.<br><br>Asesmen yang telah diarsipkan tidak akan aktif lagi di CBT Siswa.<br>Rekap Nilai tetap bisa diakses dari menu Arsip.', 'Ya, Arsipkan', async function () {
+        showGlobalLoader('Mengarsipkan asesmen...');
         try {
-            // Ambil data URL form
-            const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
-
-            // Tutup Google Form via GAS (setAcceptingResponses = false)
-            if (asm && asm.google_form_url) {
-                var gasUrl = (document.getElementById('gasUrlInput') || {}).value;
-                if (gasUrl) {
-                    try {
-                        await fetch(gasUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({
-                                action: 'close',
-                                formUrl: asm.google_form_url
-                            })
-                        });
-                    } catch (e) { console.warn('Gagal menutup form:', e); }
-                }
-            }
-
-            // Update DB: arsipkan, hapus link form (siswa tidak perlu akses lagi)
+            // Update DB: arsipkan
             await supabaseClient.from('asesmen').update({
                 archived_at: new Date().toISOString(),
-                google_form_url: null,
-                google_form_edit_url: null,
                 updated_at: new Date().toISOString()
             }).eq('id', id);
 
-            showToast('Asesmen berhasil diarsipkan! Form sudah ditutup.', 'success');
+            showToast('Asesmen berhasil diarsipkan!', 'success');
             loadAsesmenList();
         } catch (e) { showToast('Gagal mengarsipkan: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
@@ -162,7 +140,7 @@ async function loadArsipAsesmen() {
 }
 
 async function restoreArsipAsesmen(id) {
-    showCustomConfirm('Kembalikan Asesmen?', 'Asesmen ini akan dikembalikan ke daftar aktif dengan status <strong>Draft</strong>.<br><br>Anda bisa mengedit soal dan menerbitkan ulang ke Google Form baru.', 'Ya, Kembalikan', async function () {
+    showCustomConfirm('Kembalikan Asesmen?', 'Asesmen ini akan dikembalikan ke daftar aktif dengan status <strong>Draft</strong>.<br><br>Anda bisa mengedit soal dan menerbitkan ulang ke CBT Native.', 'Ya, Kembalikan', async function () {
         showGlobalLoader('Mengembalikan Asesmen...');
         try {
             await supabaseClient.from('asesmen').update({
@@ -603,4 +581,4 @@ async function archiveGaleriToDrive(id, url, albumEncoded) {
     });
 }
 
-// ==========================================
+// ==========================================
