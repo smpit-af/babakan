@@ -560,49 +560,87 @@
 
   <!-- ========== FORGOT PASSWORD MODAL ========== -->
   <div class="modal-overlay" id="forgotPasswordModal">
-    <div class="modal" style="position:relative;">
-      <button class="modal-close" onclick="closeForgotPasswordModal()">
-        <i data-lucide="x" style="width:22px;height:22px"></i>
+    <div class="modal" style="position:relative; max-width: 440px; padding: 2rem 2rem 1.75rem;">
+      <button class="modal-close" onclick="closeForgotPasswordModal()" aria-label="Tutup Modal">
+        <i data-lucide="x" style="width:20px;height:20px"></i>
       </button>
-      <div class="modal-header">
-        <div class="modal-logo" style="background: rgba(245, 158, 11, .1); color: #f59e0b;">
-          <i data-lucide="mail-warning" style="width:26px;height:26px"></i>
-        </div>
-        <h3>Atur Ulang Sandi</h3>
-        <p>Masukkan email terdaftar Anda untuk menerima tautan pemulihan sandi.</p>
-      </div>
-      <form id="forgotPasswordForm" action="javascript:void(0)" onsubmit="event.preventDefault();">
-        <div class="form-group">
-          <label for="forgotEmail">Email Terdaftar</label>
-          <input type="email" class="form-input" id="forgotEmail" placeholder="email@contoh.com" required />
-        </div>
-        <button type="button" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;" id="btnForgot" onclick="handleForgotPasswordSubmit()">
-          <span id="btnForgotText">Kirim Tautan Pemulihan</span>
-          <div class="spinner" id="forgotSpinner" style="display:none;"></div>
-        </button>
-      </form>
-    </div>
-  </div>
 
-  <!-- ========== RESET PASSWORD MODAL (From Email Link) ========== -->
-  <div class="modal-overlay" id="resetPasswordModal">
-    <div class="modal" style="position:relative;">
-      <div class="modal-header">
-        <div class="modal-logo" style="background: rgba(34, 197, 94, .1); color: #22c55e;">
-          <i data-lucide="key-round" style="width:26px;height:26px"></i>
+      <div class="modal-header" style="text-align:center; margin-bottom: 1.5rem;">
+        <div class="modal-logo" style="background: rgba(16, 185, 129, .12); color: #10b981; margin: 0 auto 0.75rem; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 16px;">
+          <i data-lucide="key-round" style="width:28px;height:28px"></i>
         </div>
-        <h3>Kata Sandi Baru</h3>
-        <p>Buat kata sandi baru untuk akun Anda.</p>
+        <h3 style="font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 0.35rem;">Atur Ulang Kata Sandi</h3>
+        <p style="font-size: 0.85rem; color: #64748b; margin: 0; line-height: 1.4;">
+          Masukkan email akun Anda, kode sandi otorisasi, dan buat kata sandi baru.
+        </p>
       </div>
-      <form id="resetPasswordForm" action="javascript:void(0)" onsubmit="event.preventDefault();">
-        <div class="form-group">
-          <label for="newPassword">Kata Sandi Baru</label>
-          <input type="password" class="form-input" id="newPassword" placeholder="Minimal 6 karakter" required minlength="6" />
+
+      <form action="javascript:void(0)" onsubmit="handleResetPasswordSubmit(event)">
+        <!-- 1. Email Terdaftar -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="forgotEmail" style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:#334155;margin-bottom:6px;">
+            <i data-lucide="mail" style="width:14px;height:14px;color:#2563eb;"></i>
+            Email Terdaftar
+          </label>
+          <input type="email" class="form-input" id="forgotEmail" placeholder="Masukkan email terdaftar Anda" required autocomplete="email" style="width:100%;font-size:14px;" />
         </div>
-        <button type="button" class="btn btn-success btn-lg" style="width:100%;justify-content:center;" id="btnResetPassword" onclick="handleResetPasswordSubmit()">
-          <span id="btnResetText">Simpan Kata Sandi</span>
-          <div class="spinner" id="resetSpinner" style="display:none;"></div>
+
+        <!-- 2. Kode Sandi Keamanan -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="forgotSecretCode" style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:#334155;margin-bottom:6px;">
+            <i data-lucide="shield-check" style="width:14px;height:14px;color:#f59e0b;"></i>
+            Kode Sandi Keamanan
+          </label>
+          <input type="text" class="form-input" id="forgotSecretCode" placeholder="Masukkan 8 digit kode sandi" required autocomplete="off" style="width:100%;letter-spacing:1px;font-weight:600;font-size:14px;" />
+          <div style="display:flex;align-items:center;gap:4px;margin-top:4px;color:#64748b;font-size:11.5px;">
+            <i data-lucide="info" style="width:13px;height:13px;color:#f59e0b;flex-shrink:0;"></i>
+            <span>Kode rahasia sekolah untuk izin reset sandi.</span>
+          </div>
+        </div>
+
+        <!-- 3. Kata Sandi Baru -->
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label for="forgotNewPassword" style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:#334155;margin-bottom:6px;">
+            <i data-lucide="lock" style="width:14px;height:14px;color:#10b981;"></i>
+            Kata Sandi Baru
+          </label>
+          <div style="position:relative;">
+            <input type="password" class="form-input" id="forgotNewPassword" placeholder="Minimal 6 karakter" required minlength="6" style="width:100%;padding-right:42px;font-size:14px;" />
+            <button type="button" onclick="toggleFieldVisibility('forgotNewPassword', this)" aria-label="Lihat kata sandi" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;display:flex;align-items:center;">
+              <i data-lucide="eye" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. Konfirmasi Kata Sandi Baru -->
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label for="forgotConfirmPassword" style="display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px;color:#334155;margin-bottom:6px;">
+            <i data-lucide="check-check" style="width:14px;height:14px;color:#10b981;"></i>
+            Konfirmasi Kata Sandi Baru
+          </label>
+          <div style="position:relative;">
+            <input type="password" class="form-input" id="forgotConfirmPassword" placeholder="Ulangi kata sandi baru" required minlength="6" style="width:100%;padding-right:42px;font-size:14px;" />
+            <button type="button" onclick="toggleFieldVisibility('forgotConfirmPassword', this)" aria-label="Lihat konfirmasi kata sandi" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:4px;display:flex;align-items:center;">
+              <i data-lucide="eye" style="width:16px;height:16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tombol Simpan -->
+        <button type="submit" class="btn btn-primary btn-lg" style="width:100%;justify-content:center;font-weight:600;padding:0.75rem 1rem;" id="btnForgotSubmit">
+          <span id="btnForgotSubmitText" style="display:flex;align-items:center;gap:6px;">
+            <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+            Simpan Kata Sandi Baru
+          </span>
+          <div class="spinner" id="forgotSubmitSpinner" style="display:none;"></div>
         </button>
+
+        <div style="text-align:center;margin-top:1rem;">
+          <a href="#" onclick="event.preventDefault(); closeForgotPasswordModal(); openLoginModal();" style="font-size:13px;color:#2563eb;text-decoration:none;font-weight:500;display:inline-flex;align-items:center;gap:4px;">
+            <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+            Kembali ke Halaman Masuk
+          </a>
+        </div>
       </form>
     </div>
   </div>
