@@ -3468,15 +3468,7 @@ async function loadHasilUjianSaya() {
         const { data: hasilData, error: errH } = await query;
         if (errH) throw errH;
 
-        // 2b. Also fetch CBT results
-        var cbtQuery = supabaseClient.from('cbt_jawaban_siswa')
-            .select('id, nilai, status, waktu_kumpul, sesi_ujian:sesi_id(asesmen_id, asesmen:asesmen_id(judul, mata_pelajaran, kelas, tipe_ujian, tahun_pelajaran, semester))')
-            .eq('siswa_id', siswaData.id)
-            .eq('status', 'selesai')
-            .order('waktu_kumpul', { ascending: false });
-        const { data: cbtData } = await cbtQuery;
-
-        // Merge both into unified list
+        // 2b. Nilai siswa hanya bersumber dari hasil_ujian_siswa yang telah dipublikasikan secara manual oleh guru/admin via Input Penilaian
         var allResults = [];
         if (hasilData) {
             hasilData.forEach(function (h) {
@@ -3491,23 +3483,6 @@ async function loadHasilUjianSaya() {
                     benar_pg: h.benar_pg || 0,
                     total_poin_pg: h.total_poin_pg || 0,
                     poin_essay: h.poin_essay || 0
-                });
-            });
-        }
-        if (cbtData) {
-            cbtData.forEach(function (c) {
-                var asm = (c.sesi_ujian && c.sesi_ujian.asesmen) ? c.sesi_ujian.asesmen : {};
-                allResults.push({
-                    source: 'cbt',
-                    mapelNama: asm.mata_pelajaran || '-',
-                    mapel_id: null,
-                    tipe: asm.tipe_ujian || '-',
-                    nilai: c.nilai,
-                    tahun: asm.tahun_pelajaran || '-',
-                    semester: asm.semester || '-',
-                    benar_pg: 0,
-                    total_poin_pg: 0,
-                    poin_essay: 0
                 });
             });
         }
@@ -3567,7 +3542,7 @@ async function loadHasilUjianSaya() {
                 // Source badge
                 var sourceBadge = h.source === 'cbt'
                     ? '<span style="font-size:0.65rem;color:#3b82f6;background:rgba(59,130,246,.1);padding:2px 6px;border-radius:6px;font-weight:700;">CBT Native</span>'
-                    : '<span style="font-size:0.65rem;color:#10b981;background:rgba(16,185,129,.1);padding:2px 6px;border-radius:6px;font-weight:700;">Google Form</span>';
+                    : '<span style="font-size:0.65rem;color:#94a3b8;background:rgba(148,163,184,.1);padding:2px 6px;border-radius:6px;font-weight:700;">-</span>';
 
                 html += '<div style="background:' + bgGrad + ';border:1px solid ' + borderCol + ';border-radius:14px;padding:1.25rem;transition:transform 0.2s;" onmouseover="this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.transform=\'none\'">' +
                     '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem;">' +
@@ -3987,8 +3962,7 @@ function cetakLaporanNilai() {
     setTimeout(function () { printWindow.print(); }, 500);
 }
 
-// ============================================================
-// HASIL & ANALISIS ASESMEN (GOOGLE FORM)
+// HASIL & ANALISIS ASESMEN
 // ============================================================
 var hasilAsesmenState = {
     data: [], // Array of objects parsed from CSV
@@ -4176,7 +4150,7 @@ async function loadDataHasilAsesmen() {
                     }
                 }
             } catch(e) {
-                throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban melalui Google Form.');
+                throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban ujian.');
             }
         }
 
@@ -4535,7 +4509,7 @@ async function loadDataHasilAsesmen() {
                     sEs = idxTotalEssay !== -1 ? (parseFloat(bestMatch[idxTotalEssay]) || 0) : 0;
                     nAkhir = parseFloat(bestMatch[idxNilaiAkhir]) || 0;
                     
-                    // Jika ini dari sheet default Google Form yg hanya ada "Skor", jadikan skor itu sebagai Skor PG
+                    // Jika ini dari sheet dengan kolom tunggal "Skor", jadikan skor itu sebagai Skor PG
                     if (idxSkorPG === -1 && idxNilaiAkhir !== -1 && idxTotalEssay === -1) {
                         sPg = nAkhir;
                     }
@@ -5592,7 +5566,7 @@ function deleteKesehatan(id) {
 }
 
 // ============================================================
-// BUAT SOAL ASESMEN — Google Forms & Sheets Integration
+// BUAT SOAL ASESMEN — CBT Native
 // ============================================================
 var asesmenBuilderSoalList = []; // in-memory soal list for builder
 var asesmenList = [];
@@ -5621,27 +5595,44 @@ async function saveAsesmenConfig() {
     } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
 }
 
-// --- Load Asesmen List (History Table) ---
+// --- Load Daftar Asesmen Aktif (Tab 1: Siap Uji di CBT) ---
 async function loadAsesmenList() {
     var tbody = document.getElementById('asesmenTableBody');
     var countEl = document.getElementById('asesmenCount');
     if (!tbody || !supabaseClient) return;
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat ujian aktif...</td></tr>';
     try {
-        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).order('tanggal_pelaksanaan', { ascending: true, nullsFirst: false });
+        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).is('archived_at', null).order('tanggal_pelaksanaan', { ascending: true, nullsFirst: false });
         const { data, error } = await query;
         if (error) throw error;
-        asesmenList = (data || []).filter(function (a) { return !a.archived_at; });
-        if (countEl) countEl.textContent = asesmenList.length + ' asesmen';
+        
+        var allNonArchived = (data || []).filter(function (a) { return !a.archived_at; });
+        // Tab 1 hanya menampilkan yang sudah 'terbit' (siap uji)
+        asesmenList = allNonArchived.filter(function (a) { return a.status === 'terbit'; });
+        
+        // Update badge tab
+        var tabBadgeAktif = document.getElementById('tabBadgeAktif');
+        if (tabBadgeAktif) {
+            tabBadgeAktif.textContent = asesmenList.length;
+            tabBadgeAktif.style.display = asesmenList.length > 0 ? 'inline-block' : 'none';
+        }
+        var reviewCount = allNonArchived.filter(function (a) { return a.status !== 'terbit'; }).length;
+        var tabBadgeReview = document.getElementById('tabBadgeReview');
+        if (tabBadgeReview) {
+            tabBadgeReview.textContent = reviewCount;
+            tabBadgeReview.style.display = reviewCount > 0 ? 'inline-block' : 'none';
+        }
+
+        if (countEl) countEl.textContent = asesmenList.length + ' asesmen aktif';
         loadSampahCount();
 
         var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
 
         if (asesmenList.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada asesmen. Klik "Buat Asesmen Baru" untuk mulai.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2.5rem;color:var(--text-light)">Belum ada ujian aktif di CBT Native. Soal yang telah disetujui Admin akan muncul di sini.</td></tr>';
             return;
         }
-        // count soal per asesmen (menggunakan exact count secara paralel agar akurat, mengatasi default limit 1000 row)
+
         var countMap = {};
         await Promise.all(asesmenList.map(async function (a) {
             const { count } = await supabaseClient.from('asesmen_soal')
@@ -5649,20 +5640,12 @@ async function loadAsesmenList() {
                 .eq('asesmen_id', a.id);
             countMap[a.id] = count || 0;
         }));
+
         tbody.innerHTML = asesmenList.map(function (a, i) {
-            var statusBadge = a.status === 'terbit'
-                ? '<span class="badge-terbit">Terbit</span>'
-                : '<span class="badge-draft">Draft</span>';
+            var statusBadge = '<span style="background:rgba(16,185,129,0.15);color:#059669;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="radio" style="width:12px;height:12px;"></i> Siap Uji</span>';
             
             var linkHtml = '<div style="display:flex;flex-direction:column;gap:.25rem;">';
-            if (a.is_cbt_native) {
-                linkHtml += '<span style="color:#3b82f6;font-size:.82rem;font-weight:700;"><i data-lucide="monitor" style="width:12px;height:12px;"></i> CBT Native</span>';
-            } else {
-                if (a.google_form_url) linkHtml += '<a href="' + a.google_form_url + '" target="_blank" style="color:var(--primary);font-size:.82rem;font-weight:600;"><i data-lucide="external-link" style="width:12px;height:12px;"></i> Form Siswa</a>';
-                if (a.google_form_edit_url) linkHtml += '<a href="' + a.google_form_edit_url + '" target="_blank" style="color:#d97706;font-size:.82rem;font-weight:600;" title="Edit form untuk tambah Kop Surat"><i data-lucide="settings" style="width:12px;height:12px;"></i> Edit Form (Kop/Tema)</a>';
-                if (a.google_sheet_url) linkHtml += '<a href="' + a.google_sheet_url + '" target="_blank" style="color:#16a34a;font-size:.82rem;font-weight:600;"><i data-lucide="table" style="width:12px;height:12px;"></i> Rekap Nilai</a>';
-                if (!a.google_form_url && !a.google_sheet_url && !a.is_cbt_native) linkHtml += '<span style="color:var(--text-light);font-size:.82rem;">-</span>';
-            }
+            linkHtml += '<span style="color:#3b82f6;font-size:.82rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="monitor" style="width:12px;height:12px;"></i> CBT Native</span>';
             linkHtml += '</div>';
 
             var jumlahSoal = countMap[a.id] || 0;
@@ -5670,57 +5653,391 @@ async function loadAsesmenList() {
             var aksiHtml = '';
 
             if (canManage) {
-                var editBtn = '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>';
+                // Soal yang sudah siap uji (terbit) tidak dapat diedit kembali
+                var cbtBtn = '<button class="btn-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;" onclick="openMonitorCbt(\'' + a.id + '\')" title="Monitor CBT & Token"><i data-lucide="radio" style="width:14px;height:14px"></i></button>';
                 
-                if (a.status === 'draft') {
-                    aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
-                        editBtn +
-                        '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
-                } else {
-                    var cbtBtn = '';
-                    if (a.is_cbt_native) {
-                        cbtBtn = '<button class="btn-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;" onclick="openMonitorCbt(\'' + a.id + '\')" title="Monitor CBT & Token"><i data-lucide="radio" style="width:14px;height:14px"></i></button>';
+                var sendBtn = '';
+                if (isAdminKurikulum) {
+                    if (a.ujian_sent_at) {
+                        sendBtn = '<button class="btn-icon" style="background:rgba(239,68,68,.1);color:#ef4444;" onclick="unsendFromUjian(\'' + a.id + '\')" title="Tarik dari Soal Ujian"><i data-lucide="undo-2" style="width:14px;height:14px"></i></button>';
+                    } else {
+                        sendBtn = '<button class="btn-icon" style="background:rgba(16,185,129,.1);color:#10b981;" onclick="sendToSoalUjian(\'' + a.id + '\')" title="Kirim ke Soal Ujian"><i data-lucide="send" style="width:14px;height:14px"></i></button>';
                     }
-                    var sendBtn = '';
-                    var ujianBtn = '';
-                    var isAdmin = currentRole === 'admin';
-                    if ((a.google_form_url || a.is_cbt_native) && isAdmin) {
-                        if (a.ujian_sent_at) {
-                            sendBtn = '<button class="btn-icon" style="background:rgba(239,68,68,.1);color:#ef4444;" onclick="unsendFromUjian(\'' + a.id + '\')" title="Tarik dari Soal Ujian"><i data-lucide="undo-2" style="width:14px;height:14px"></i></button>';
-                            // Gear icon hanya untuk GForm, CBT dikontrol via Monitor CBT
-                            if (!a.is_cbt_native) {
-                                var gearColor = a.ujian_aktif === true ? 'background:rgba(5,150,105,.12);color:#059669;' : a.ujian_aktif === false ? 'background:rgba(100,116,139,.12);color:#64748b;' : 'background:rgba(124,58,237,.08);color:#7c3aed;';
-                                ujianBtn = '<button class="btn-icon" style="' + gearColor + '" onclick="openUjianSettingsModal(\'' + a.id + '\')" title="Kelola Status Ujian"><i data-lucide="settings" style="width:14px;height:14px"></i></button>';
-                            }
-                        } else {
-                            sendBtn = '<button class="btn-icon" style="background:rgba(16,185,129,.1);color:#10b981;" onclick="sendToSoalUjian(\'' + a.id + '\')" title="Kirim ke Soal Ujian"><i data-lucide="send" style="width:14px;height:14px"></i></button>';
-                        }
-                    }
-                    aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
-                        editBtn + cbtBtn + sendBtn + ujianBtn +
-                        '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
-                        '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
                 }
+                
+                aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
+                    cbtBtn + sendBtn +
+                    '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
+                    '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
             } else {
                 aksiHtml = '<span style="color:var(--text-light);font-size:0.8rem;font-style:italic;">Hanya pemilik</span>';
             }
             var tglUjian = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
             return '<tr>' +
                 '<td style="text-align:center;">' + (i + 1) + '</td>' +
-                '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
-                '<td>' + (a.mata_pelajaran || '-') + '</td>' +
-                '<td>' + (a.kelas || '-') + '</td>' +
-                '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                '<td style="font-weight:600;">' + escHtml(a.judul || '-') + '</td>' +
+                '<td>' + escHtml(a.mata_pelajaran || '-') + '</td>' +
+                '<td>' + escHtml(a.kelas || '-') + '</td>' +
+                '<td>' + escHtml(a.tipe_ujian || '-') + '</td>' +
                 '<td style="font-size:.82rem;white-space:nowrap;">' + tglUjian + '</td>' +
-                '<td style="text-align:center;">' + jumlahSoal + '</td>' +
+                '<td style="text-align:center;font-weight:700;">' + jumlahSoal + '</td>' +
                 '<td>' + statusBadge + '</td>' +
                 '<td>' + linkHtml + '</td>' +
-                '<td><div style="display:flex;gap:.4rem;justify-content:center;">' + aksiHtml + '</div></td>' +
+                '<td style="white-space:nowrap;text-align:center;"><div style="display:inline-flex;gap:4px;justify-content:center;align-items:center;white-space:nowrap;">' + aksiHtml + '</div></td>' +
                 '</tr>';
         }).join('');
         if (window.lucide) lucide.createIcons();
     } catch (e) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+    }
+}
+
+// --- Load Review & Draft Soal (Tab 2: Menunggu Review & Draft Guru) ---
+async function loadReviewDraftList() {
+    var tbody = document.getElementById('reviewTableBody');
+    var badgeEl = document.getElementById('reviewCountBadge');
+    var tabBadge = document.getElementById('tabBadgeReview');
+    if (!tbody || !supabaseClient) return;
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat data review & draft...</td></tr>';
+
+    try {
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+        var subtitle = document.getElementById('reviewSubtitle');
+        if (subtitle) {
+            subtitle.textContent = isAdminKurikulum
+                ? 'Antrean soal dari guru yang menunggu verifikasi & penerbitan ke CBT Native oleh Admin.'
+                : 'Daftar draft soal Anda. Klik "Ajukan ke Admin" jika soal sudah selesai disusun.';
+        }
+
+        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).is('archived_at', null).neq('status', 'terbit').order('updated_at', { ascending: false });
+        const { data, error } = await query;
+        if (error) throw error;
+
+        var allItems = (data || []).filter(function (a) { return !a.archived_at; });
+        var displayList = isAdminKurikulum
+            ? allItems
+            : allItems.filter(function (a) { return currentUser && a.created_by === currentUser.id; });
+
+        if (badgeEl) badgeEl.textContent = displayList.length + ' soal';
+        if (tabBadge) {
+            tabBadge.textContent = displayList.length;
+            tabBadge.style.display = displayList.length > 0 ? 'inline-block' : 'none';
+        }
+
+        if (displayList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-light)">' +
+                (isAdminKurikulum ? 'Tidak ada antrean review atau draft soal saat ini.' : 'Belum ada draft soal. Klik tombol "Buat Ujian Baru" untuk mulai menyusun soal.') +
+                '</td></tr>';
+            return;
+        }
+
+        var countMap = {};
+        await Promise.all(displayList.map(async function (a) {
+            const { count } = await supabaseClient.from('asesmen_soal').select('id', { count: 'exact', head: true }).eq('asesmen_id', a.id);
+            countMap[a.id] = count || 0;
+        }));
+
+        tbody.innerHTML = displayList.map(function (a, i) {
+            var jml = countMap[a.id] || 0;
+            var revStatus = a.review_status || 'draft';
+            var statusPill = '';
+            if (revStatus === 'menunggu_review') {
+                statusPill = '<span style="background:rgba(245,158,11,0.15);color:#d97706;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="clock" style="width:12px;height:12px;"></i> Menunggu Review</span>';
+            } else if (revStatus === 'revisi') {
+                statusPill = '<span style="background:rgba(239,68,68,0.15);color:#ef4444;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="alert-circle" style="width:12px;height:12px;"></i> Perlu Revisi</span>';
+            } else {
+                statusPill = '<span style="background:rgba(100,116,139,0.15);color:#64748b;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="file-edit" style="width:12px;height:12px;"></i> Draft Guru</span>';
+            }
+
+            var catatanHtml = '';
+            if (revStatus === 'revisi' && a.catatan_revisi) {
+                catatanHtml = '<div style="margin-top:6px;padding:6px 10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;font-size:0.78rem;color:#b91c1c;"><strong>Catatan Admin:</strong> ' + escHtml(a.catatan_revisi) + '</div>';
+            }
+
+            var guruName = a.created_by_name || 'Guru';
+            var isCreator = currentUser && a.created_by === currentUser.id;
+            var aksiHtml = '';
+
+            if (isAdminKurikulum) {
+                aksiHtml += '<button class="btn-icon" style="background:rgba(37,99,235,.12);color:#2563eb;" onclick="openAdminReviewModal(\'' + a.id + '\')" title="Review & Terbitkan"><i data-lucide="clipboard-check" style="width:15px;height:15px;"></i></button>';
+                aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>';
+                aksiHtml += '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+            } else {
+                // Akses Guru: Hanya pemilik/pembuat soal yang bisa edit & ajukan
+                if (!isCreator) {
+                    aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Pratinjau"><i data-lucide="eye" style="width:14px;height:14px"></i></button>';
+                } else if (revStatus === 'menunggu_review') {
+                    aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Pratinjau"><i data-lucide="eye" style="width:14px;height:14px"></i></button>';
+                    aksiHtml += '<button class="btn-icon" style="background:rgba(100,116,139,.12);color:#64748b;" onclick="cancelSubmitToAdmin(\'' + a.id + '\')" title="Tarik ke Draft"><i data-lucide="undo-2" style="width:14px;height:14px;"></i></button>';
+                } else {
+                    aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit Soal"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>';
+                    aksiHtml += '<button class="btn-icon" style="background:rgba(5,150,105,.12);color:#059669;" onclick="submitDraftToAdmin(\'' + a.id + '\')" title="Ajukan ke Admin"><i data-lucide="send" style="width:14px;height:14px;"></i></button>';
+                    aksiHtml += '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+                }
+            }
+
+            return '<tr>' +
+                '<td style="text-align:center;">' + (i + 1) + '</td>' +
+                '<td><div style="font-weight:700;color:#1e293b;">' + escHtml(a.judul || '-') + '</div>' + catatanHtml + '</td>' +
+                '<td>' + escHtml(a.mata_pelajaran || '-') + '</td>' +
+                '<td>' + escHtml(a.kelas || '-') + '</td>' +
+                '<td>' + escHtml(a.tipe_ujian || '-') + '</td>' +
+                '<td style="font-size:0.85rem;color:#475569;">' + escHtml(guruName) + '</td>' +
+                '<td style="text-align:center;font-weight:700;">' + jml + '</td>' +
+                '<td>' + statusPill + '</td>' +
+                '<td style="white-space:nowrap;text-align:center;"><div style="display:inline-flex;gap:6px;align-items:center;justify-content:center;white-space:nowrap;">' + aksiHtml + '</div></td>' +
+                '</tr>';
+        }).join('');
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal memuat: ' + e.message + '</td></tr>';
+    }
+}
+
+// --- Admin Review Modal (Quality Control Soal sebelum Terbit) ---
+async function openAdminReviewModal(id) {
+    showGlobalLoader('Memuat detail soal untuk diverifikasi...');
+    try {
+        const { data: asm, error: err1 } = await supabaseClient.from('asesmen').select('*').eq('id', id).single();
+        if (err1) throw err1;
+
+        const { data: soalList, error: err2 } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', id).order('nomor_soal', { ascending: true });
+        if (err2) throw err2;
+
+        var pgList = (soalList || []).filter(function(s) { return s.tipe_soal === 'pg'; });
+        var essayList = (soalList || []).filter(function(s) { return s.tipe_soal === 'essay'; });
+        var bobotPG = asm.bobot_pg || 0;
+        var bobotEssay = asm.bobot_essay || 0;
+        var totalBobot = (pgList.length * bobotPG) + (essayList.length * bobotEssay);
+        var bobotValid = totalBobot === 100;
+
+        var html = '<div style="text-align:left;">';
+        
+        // Summary Header Card
+        html += '<div class="admin-review-summary-card">';
+        html += '<div class="admin-review-summary-top">';
+        html += '<div><h3 class="admin-review-asm-title">' + escHtml(asm.judul) + '</h3>';
+        html += '<span class="admin-review-asm-creator">Dibuat oleh: <strong>' + escHtml(asm.created_by_name || 'Guru') + '</strong></span></div>';
+        html += '<span class="admin-review-badge-tipe">' + escHtml(asm.tipe_ujian) + '</span>';
+        html += '</div>';
+
+        html += '<div class="admin-review-meta-grid">';
+        html += '<div><span>Mapel:</span> <strong>' + escHtml(asm.mata_pelajaran) + '</strong></div>';
+        html += '<div><span>Kelas:</span> <strong>' + escHtml(asm.kelas) + '</strong></div>';
+        html += '<div><span>Waktu:</span> <strong>' + asm.waktu_menit + ' Menit</strong></div>';
+        html += '<div><span>Tanggal:</span> <strong>' + (asm.tanggal_pelaksanaan || '-') + '</strong></div>';
+        html += '</div>';
+
+        // Bobot Calculation & Validation
+        html += '<div class="admin-review-bobot-box ' + (bobotValid ? 'bobot-valid' : 'bobot-invalid') + '">';
+        html += '<div><strong>Total Soal:</strong> ' + (soalList || []).length + ' (' + pgList.length + ' PG × ' + bobotPG + ' + ' + essayList.length + ' Essay × ' + bobotEssay + ')</div>';
+        html += '<div><strong>Total Bobot:</strong> <span style="font-weight:800;color:' + (bobotValid ? '#059669' : '#d97706') + ';">' + totalBobot + ' / 100</span> ' + (bobotValid ? '✅ Sesuai' : '⚠️ Periksa Bobot') + '</div>';
+        html += '</div>';
+        html += '</div>';
+
+        // List Butir Soal
+        html += '<h4 style="margin:0 0 10px 0;font-size:0.95rem;color:#334155;">Daftar Naskah Soal & Kunci Jawaban:</h4>';
+        if (!soalList || soalList.length === 0) {
+            html += '<p style="color:#ef4444;text-align:center;padding:1.5rem;">Asesmen ini belum memiliki butir soal!</p>';
+        } else {
+            soalList.forEach(function (s, i) {
+                var noKey = (s.tipe_soal === 'pg' && !s.kunci_jawaban);
+                html += '<div class="admin-review-card" style="background:#ffffff;border:1px solid ' + (noKey ? '#fca5a5' : '#e2e8f0') + ';border-radius:12px;padding:1rem;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.02);">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">';
+                html += '<span style="font-weight:800;font-size:0.9rem;color:#1e293b;">Soal No. ' + (i + 1) + ' <span style="font-size:0.75rem;padding:2px 8px;border-radius:6px;background:' + (s.tipe_soal === 'pg' ? '#eff6ff;color:#2563eb;' : '#faf5ff;color:#7c3aed;') + '">' + s.tipe_soal.toUpperCase() + '</span></span>';
+                if (noKey) {
+                    html += '<span style="font-size:0.75rem;color:#ef4444;font-weight:700;">⚠️ Kunci Belum Diisi</span>';
+                }
+                html += '</div>';
+
+                html += '<div style="font-size:0.9rem;color:#334155;line-height:1.55;margin-bottom:10px;word-break:break-word;">' + escHtml(s.naskah_soal).replace(/\n/g, '<br>') + '</div>';
+                if (s.gambar_url) {
+                    var directImg = typeof getDirectImageUrl === 'function' ? getDirectImageUrl(s.gambar_url) : s.gambar_url;
+                    html += '<img src="' + escAttr(directImg) + '" referrerpolicy="no-referrer" style="max-width:100%;max-height:180px;object-fit:contain;border-radius:8px;margin-bottom:10px;border:1px solid #e2e8f0;background:#f8fafc;" />';
+                }
+
+                if (s.tipe_soal === 'pg') {
+                    var ops = [
+                        { k: 'A', v: s.opsi_a },
+                        { k: 'B', v: s.opsi_b },
+                        { k: 'C', v: s.opsi_c },
+                        { k: 'D', v: s.opsi_d }
+                    ];
+                    html += '<div class="admin-review-pg-grid">';
+                    ops.forEach(function (op) {
+                        var isKunci = (s.kunci_jawaban || '').toUpperCase() === op.k;
+                        html += '<div style="padding:7px 10px;border-radius:8px;font-size:0.85rem;background:' + (isKunci ? '#ecfdf5' : '#f8fafc') + ';border:1px solid ' + (isKunci ? '#10b981' : '#e2e8f0') + ';color:' + (isKunci ? '#065f46;font-weight:700;' : '#475569;') + ';word-break:break-word;">';
+                        html += '<strong>' + op.k + '.</strong> ' + escHtml(op.v || '-') + (isKunci ? ' <span style="color:#059669;">(Kunci)</span>' : '');
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                } else if (s.tipe_soal === 'essay') {
+                    if (s.kunci_jawaban) {
+                        html += '<div style="padding:7px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:0.83rem;color:#166534;word-break:break-word;"><strong>Kunci/Pedoman Penskoran:</strong> ' + escHtml(s.kunci_jawaban) + '</div>';
+                    }
+                }
+                html += '</div>';
+            });
+        }
+        html += '</div>';
+
+        // Action Toolbar inside modal footer
+        var footerHtml = 
+            '<div class="admin-review-footer-left">' +
+                '<button class="btn btn-outline admin-review-btn-close" onclick="closeAdminReviewModal()"><i data-lucide="x" style="width:15px;height:15px;"></i> <span>Tutup</span></button>' +
+            '</div>' +
+            '<div class="admin-review-footer-right">' +
+                '<button class="btn btn-outline admin-review-btn-revisi" style="color:#ef4444; border-color:#fca5a5;" onclick="promptAdminRevision(\'' + asm.id + '\')"><i data-lucide="undo-2" style="width:15px;height:15px;"></i> <span>Minta Revisi Guru</span></button>' +
+                '<button class="btn btn-primary admin-review-btn-publish" style="background:#059669; border-color:#059669; box-shadow:0 4px 12px rgba(5,150,105,0.25);" onclick="adminPublishFromReview(\'' + asm.id + '\')"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> <span>Verifikasi & Terbitkan ke CBT</span></button>' +
+            '</div>';
+
+        var modal = document.getElementById('adminReviewModal');
+        var body = document.getElementById('adminReviewModalBody');
+        var footer = document.getElementById('adminReviewModalFooter');
+        if (modal && body && footer) {
+            body.innerHTML = html;
+            footer.innerHTML = footerHtml;
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+        } else {
+            showNotifModal('Review & Verifikasi Soal Asesmen', html, 'info');
+        }
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        showToast('Gagal memuat soal: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+function closeAdminReviewModal() {
+    var modal = document.getElementById('adminReviewModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+if (!window._escReviewListenerAttached) {
+    window._escReviewListenerAttached = true;
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var modal = document.getElementById('adminReviewModal');
+            if (modal && modal.style.display !== 'none' && modal.classList.contains('active')) {
+                closeAdminReviewModal();
+            }
+        }
+    });
+}
+
+// --- Admin Minta Revisi Soal ---
+async function promptAdminRevision(id) {
+    var catatan = prompt('Masukkan catatan revisi untuk guru (misal: "Kunci jawaban no. 4 belum ada", "Tolong sesuaikan bobot"):');
+    if (catatan === null) return;
+    if (!catatan.trim()) { showToast('Catatan revisi tidak boleh kosong.', 'warning'); return; }
+
+    closeAdminReviewModal();
+    showGlobalLoader('Mengirim permintaan revisi...');
+    try {
+        const { error } = await supabaseClient.from('asesmen').update({
+            review_status: 'revisi',
+            catatan_revisi: catatan.trim(),
+            reviewed_by: currentUser ? currentUser.id : null,
+            reviewed_at: new Date().toISOString()
+        }).eq('id', id);
+        if (error) throw error;
+        showToast('Permintaan revisi berhasil dikirim ke guru.', 'success');
+        loadReviewDraftList();
+    } catch (e) {
+        showToast('Gagal mengirim revisi: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+// --- Admin Terbitkan dari Review ---
+async function adminPublishFromReview(id) {
+    showCustomConfirm(
+        'Terbitkan ke CBT Native?',
+        'Soal telah diverifikasi dan akan langsung <strong>diterbitkan ke CBT Siswa</strong>.<br>Siswa di kelas terkait akan dapat mengakses ujian ini sesuai jadwal.',
+        'Ya, Terbitkan',
+        async function () {
+            closeAdminReviewModal();
+            showGlobalLoader('Menerbitkan ke CBT Native...');
+            try {
+                const { error } = await supabaseClient.from('asesmen').update({
+                    status: 'terbit',
+                    review_status: 'disetujui',
+                    is_cbt_native: true,
+                    published_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    reviewed_by: currentUser ? currentUser.id : null,
+                    reviewed_at: new Date().toISOString()
+                }).eq('id', id);
+                if (error) throw error;
+
+                // Backup clone to draft
+                try {
+                    await supabaseClient.rpc('clone_asesmen_to_draft', { p_asesmen_id: id });
+                } catch (cloneErr) { }
+
+                showToast('Asesmen berhasil disetujui & diterbitkan ke CBT Native!', 'success');
+                if (typeof switchAsesmenTab === 'function') {
+                    var firstTab = document.querySelector('.asesmen-tab');
+                    if (firstTab) switchAsesmenTab('aktif', firstTab);
+                }
+            } catch (e) {
+                showToast('Gagal menerbitkan: ' + e.message, 'error');
+            } finally {
+                hideGlobalLoader();
+            }
+        }
+    );
+}
+
+// --- Guru: Ajukan Draft ke Admin ---
+async function submitDraftToAdmin(id) {
+    showCustomConfirm(
+        'Ajukan ke Admin?',
+        'Soal ini akan dikirim ke antrean Admin/Kurikulum untuk ditinjau.<br>Pastikan naskah soal, kunci jawaban, dan pembobotan sudah lengkap.',
+        'Ya, Ajukan Soal',
+        async function () {
+            showGlobalLoader('Mengajukan soal ke Admin...');
+            try {
+                const { error } = await supabaseClient.from('asesmen').update({
+                    review_status: 'menunggu_review',
+                    catatan_revisi: null,
+                    ujian_sent_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }).eq('id', id);
+                if (error) throw error;
+                showToast('Soal berhasil diajukan ke Admin!', 'success');
+                loadReviewDraftList();
+            } catch (e) {
+                showToast('Gagal mengajukan: ' + e.message, 'error');
+            } finally {
+                hideGlobalLoader();
+            }
+        }
+    );
+}
+
+// --- Guru: Batalkan Pengajuan (Tarik Kembali ke Draft) ---
+async function cancelSubmitToAdmin(id) {
+    showGlobalLoader('Menarik kembali ke draft...');
+    try {
+        const { error } = await supabaseClient.from('asesmen').update({
+            review_status: 'draft',
+            updated_at: new Date().toISOString()
+        }).eq('id', id);
+        if (error) throw error;
+        showToast('Soal dikembalikan ke status Draft.', 'info');
+        loadReviewDraftList();
+    } catch (e) {
+        showToast('Gagal: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
     }
 }
 
@@ -5822,7 +6139,7 @@ function updateUjianRadioStyle() {
     if (nonaktifLabel) nonaktifLabel.style.background = !isAktif ? 'rgba(239,68,68,.05)' : '';
 }
 
-// --- Simpan status aktif/nonaktif (khusus GForm) ---
+// --- Simpan status aktif/nonaktif ujian ---
 async function saveUjianSettings() {
     var asesmenId = document.getElementById('ujianModalAsesmenId').value;
     var isAktif = document.getElementById('ujianRadioAktif').checked;
@@ -5858,16 +6175,34 @@ async function loadSoalUjian() {
     tbodyNonaktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
 
     try {
-        // Ambil asesmen yang sudah dikirim ke ujian (ujian_sent_at IS NOT NULL)
+        // Ambil asesmen yang sudah dikirim ke ujian (ujian_sent_at IS NOT NULL dan belum diarsipkan)
         const { data, error } = await supabaseClient
             .from('asesmen')
             .select('*')
             .not('ujian_sent_at', 'is', null)
             .is('deleted_at', null)
+            .is('archived_at', null)
             .order('ujian_sent_at', { ascending: false });
 
         if (error) throw error;
-        var list = data || [];
+        var list = (data || []).filter(function (a) { return !a.archived_at; });
+
+        // Jika user adalah siswa, ambil profil kelasnya untuk validasi kesesuaian soal
+        var siswaInfo = null;
+        if (currentRole === 'siswa' && currentUser) {
+            try {
+                if (typeof getLoggedStudentInfo === 'function') {
+                    siswaInfo = await getLoggedStudentInfo();
+                } else {
+                    const { data: sData } = await supabaseClient
+                        .from('siswa')
+                        .select('id, nama_lengkap, kelas_id, master_kelas(nama_kelas, tingkat)')
+                        .eq('user_id', currentUser.id)
+                        .maybeSingle();
+                    if (sData) siswaInfo = sData;
+                }
+            } catch (errS) { }
+        }
 
         // Ambil semua sesi CBT terbaru untuk setiap asesmen
         var cbtAsesmenIds = list.filter(function(a) { return a.is_cbt_native; }).map(function(a) { return a.id; });
@@ -5885,52 +6220,76 @@ async function loadSoalUjian() {
         }
 
         // Tentukan status aktif
+        var nowTime = new Date();
         list.forEach(function(a) {
-            if (a.is_cbt_native) {
-                // CBT: status bergantung pada sesi CBT
-                var sesi = sesiMap[a.id];
-                if (sesi && sesi.status === 'berjalan') {
-                    a._ujian_status = 'aktif';
-                } else if (sesi && sesi.status === 'selesai') {
+            // CBT: status bergantung pada sesi CBT dan batas waktu ujian
+            var sesi = sesiMap[a.id];
+            var selesai = a.waktu_selesai_ujian ? new Date(a.waktu_selesai_ujian) : null;
+            var isExpired = selesai && nowTime >= selesai;
+
+            if (sesi && sesi.status === 'berjalan') {
+                if (isExpired) {
                     a._ujian_status = 'kadaluarsa';
+                    // Auto-close sesi di database jika belum sempat tertutup
+                    if (typeof cbtAutoEndSesiImmediate === 'function') {
+                        cbtAutoEndSesiImmediate(sesi.id, a.id);
+                    }
                 } else {
-                    a._ujian_status = 'pending'; // belum pernah ada sesi
+                    a._ujian_status = 'aktif';
                 }
+            } else if (sesi && sesi.status === 'selesai') {
+                a._ujian_status = 'kadaluarsa';
             } else {
-                // Google Form: pakai waktu manual
-                if (a.ujian_aktif === true) {
-                    a._ujian_status = 'aktif';
-                } else if (a.ujian_aktif === false) {
-                    a._ujian_status = 'kadaluarsa';
-                } else {
-                    a._ujian_status = 'pending';
-                }
+                a._ujian_status = 'pending'; // belum pernah ada sesi
             }
         });
 
-        var aktifList = list.filter(function (a) { return a._ujian_status === 'aktif' || a._ujian_status === 'pending'; });
-        var nonaktifList = list.filter(function (a) { return a._ujian_status === 'kadaluarsa'; });
+        // Filter khusus siswa: HANYA tampilkan soal yang sesuai dengan jenjang/kelas siswa di Data Induk Siswa
+        var sKelas = (siswaInfo && siswaInfo.master_kelas) ? siswaInfo.master_kelas.nama_kelas : '';
+        var sTingkat = (siswaInfo && siswaInfo.master_kelas) ? siswaInfo.master_kelas.tingkat : '';
+
+        var filteredList = list;
+        if (currentRole === 'siswa') {
+            filteredList = list.filter(function(a) {
+                if (!siswaInfo || typeof isKelasMatch !== 'function') return false;
+                return isKelasMatch(sKelas, sTingkat, a.kelas);
+            });
+        }
+
+        var aktifList = filteredList.filter(function (a) { return a._ujian_status === 'aktif' || a._ujian_status === 'pending'; });
+        var nonaktifList = filteredList.filter(function (a) { return a._ujian_status === 'kadaluarsa'; });
 
         // ===== Render Tabel Aktif (termasuk pending) =====
         if (aktifList.length === 0) {
-            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Belum ada soal ujian yang aktif, silahkan hubungi admin</td></tr>';
+            var emptyAktifMsg = currentRole === 'siswa'
+                ? 'Belum ada soal ujian yang aktif untuk kelas Anda (' + (sKelas || 'Tingkat Anda') + '). Hubungi guru atau proktor ujian.'
+                : 'Belum ada soal ujian yang aktif, silahkan hubungi admin';
+            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">' + emptyAktifMsg + '</td></tr>';
         } else {
             tbodyAktif.innerHTML = aktifList.map(function (a, i) {
                 var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                 var isPending = a._ujian_status === 'pending';
                 var isSusulan = a.judul && a.judul.indexOf('(Susulan') !== -1;
+                
+                // Cek kesesuaian kelas (strict untuk role siswa)
+                var isAllowed = true;
+                if (currentRole === 'siswa') {
+                    if (!siswaInfo || typeof isKelasMatch !== 'function') {
+                        isAllowed = false;
+                    } else {
+                        isAllowed = isKelasMatch(sKelas, sTingkat, a.kelas);
+                    }
+                }
+
                 var linkBtn, statusBadge;
                 if (isPending) {
                     linkBtn = '<span style="color:#94a3b8;font-size:.82rem;">Belum diaktifkan</span>';
                     statusBadge = '<span class="badge" style="background:rgba(148,163,184,.12);color:#94a3b8;font-size:.75rem;">—</span>';
+                } else if (!isAllowed) {
+                    linkBtn = '<button class="btn btn-sm" disabled style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:not-allowed;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;" title="Ujian ini dikhususkan untuk kelas ' + escHtml(a.kelas || '-') + '"><i data-lucide="lock" style="width:13px;height:13px"></i> Bukan Kelas Anda</button>';
+                    statusBadge = '<span class="badge" style="background:#fef2f2;color:#dc2626;font-size:.75rem;font-weight:700;">Bukan Kelas Anda</span>';
                 } else {
-                    if (a.is_cbt_native) {
-                        linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="radio" style="width:13px;height:13px"></i> Kerjakan CBT</button>';
-                    } else {
-                        linkBtn = a.google_form_url
-                            ? '<a href="' + a.google_form_url + '" target="_blank" class="btn btn-sm" style="background:linear-gradient(135deg,#059669,#047857);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;"><i data-lucide="external-link" style="width:13px;height:13px"></i> Kerjakan (GForm)</a>'
-                            : '<span style="color:var(--text-light);font-size:.82rem;">Link belum tersedia</span>';
-                    }
+                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="radio" style="width:13px;height:13px"></i> Kerjakan CBT</button>';
                     statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Aktif</span>';
                 }
                 if (isSusulan) {
@@ -5938,10 +6297,10 @@ async function loadSoalUjian() {
                 }
                 return '<tr>' +
                     '<td style="text-align:center;">' + (i + 1) + '</td>' +
-                    '<td style="font-weight:600;">' + (a.judul || '-') + '</td>' +
-                    '<td>' + (a.mata_pelajaran || '-') + '</td>' +
-                    '<td>' + (a.kelas || '-') + '</td>' +
-                    '<td>' + (a.tipe_ujian || '-') + '</td>' +
+                    '<td style="font-weight:600;">' + escHtml(a.judul || '-') + '</td>' +
+                    '<td>' + escHtml(a.mata_pelajaran || '-') + '</td>' +
+                    '<td>' + escHtml(a.kelas || '-') + '</td>' +
+                    '<td>' + escHtml(a.tipe_ujian || '-') + '</td>' +
                     '<td>' + tgl + '</td>' +
                     '<td style="text-align:center;">' + (a.waktu_menit || '-') + '</td>' +
                     '<td>' + linkBtn + '</td>' +
@@ -5957,14 +6316,17 @@ async function loadSoalUjian() {
             tbodyNonaktif.innerHTML = nonaktifList.map(function (a, i) {
                 var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                 var isSusulan = a.judul && a.judul.indexOf('(Susulan') !== -1;
-                var isAdmin = currentRole === 'admin';
+                var isAdmin = currentRole === 'admin' || currentRole === 'kurikulum' || currentRole === 'guru';
                 var aksiHtml = '';
-                if (isAdmin && a.is_cbt_native) {
+                if (currentRole === 'admin') {
                     aksiHtml += '<button class="btn btn-sm" onclick="buatUjianSusulan(\'' + a.id + '\')" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;margin-right:.3rem;"><i data-lucide="copy-plus" style="width:11px;height:11px"></i> Susulan</button>';
+                }
+                if (isAdmin) {
+                    aksiHtml += '<button class="btn btn-sm" onclick="openMonitorCbt(\'' + a.id + '\')" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;margin-right:.3rem;" title="Cek & pantau jawaban peserta ujian ini"><i data-lucide="file-check" style="width:11px;height:11px"></i> Cek Jawaban</button>';
                 }
                 aksiHtml += '<button class="btn btn-sm" onclick="lihatPesertaUjian(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;"><i data-lucide="users" style="width:11px;height:11px"></i> Peserta</button>';
 
-                return '<tr style="opacity:.7;">' +
+                return '<tr style="opacity:.85;">' +
                     '<td style="text-align:center;">' + (i + 1) + '</td>' +
                     '<td style="font-weight:600;">' + (a.judul || '-') + (isSusulan ? ' <span style="font-size:.65rem;background:#fef3c7;color:#92400e;padding:.1rem .3rem;border-radius:4px;">Susulan</span>' : '') + '</td>' +
                     '<td>' + (a.mata_pelajaran || '-') + '</td>' +
@@ -6019,8 +6381,7 @@ async function buatUjianSusulan(asesmenId) {
                     bobot_pg: source.bobot_pg,
                     bobot_essay: source.bobot_essay,
                     status: 'terbit',
-                    is_cbt_native: source.is_cbt_native,
-                    google_form_url: null,
+                    is_cbt_native: true,
                     ujian_sent_at: new Date().toISOString(),
                     ujian_aktif: null,
                     tahun_pelajaran: source.tahun_pelajaran,
@@ -6110,7 +6471,7 @@ async function lihatPesertaUjian(asesmenId) {
             if (sesiJawaban.length === 0) {
                 html += '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:.85rem;">Tidak ada peserta di sesi ini.</div>';
             } else {
-                html += '<table class="dash-table" style="margin:0;font-size:.82rem;"><thead><tr><th style="width:35px">No</th><th>Nama Siswa</th><th>Status</th><th>Nilai</th><th>Waktu Kumpul</th></tr></thead><tbody>';
+                html += '<table class="dash-table" style="margin:0;font-size:.82rem;"><thead><tr><th style="width:35px">No</th><th>Nama Siswa</th><th>Status</th><th>Nilai</th><th>Waktu Kumpul</th><th style="text-align:center;">Aksi</th></tr></thead><tbody>';
                 sesiJawaban.forEach(function(j, jIdx) {
                     var nama = j.siswa ? j.siswa.nama_lengkap : 'Unknown';
                     var status = j.status === 'selesai' ? '<span class="badge" style="background:#dcfce7;color:#16a34a;font-size:.72rem;">Selesai</span>'
@@ -6119,7 +6480,8 @@ async function lihatPesertaUjian(asesmenId) {
                         : '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.72rem;">' + (j.status || '-') + '</span>';
                     var nilai = j.nilai !== null && j.nilai !== undefined ? j.nilai : '-';
                     var kumpul = j.waktu_kumpul ? new Date(j.waktu_kumpul).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-                    html += '<tr><td style="text-align:center;">' + (jIdx + 1) + '</td><td style="font-weight:600;">' + nama + '</td><td>' + status + '</td><td style="font-weight:800;">' + nilai + '</td><td>' + kumpul + '</td></tr>';
+                    var btnAksi = '<button class="btn btn-sm btn-outline" onclick="showDetailJawabanSiswaCbt(\'' + j.id + '\')" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Detail Jawaban</button>';
+                    html += '<tr><td style="text-align:center;">' + (jIdx + 1) + '</td><td style="font-weight:600;">' + nama + '</td><td>' + status + '</td><td style="font-weight:800;">' + nilai + '</td><td>' + kumpul + '</td><td style="text-align:center;">' + btnAksi + '</td></tr>';
                 });
                 html += '</tbody></table>';
             }
@@ -6136,9 +6498,21 @@ async function lihatPesertaUjian(asesmenId) {
     }
 }
 
+// --- Buka Pilihan Metode Soal (Guru memilih metode dulu, panel tidak langsung terbuka) ---
+function bukaPilihanMetodeSoal() {
+    var b = document.getElementById('asesmenBuilderArea'); if (b) b.style.display = 'none';
+    var p = document.getElementById('asesmenParseArea'); if (p) p.style.display = 'none';
+    var a = document.getElementById('asesmenAIGenerateArea'); if (a) a.style.display = 'none';
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'block';
+    if (typeof showSection === 'function') showSection('sectionBuatSoal');
+    if (window.lucide) lucide.createIcons();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 // --- Open Builder (new or edit) ---
 async function openAsesmenBuilder(existingId) {
     if (typeof showSection === 'function') showSection('sectionBuatSoal');
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
@@ -6205,6 +6579,16 @@ async function openAsesmenBuilder(existingId) {
         document.getElementById('builderSemester').value = 'Ganjil';
     }
 
+    // Sesuaikan tombol submit berdasarkan role
+    var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+    var btnSubmit = document.getElementById('btnSubmitAsesmen');
+    if (btnSubmit) {
+        btnSubmit.innerHTML = isAdminKurikulum
+            ? '<i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke CBT'
+            : '<i data-lucide="send" style="width:16px;height:16px"></i> Simpan & Ajukan ke Admin';
+        btnSubmit.className = isAdminKurikulum ? 'btn btn-accent' : 'btn btn-primary';
+    }
+
     renderSoalCards();
     if (window.lucide) lucide.createIcons();
 
@@ -6215,10 +6599,13 @@ async function openAsesmenBuilder(existingId) {
 function closeAsesmenBuilder() {
     document.getElementById('asesmenBuilderArea').style.display = 'none';
     asesmenBuilderSoalList = [];
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'block';
+    if (window.lucide) lucide.createIcons();
 }
 
 function openParseArea() {
     document.getElementById('builderAsesmenId').value = '';
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'none';
     document.getElementById('asesmenParseArea').style.display = 'block';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
@@ -6232,15 +6619,21 @@ function openParseArea() {
         var yearVal = lblYear.textContent;
         parseTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
     }
+    var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+    var btnP = document.getElementById('btnParseTerbitkan');
+    if (btnP) btnP.innerHTML = isAdminKurikulum ? '<i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke CBT' : '<i data-lucide="send" style="width:16px;height:16px"></i> Simpan & Ajukan ke Admin';
     document.getElementById('asesmenParseArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function closeParseArea() {
     document.getElementById('asesmenParseArea').style.display = 'none';
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'block';
+    if (window.lucide) lucide.createIcons();
 }
 
 function openAIArea() {
     document.getElementById('builderAsesmenId').value = '';
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'none';
     document.getElementById('asesmenAIGenerateArea').style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
@@ -6254,109 +6647,43 @@ function openAIArea() {
         var yearVal = lblYear.textContent;
         aiTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
     }
+    var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+    var btnA = document.getElementById('btnAITerbitkan');
+    if (btnA) btnA.innerHTML = isAdminKurikulum ? '<i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke CBT' : '<i data-lucide="send" style="width:16px;height:16px"></i> Simpan & Ajukan ke Admin';
     document.getElementById('asesmenAIGenerateArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function closeAIArea() {
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
-}
-
-// --- Google Form Link Area (Paste link dari guru) ---
-function openGoogleFormLinkArea() {
-    document.getElementById('builderAsesmenId').value = '';
-    document.getElementById('asesmenGFormLinkArea').style.display = 'block';
-    document.getElementById('asesmenBuilderArea').style.display = 'none';
-    document.getElementById('asesmenParseArea').style.display = 'none';
-    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
-
-    populateMapelNameDropdown('gformMapel', '');
-    populateKelasNameDropdown('gformKelas', '');
-    var lblYear = document.getElementById('lblActiveYear');
-    var gformTahun = document.getElementById('gformTahun');
-    if (lblYear && gformTahun) {
-        var yearVal = lblYear.textContent;
-        gformTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
-    }
-    // Reset form fields
-    document.getElementById('gformJudul').value = '';
-    document.getElementById('gformTipe').value = 'PH';
-    document.getElementById('gformSemester').value = 'Ganjil';
-    document.getElementById('gformWaktu').value = '';
-    document.getElementById('gformTanggal').value = '';
-    document.getElementById('gformLink').value = '';
-
-    document.getElementById('asesmenGFormLinkArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    var ph = document.getElementById('pilihMetodePlaceholder'); if (ph) ph.style.display = 'block';
     if (window.lucide) lucide.createIcons();
 }
 
-function closeGoogleFormLinkArea() {
-    document.getElementById('asesmenGFormLinkArea').style.display = 'none';
-}
+// --- Google Form Link Area (REMOVED — CBT Native only) ---
+function openGoogleFormLinkArea() { showToast('Fitur Google Form sudah dihapus. Gunakan CBT Native.', 'info'); }
+function closeGoogleFormLinkArea() { }
+async function saveGoogleFormLink() { showToast('Fitur Google Form sudah dihapus. Gunakan CBT Native.', 'info'); }
 
-async function saveGoogleFormLink() {
-    var judul = (document.getElementById('gformJudul') || {}).value || '';
-    var tipe = (document.getElementById('gformTipe') || {}).value || 'PH';
-    var mapel = (document.getElementById('gformMapel') || {}).value || '';
-    var kelas = (document.getElementById('gformKelas') || {}).value || '';
-    var tahun = (document.getElementById('gformTahun') || {}).value || '';
-    var semester = (document.getElementById('gformSemester') || {}).value || 'Ganjil';
-    var waktu = (document.getElementById('gformWaktu') || {}).value || '';
-    var tanggal = (document.getElementById('gformTanggal') || {}).value || '';
-    var link = (document.getElementById('gformLink') || {}).value || '';
-
-    // Validasi
-    if (!judul.trim()) { showToast('Judul Asesmen wajib diisi!', 'warning'); return; }
-    if (!mapel) { showToast('Mata Pelajaran wajib dipilih!', 'warning'); return; }
-    if (!kelas) { showToast('Kelas wajib dipilih!', 'warning'); return; }
-    if (!waktu) { showToast('Waktu pengerjaan wajib diisi!', 'warning'); return; }
-    if (!tanggal) { showToast('Tanggal ujian wajib diisi!', 'warning'); return; }
-    if (!link.trim()) { showToast('Link Google Form wajib diisi!', 'warning'); return; }
-
-    // Validasi format URL Google Form
-    var linkLower = link.trim().toLowerCase();
-    if (linkLower.indexOf('docs.google.com/forms') === -1 && linkLower.indexOf('forms.gle') === -1 && linkLower.indexOf('google.com') === -1) {
-        showToast('Link yang dimasukkan bukan URL Google Form yang valid!', 'warning');
-        return;
-    }
-
-    try {
-        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan link Google Form...');
-
-        var payload = {
-            judul: judul.trim(),
-            mata_pelajaran: mapel,
-            kelas: kelas,
-            tipe_ujian: tipe,
-            tahun_pelajaran: tahun || null,
-            semester: semester,
-            waktu_menit: parseInt(waktu) || 0,
-            tanggal_pelaksanaan: tanggal,
-            waktu_mulai_ujian: null,
-            waktu_selesai_ujian: null,
-            google_form_url: link.trim(),
-            status: 'terbit',
-            bobot_pg: 0,
-            bobot_essay: 0,
-            published_at: new Date().toISOString(),
-            created_by: currentUser ? currentUser.id : null,
-            updated_at: new Date().toISOString()
-        };
-
-        const { data, error } = await supabaseClient.from('asesmen').insert([payload]).select('id').single();
-        if (error) throw error;
-
-        showToast('✅ Link Google Form berhasil disimpan dan akan tampil di Riwayat Asesmen!', 'success');
-        closeGoogleFormLinkArea();
-        loadAsesmenList();
-    } catch (e) {
-        showToast('Gagal menyimpan: ' + e.message, 'error');
-    } finally {
-        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-    }
-}
 
 async function editAsesmenDraft(id) {
-    await openAsesmenBuilder(id);
+    if (!id) return;
+    try {
+        const { data: asm, error } = await supabaseClient.from('asesmen').select('*').eq('id', id).single();
+        if (error || !asm) throw new Error('Data soal tidak ditemukan.');
+        
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+        if (asm.status === 'terbit') {
+            showToast('Soal yang sudah siap diuji (terbit) tidak dapat diedit kembali.', 'warning');
+            return;
+        }
+        if (!isAdminKurikulum && currentUser && asm.created_by !== currentUser.id) {
+            showToast('Anda hanya dapat mengedit soal buatan Anda sendiri.', 'error');
+            return;
+        }
+        await openAsesmenBuilder(id);
+    } catch (e) {
+        showToast('Gagal membuka editor: ' + e.message, 'error');
+    }
 }
 
 async function previewAsesmen(id) {
@@ -6380,7 +6707,8 @@ async function previewAsesmen(id) {
                 contentHtml += '<div style="font-weight:600;margin-bottom:6px;font-size:0.9rem;">' + (i + 1) + '. ' + (s.tipe_soal === 'pg' ? '<span style="color:#3b82f6">[PG]</span>' : '<span style="color:#8b5cf6">[Essay]</span>') + ' ' + (s.naskah_soal.replace(/\n/g, '<br>')) + '</div>';
 
                 if (s.gambar_url) {
-                    contentHtml += '<img src="' + s.gambar_url + '" style="max-width:100%;max-height:150px;border-radius:6px;margin-bottom:8px;"/>';
+                    var directImg = typeof getDirectImageUrl === 'function' ? getDirectImageUrl(s.gambar_url) : s.gambar_url;
+                    contentHtml += '<img src="' + escAttr(directImg) + '" referrerpolicy="no-referrer" style="max-width:100%;max-height:160px;object-fit:contain;border-radius:6px;margin-bottom:8px;border:1px solid #e2e8f0;background:#f8fafc;" />';
                 }
 
                 if (s.tipe_soal === 'pg') {
@@ -6567,20 +6895,25 @@ function collectSoalFromDOM() {
 async function handleSoalImageUpload(idx, inputEl) {
     var file = inputEl.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-        showToast('Ukuran gambar maksimal 2MB!', 'warning');
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Ukuran gambar maksimal 5MB!', 'warning');
         inputEl.value = '';
         return;
     }
 
-    showGlobalLoader('Mengupload gambar soal...');
+    collectSoalFromDOM();
+    // Pratinjau lokal instan menggunakan ObjectURL agar guru langsung melihat gambar saat membuat/mengedit soal
+    var localBlob = URL.createObjectURL(file);
+    asesmenBuilderSoalList[idx]._localPreview = localBlob;
+    renderSoalCards();
+
+    showGlobalLoader('Mengupload gambar soal ke Google Drive...');
     try {
         var publicUrl = await uploadToGoogleDrive(file, 'soal');
-
         collectSoalFromDOM();
         asesmenBuilderSoalList[idx].gambar_url = publicUrl;
         renderSoalCards();
-        showToast('Gambar berhasil diupload!', 'success');
+        showToast('Gambar berhasil disimpan!', 'success');
     } catch (e) {
         showToast('Gagal upload gambar: ' + e.message, 'error');
     } finally {
@@ -6591,6 +6924,7 @@ async function handleSoalImageUpload(idx, inputEl) {
 function removeSoalImage(idx) {
     collectSoalFromDOM();
     asesmenBuilderSoalList[idx].gambar_url = '';
+    asesmenBuilderSoalList[idx]._localPreview = '';
     renderSoalCards();
 }
 
@@ -6634,13 +6968,15 @@ function renderSoalCards() {
             '<div class="form-group"><label class="form-label">Naskah Soal</label>' +
             '<textarea class="form-input soal-naskah-input" rows="2" placeholder="Tulis soal di sini...">' + escHtml(s.naskah || '') + '</textarea></div>';
 
-        // Image upload field
-        var imgPreview = s.gambar_url ? '<img src="' + escAttr(s.gambar_url) + '" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #e2e8f0;margin-top:0.5rem;" />' : '';
+        // Image upload field dengan pratinjau stabil & referrerpolicy anti-blokir
+        var rawImgUrl = s._localPreview || s.gambar_url || '';
+        var displayImgUrl = s._localPreview || (typeof getDirectImageUrl === 'function' ? getDirectImageUrl(rawImgUrl) : rawImgUrl);
+        var imgPreview = displayImgUrl ? '<img src="' + escAttr(displayImgUrl) + '" referrerpolicy="no-referrer" onerror="if(!this._hasRetried){this._hasRetried=1;var m=this.src.match(/\\/d\\/([a-zA-Z0-9_-]+)/);if(m){this.src=\'https://lh3.googleusercontent.com/d/\'+m[1];}else{this.style.opacity=\'0.3\';}}" style="max-width:240px;max-height:160px;object-fit:contain;border-radius:8px;border:1px solid #cbd5e1;background:#f8fafc;margin-top:0.5rem;display:inline-block;" />' : '';
         html += '<div class="form-group" style="margin-bottom:0.5rem;">' +
             '<label class="form-label" style="font-size:0.8rem;"><i data-lucide="image" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"></i>Gambar Soal (Opsional)</label>' +
             '<input type="file" class="form-input soal-gambar-input" accept="image/*" onchange="handleSoalImageUpload(' + i + ', this)" style="font-size:0.8rem;padding:6px;" />' +
             '<input type="hidden" class="soal-gambar-url" value="' + escAttr(s.gambar_url || '') + '" />' +
-            (imgPreview ? '<div class="soal-gambar-preview">' + imgPreview + ' <button type="button" class="btn-icon btn-icon-red" onclick="removeSoalImage(' + i + ')" title="Hapus Gambar" style="margin-left:0.5rem;vertical-align:top;"><i data-lucide="x" style="width:14px;height:14px"></i></button></div>' : '') +
+            (imgPreview ? '<div class="soal-gambar-preview" style="margin-top:0.3rem;">' + imgPreview + ' <button type="button" class="btn-icon btn-icon-red" onclick="removeSoalImage(' + i + ')" title="Hapus Gambar" style="margin-left:0.5rem;vertical-align:top;"><i data-lucide="x" style="width:14px;height:14px"></i></button></div>' : '') +
             '</div>';
 
         if (isPG) {
@@ -6774,13 +7110,20 @@ async function saveDraftAsesmen(source) {
         var asesmenId = existingId;
         if (existingId) {
             // Jangan ubah status jika sudah terbit
-            const { data: curr } = await supabaseClient.from('asesmen').select('status').eq('id', existingId).single();
-            if(!curr || curr.status === 'draft') asesmenPayload.status = 'draft';
+            const { data: curr } = await supabaseClient.from('asesmen').select('status, review_status').eq('id', existingId).single();
+            if (!curr || curr.status === 'draft') {
+                asesmenPayload.status = 'draft';
+                // Jika sedang revisi, pertahankan status atau kembalikan ke draft saat diedit
+                if (!curr || !curr.review_status) asesmenPayload.review_status = 'draft';
+            }
             
             const { error } = await supabaseClient.from('asesmen').update(asesmenPayload).eq('id', existingId);
             if (error) throw error;
         } else {
+            asesmenPayload.status = 'draft';
+            asesmenPayload.review_status = 'draft';
             asesmenPayload.created_by = currentUser ? currentUser.id : null;
+            asesmenPayload.created_by_name = (currentUser && currentUser.name) ? currentUser.name : (currentUser ? currentUser.email : 'Guru');
             const { data, error } = await supabaseClient.from('asesmen').insert([asesmenPayload]).select('id').single();
             if (error) throw error;
             asesmenId = data.id;
@@ -6815,15 +7158,16 @@ async function saveDraftAsesmen(source) {
             if (soalErr) throw soalErr;
         }
 
-        showToast('Draft asesmen berhasil disimpan! (' + asesmenBuilderSoalList.length + ' soal)', 'success');
-        // Tutup semua panel setelah simpan (kecuali dipanggil internal oleh publishToGoogleForm)
+        showToast('Soal asesmen berhasil disimpan! (' + asesmenBuilderSoalList.length + ' butir soal)', 'success');
+        // Tutup semua panel setelah simpan
         if (source !== false) {
             closeAsesmenBuilder();
             closeAutoGenerateArea();
             resetAsesmenForms();
         }
         loadAsesmenList();
-    } catch (e) { showToast('Gagal menyimpan draft: ' + e.message, 'error'); }
+        if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
+    } catch (e) { showToast('Gagal menyimpan soal: ' + e.message, 'error'); }
     finally { hideGlobalLoader(); }
 }
 
@@ -6837,6 +7181,7 @@ async function deleteAsesmen(id) {
             showToast('Asesmen dipindahkan ke Sampah. Pulihkan dalam 30 hari.', 'success');
             closeAsesmenBuilder();
             loadAsesmenList();
+            if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
             loadSampahCount();
         } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
@@ -7204,11 +7549,14 @@ function submitAutoGenerate(source) {
         var jdl = (document.getElementById(prefix + 'Judul') || {}).value || '';
         if (!jdl.trim()) { showToast('Isi judul asesmen!', 'warning'); return; }
 
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+
         showCustomConfirm(
-            'Terbitkan Langsung?',
-            'Anda sudah melihat pratinjaunya di form bawah.' +
-            '<br>Sistem akan otomatis menge-save data ini dan menerbitkannya ke Google Form.<br>Lanjutkan?',
-            'Ya, Terbitkan',
+            isAdminKurikulum ? 'Terbitkan ke CBT Native?' : 'Ajukan Soal ke Admin?',
+            isAdminKurikulum
+                ? 'Sistem akan menyimpan soal dan langsung menerbitkannya ke CBT Native.'
+                : 'Sistem akan menyimpan soal dan mengirimkannya ke Admin untuk ditinjau.',
+            isAdminKurikulum ? 'Ya, Terbitkan CBT' : 'Ya, Ajukan ke Admin',
             function () {
                 if (source === 'ai') closeAIArea();
                 else closeParseArea();
@@ -7218,7 +7566,7 @@ function submitAutoGenerate(source) {
     }
 }
 
-// --- Publish to Google Form ---
+// --- Publish to CBT Native (Admin) atau Ajukan ke Admin (Guru) ---
 function confirmPublishAsesmen() {
     collectSoalFromDOM();
 
@@ -7234,11 +7582,11 @@ function confirmPublishAsesmen() {
     inputDate.setHours(0, 0, 0, 0);
 
     if (inputDate < today) {
-        showToast('Gagal Menerbitkan: Tanggal ujian (' + tanggal + ') tidak boleh sebelum hari ini!', 'error');
+        showToast('Gagal: Tanggal ujian (' + tanggal + ') tidak boleh sebelum hari ini!', 'error');
         return;
     }
 
-    if (asesmenBuilderSoalList.length === 0) { showToast('Tambahkan minimal 1 soal sebelum menerbitkan!', 'warning'); return; }
+    if (asesmenBuilderSoalList.length === 0) { showToast('Tambahkan minimal 1 soal sebelum melanjutkan!', 'warning'); return; }
 
     // Validate all PG have kunci jawaban
     var pgWithoutKey = asesmenBuilderSoalList.filter(function (s) { return s.tipe === 'pg' && !s.kunci; });
@@ -7260,171 +7608,72 @@ function confirmPublishAsesmen() {
     var totalPoin = (pgCount * bobotPG) + (essayCount * bobotEssay);
     
     if (totalPoin !== 100) {
-        showToast('Gagal Menerbitkan: Total bobot saat ini (' + totalPoin + '). Harap sesuaikan bobot x soal agar total menjadi 100 (misal: 50 soal PG x 2 = 100)! Anda tetap bisa menyimpannya ke Draft.', 'warning');
+        showToast('Peringatan: Total bobot saat ini (' + totalPoin + '). Harap sesuaikan bobot x soal agar total menjadi 100 (misal: 50 soal PG x 2 = 100)! Anda tetap bisa menyimpannya ke Draft.', 'warning');
         return;
     }
 
-    showCustomConfirm(
-        'Terbitkan Asesmen?',
-        'Asesmen <strong>"' + escHtml(judul) + '"</strong> akan diterbitkan.<br><br>' +
-        'Total: <strong>' + asesmenBuilderSoalList.length + ' soal</strong> (' + pgCount + ' PG, ' + essayCount + ' Essay)<br><br>' +
-        'Setelah diterbitkan, soal TIDAK bisa diedit lagi.',
-        'Lanjut Pilih Platform',
-        function () { showPublishChoiceModal(judul); }
-    );
+    var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+
+    if (isAdminKurikulum) {
+        showCustomConfirm(
+            'Terbitkan ke CBT Native?',
+            'Asesmen <strong>"' + escHtml(judul) + '"</strong> akan langsung diterbitkan ke CBT Native.<br><br>' +
+            'Total: <strong>' + asesmenBuilderSoalList.length + ' soal</strong> (' + pgCount + ' PG, ' + essayCount + ' Essay)<br><br>' +
+            'Setelah diterbitkan, ujian siap diakses oleh siswa.',
+            'Ya, Terbitkan CBT',
+            function () { publishToCbtNative(); }
+        );
+    } else {
+        showCustomConfirm(
+            'Ajukan Soal ke Admin?',
+            'Asesmen <strong>"' + escHtml(judul) + '"</strong> akan disimpan dan dikirimkan ke <strong>Admin/Kurikulum</strong> untuk diverifikasi sebelum diterbitkan ke CBT.<br><br>' +
+            'Total: <strong>' + asesmenBuilderSoalList.length + ' soal</strong> (' + pgCount + ' PG, ' + essayCount + ' Essay)',
+            'Ya, Ajukan ke Admin',
+            function () { submitAsesmenForReview(); }
+        );
+    }
 }
 
-function showPublishChoiceModal(judul) {
-    var overlay = document.getElementById('notifModal');
-    var iconEl = document.getElementById('notifIcon');
-    var titleEl = document.getElementById('notifTitle');
-    var msgEl = document.getElementById('notifMessage');
-    var actionsEl = document.getElementById('notifActions');
-
-    iconEl.innerHTML = '<i data-lucide="send" style="width:24px;height:24px;color:#f59e0b;"></i>';
-    iconEl.style.background = 'rgba(245,158,11,.1)';
-    titleEl.textContent = 'Pilih Platform Ujian';
-    titleEl.style.color = '#f59e0b';
-    msgEl.innerHTML = 'Asesmen <strong>"' + escHtml(judul) + '"</strong> sudah siap.<br>Pilih ke mana asesmen akan diterbitkan:';
-    
-    actionsEl.innerHTML = 
-        '<div style="display:flex; flex-direction:column; gap:0.75rem; width:100%;">' +
-          '<button class="btn btn-primary" onclick="closeNotifModal(); publishToCbtNative();" style="width:100%; justify-content:center; padding:0.8rem; background:#3b82f6; border-color:#3b82f6; color:white; font-size:1rem; border-radius:8px;"><i data-lucide="monitor" style="width:18px;height:18px;margin-right:6px;"></i> CBT Native</button>' +
-          '<button class="btn btn-accent" onclick="closeNotifModal(); publishToGoogleForm();" style="width:100%; justify-content:center; padding:0.8rem; background:#10b981; border-color:#10b981; color:white; font-size:1rem; border-radius:8px;"><i data-lucide="file-text" style="width:18px;height:18px;margin-right:6px;"></i> Google Form</button>' +
-          '<button class="btn btn-outline" onclick="closeNotifModal()" style="width:100%; justify-content:center; padding:0.8rem; font-size:1rem; border-radius:8px;">Batal</button>' +
-        '</div>';
-
-    overlay.classList.add('active');
-    if (window.lucide) lucide.createIcons();
-}
-
-async function publishToGoogleForm() {
-    // 1. Save draft first
+// --- Guru: Simpan & Ajukan Soal ke Admin dari Builder ---
+async function submitAsesmenForReview() {
     await saveDraftAsesmen(false);
 
     var asesmenId = (document.getElementById('builderAsesmenId') || {}).value;
     if (!asesmenId) { showToast('Simpan draft terlebih dahulu!', 'error'); return; }
 
-    // 2. Get GAS URL
-    var gasUrl = (document.getElementById('gasUrlInput') || {}).value || '';
-    if (!gasUrl.trim()) {
-        showToast('URL Google Apps Script belum dikonfigurasi!', 'warning');
-        return;
-    }
-
-    // 3. Prepare payload
-    var judul = (document.getElementById('builderJudul') || {}).value || '';
-    var mapel = (document.getElementById('builderMapel') || {}).value || '';
-    var kelas = (document.getElementById('builderKelas') || {}).value || '';
-    var tipe = (document.getElementById('builderTipe') || {}).value || '';
-    var waktu = (document.getElementById('builderWaktu') || {}).value || '';
-    var tanggal = (document.getElementById('builderTanggal') || {}).value || '';
-    var tahun = (document.getElementById('builderTahun') || {}).value || '';
-    var semester = (document.getElementById('builderSemester') || {}).value || '';
-    var bobotPG = parseInt((document.getElementById('builderBobotPG') || {}).value) || 0;
-    var bobotEssay = parseInt((document.getElementById('builderBobotEssay') || {}).value) || 0;
-
-    collectSoalFromDOM();
-
-    // Validate Points (Sudah dipindah ke confirmPublishAsesmen)
-    var jmlPG = asesmenBuilderSoalList.filter(s => s.tipe === 'pg').length;
-    var jmlEssay = asesmenBuilderSoalList.filter(s => s.tipe === 'essay').length;
-    if (jmlPG === 0 && jmlEssay === 0) {
-        showToast('Tidak ada soal yang dibuat!', 'warning');
-        return;
-    }
-
-    var payload = {
-        judul: judul,
-        tipe: tipe,
-        mapel: mapel,
-        kelas: kelas,
-        waktu: waktu,
-        tanggal: tanggal,
-        tahun: tahun,
-        semester: semester,
-        bobotPG: bobotPG,
-        bobotEssay: bobotEssay,
-        jmlPG: jmlPG,
-        jmlEssay: jmlEssay,
-        soal: asesmenBuilderSoalList.map(function (s, i) {
-            var item = {
-                nomor: i + 1,
-                tipe: s.tipe,
-                naskah: s.naskah || '',
-                gambar_url: s.gambar_url || ''
-            };
-            if (s.tipe === 'pg') {
-                item.opsi = { a: s.opsi_a || '', b: s.opsi_b || '', c: s.opsi_c || '', d: s.opsi_d || '' };
-                item.kunci = s.kunci || '';
-            } else if (s.tipe === 'essay') {
-                item.kunci = s.kunci || '';
-            }
-            return item;
-        })
-    };
-
-    // 4. Send to GAS
-    showGlobalLoader('Menerbitkan ke Google Form... Harap tunggu');
+    showGlobalLoader('Mengajukan soal ke Admin...');
     try {
-        var response = await fetch(gasUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        });
-        var result = await response.json();
+        const { error } = await supabaseClient.from('asesmen').update({
+            review_status: 'menunggu_review',
+            catatan_revisi: null,
+            ujian_sent_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        }).eq('id', asesmenId);
 
-        if (result.status === 'success' || result.formUrl) {
-            // Update asesmen status in Supabase
-            var updatePayload = {
-                status: 'terbit',
-                published_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            if (result.formUrl) updatePayload.google_form_url = result.formUrl;
-            if (result.sheetUrl) updatePayload.google_sheet_url = result.sheetUrl;
-            if (result.editUrl) updatePayload.google_form_edit_url = result.editUrl;
-            updatePayload.tahun_pelajaran = tahun;
-            updatePayload.semester = semester;
-            updatePayload.is_cbt_native = false; // Reset to Google Form
-            updatePayload.ujian_sent_at = null;
-            updatePayload.ujian_aktif = null;
+        if (error) throw error;
 
-            const { error: errUpdate } = await supabaseClient.from('asesmen').update(updatePayload).eq('id', asesmenId);
-            if (errUpdate) throw errUpdate;
+        showToast('Soal berhasil diajukan ke Admin untuk ditinjau!', 'success');
 
-            // Auto-clone to draft as a backup
-            try {
-                await supabaseClient.rpc('clone_asesmen_to_draft', { p_asesmen_id: asesmenId });
-            } catch (cloneErr) {
-                console.warn("Gagal membuat clone backup:", cloneErr);
-            }
-
-            var warningHtml = '';
-            if (result.message && result.message.indexOf('PERINGATAN') !== -1) {
-                var warnText = result.message.substring(result.message.indexOf('PERINGATAN')).replace(/\n/g, '<br>');
-                warningHtml = '<div style="margin-top:1rem;padding:1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#d97706;font-size:0.85rem;">' + warnText + '</div>';
-            }
-
-            showNotifModal('Berhasil Diterbitkan! 🎉',
-                'Soal asesmen berhasil dikirim ke Google Form!<br><br>' +
-                (result.formUrl ? '📋 <strong>Link Form:</strong><br><a href="' + result.formUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.formUrl + '</a>' : '') +
-                (result.sheetUrl ? '<br><br>📊 <strong>Link Sheets:</strong><br><a href="' + result.sheetUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.sheetUrl + '</a>' : '') +
-                warningHtml,
-                'success');
-
-            closeAsesmenBuilder();
-            closeAutoGenerateArea();
-            resetAsesmenForms();
-            loadAsesmenList();
-        } else {
-            throw new Error(result.message || result.error || 'Gagal membuat Google Form');
+        if (typeof closeAsesmenBuilder === 'function') closeAsesmenBuilder();
+        if (typeof showSection === 'function') showSection('sectionManajemenAsesmen');
+        if (typeof switchAsesmenTab === 'function') {
+            var tabs = document.querySelectorAll('.asesmen-tab');
+            if (tabs && tabs[1]) switchAsesmenTab('review', tabs[1]);
         }
     } catch (e) {
-        showNotifModal('Gagal Menerbitkan', 'Terjadi kesalahan saat mengirim ke Google Apps Script:<br><br><strong>' + e.message + '</strong><br><br>Pastikan URL GAS benar dan sudah di-deploy sebagai Web App.', 'error');
+        showToast('Gagal mengajukan: ' + e.message, 'error');
     } finally {
         hideGlobalLoader();
     }
+}
+
+function showPublishChoiceModal(judul) {
+    confirmPublishAsesmen();
+}
+
+async function publishToGoogleForm() {
+    showToast('Fitur Google Form sudah dinonaktifkan. Mengalihkan ke CBT Native...', 'info');
+    await publishToCbtNative();
 }
 
 async function publishToCbtNative() {
@@ -7437,6 +7686,7 @@ async function publishToCbtNative() {
     try {
         const { error } = await supabaseClient.from('asesmen').update({ 
             status: 'terbit', 
+            review_status: 'disetujui',
             is_cbt_native: true, 
             published_at: new Date().toISOString(), 
             updated_at: new Date().toISOString(),
@@ -7470,4 +7720,4 @@ async function publishToCbtNative() {
     }
 }
 
-// ============================================================
+// ============================================================
