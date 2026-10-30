@@ -12,20 +12,6 @@ let currentRole = null;
 try {
     if (window.supabase && window.supabase.createClient) {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Listener for Password Recovery Redirect
-        supabaseClient.auth.onAuthStateChange(function (event, session) {
-            if (event === 'PASSWORD_RECOVERY') {
-                setTimeout(function () {
-                    // Tutup modal lain bila ada yang terbuka
-                    var lm = document.getElementById('loginModal');
-                    if (lm) lm.classList.remove('active');
-
-                    var rm = document.getElementById('resetPasswordModal');
-                    if (rm) rm.classList.add('active');
-                }, 500);
-            }
-        });
     }
 } catch (e) { console.warn('Supabase init error:', e); }
 
@@ -166,6 +152,128 @@ async function uploadToImgBB(file) {
 }
 
 // ============================================================
+// VALIDASI & KESESUAIAN JENJANG KELAS SISWA VS ASESMEN
+// ============================================================
+function extractJenjang(val) {
+    if (!val) return null;
+    var str = String(val).toUpperCase().trim();
+    if (/\bVII\b|KELAS\s*VII\b/i.test(str)) return 7;
+    if (/\bVIII\b|KELAS\s*VIII\b/i.test(str)) return 8;
+    if (/\bIX\b|KELAS\s*IX\b/i.test(str)) return 9;
+    var m = str.match(/\b([789])\b/) || str.match(/([789])/);
+    if (m) return parseInt(m[1], 10);
+    return null;
+}
+
+function isKelasMatch(siswaKelasNama, siswaTingkat, asesmenKelas) {
+    if (!asesmenKelas) return true;
+    var sJenjang = extractJenjang(siswaTingkat) || extractJenjang(siswaKelasNama);
+    var aJenjang = extractJenjang(asesmenKelas);
+
+    // Jika jenjang asesmen terdeteksi tapi jenjang siswa tidak → TOLAK (strict)
+    if (aJenjang && !sJenjang) {
+        return false;
+    }
+
+    // Jika beda jenjang (misal siswa kelas 9 vs asesmen kelas 7) → PASTI TOLAK
+    if (sJenjang && aJenjang && sJenjang !== aJenjang) {
+        return false;
+    }
+
+    var cleanSiswa = String(siswaKelasNama || '').toUpperCase().replace(/[\s\-_]/g, '');
+    var cleanAsm = String(asesmenKelas || '').toUpperCase().replace(/[\s\-_]/g, '');
+
+    // Jika sama persis
+    if (cleanSiswa && cleanAsm && cleanSiswa === cleanAsm) return true;
+
+    // Jika asesmen untuk seluruh jenjang (misal "Kelas 7", "7", "Semua Kelas 7")
+    if (sJenjang && (cleanAsm === String(sJenjang) || cleanAsm === ('KELAS' + sJenjang) || cleanAsm === ('SEMUAKELAS' + sJenjang) || cleanAsm === ('TINGKAT' + sJenjang))) {
+        return true;
+    }
+
+    // Jika asesmen menargetkan kelas khusus (misal asesmen 7A vs siswa 7B)
+    var asmSub = cleanAsm.match(/([789])([A-Z]+)/);
+    var siswaSub = cleanSiswa.match(/([789])([A-Z]+)/);
+    if (asmSub && siswaSub) {
+        if (asmSub[1] === siswaSub[1] && asmSub[2] !== siswaSub[2]) {
+            return false;
+        }
+    }
+
+    // Strict fallback: hanya izinkan jika jenjang sama dan sudah terverifikasi
+    if (sJenjang && aJenjang) return sJenjang === aJenjang;
+
+    // Jika tidak ada jenjang di kedua sisi, tolak (fail-safe)
+    return false;
+}
+
+// Dapatkan data siswa yang sedang login dari Data Induk Siswa secara akurat
+async function getLoggedStudentInfo() {
+    if (!currentUser || !supabaseClient) return null;
+    try {
+        var sData = null;
+
+        // 1. Ambil berdasarkan user_id akun login
+        if (currentUser.id) {
+            const { data } = await supabaseClient
+                .from('siswa')
+                .select('id, nama_lengkap, email, kelas_id, master_kelas(id, nama_kelas, tingkat)')
+                .eq('user_id', currentUser.id)
+                .maybeSingle();
+            if (data) sData = data;
+        }
+
+        // 2. Fallback berdasarkan email jika user_id belum tertaut
+        if (!sData && currentUser.email) {
+            const { data } = await supabaseClient
+                .from('siswa')
+                .select('id, nama_lengkap, email, kelas_id, master_kelas(id, nama_kelas, tingkat)')
+                .eq('email', currentUser.email)
+                .maybeSingle();
+            if (data) {
+                sData = data;
+                // Auto tautkan user_id ke data siswa
+                supabaseClient.from('siswa').update({ user_id: currentUser.id }).eq('id', sData.id).then();
+            }
+        }
+
+        // 3. Fallback berdasarkan nama_lengkap
+        if (!sData && currentUser.name) {
+            const { data } = await supabaseClient
+                .from('siswa')
+                .select('id, nama_lengkap, email, kelas_id, master_kelas(id, nama_kelas, tingkat)')
+                .ilike('nama_lengkap', currentUser.name.trim())
+                .maybeSingle();
+            if (data) {
+                sData = data;
+                supabaseClient.from('siswa').update({ user_id: currentUser.id }).eq('id', sData.id).then();
+            }
+        }
+
+        // Pastikan nama_kelas dan tingkat terisi meskipun join relasi master_kelas kosong
+        if (sData) {
+            var sKelas = sData.master_kelas ? sData.master_kelas.nama_kelas : '';
+            var sTingkat = sData.master_kelas ? sData.master_kelas.tingkat : '';
+            if ((!sKelas || !sTingkat) && sData.kelas_id && typeof masterKelasList !== 'undefined' && masterKelasList) {
+                var mk = masterKelasList.find(function(k) { return k.id === sData.kelas_id; });
+                if (mk) {
+                    sData.master_kelas = {
+                        id: mk.id,
+                        nama_kelas: mk.nama_kelas,
+                        tingkat: mk.tingkat
+                    };
+                }
+            }
+        }
+
+        return sData;
+    } catch (e) {
+        console.warn('getLoggedStudentInfo error:', e);
+        return null;
+    }
+}
+
+// ============================================================
 // GLOBAL LOADER OVERLAY
 // ============================================================
 function showGlobalLoader(text) {
@@ -188,12 +296,32 @@ function closeApiKeyModal() {
     if (input) input.value = '';
 }
 
+function sanitizeGroqModel(model) {
+    if (!model || typeof model !== 'string') return 'qwen/qwen3.8-27b';
+    var clean = model.trim();
+    // Model yang tidak aktif / invalid / compound / llama-3 lama di Groq
+    if (
+        clean.toLowerCase().includes('compound') ||
+        clean.toLowerCase().includes('llama-3') ||
+        clean.toLowerCase().includes('mixtral') ||
+        clean.toLowerCase().includes('gemma') ||
+        clean === 'llama-3.3-70b-versatile' ||
+        clean === 'llama-3.1-8b-instant' ||
+        clean === 'llama-3.1-70b-versatile'
+    ) {
+        return 'qwen/qwen3.8-27b';
+    }
+    if (!clean) return 'qwen/qwen3.8-27b';
+    return clean;
+}
+
 async function saveApiKeyBaru() {
     const inputKey = document.getElementById('aiApiKeyInput') || document.getElementById('inputApiKeyBaru');
     const inputModel = document.getElementById('aiModelInput');
     if (!inputKey) return;
     const newKey = inputKey.value.trim();
-    const newModel = inputModel ? inputModel.value.trim() : 'llama-3.1-8b-instant';
+    const rawModel = inputModel ? inputModel.value.trim() : 'qwen/qwen3.8-27b';
+    const newModel = sanitizeGroqModel(rawModel);
     
     if (newKey) {
         if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan Konfigurasi AI...');
@@ -207,9 +335,10 @@ async function saveApiKeyBaru() {
 
         localStorage.setItem('GROQ_API_KEY', newKey);
         localStorage.setItem('GROQ_MODEL', newModel);
+        if (inputModel) inputModel.value = newModel;
         closeApiKeyModal(); // Keep if modal still used somewhere
-        if (typeof showToast === 'function') showToast("Konfigurasi AI berhasil disimpan dan diperbarui.", "success");
-        else alert("Konfigurasi AI berhasil disimpan dan diperbarui.");
+        if (typeof showToast === 'function') showToast("Konfigurasi AI (" + newModel + ") berhasil disimpan.", "success");
+        else alert("Konfigurasi AI (" + newModel + ") berhasil disimpan.");
     } else {
         if (typeof showToast === 'function') showToast("API Key tidak boleh kosong!", "error");
         else alert("API Key tidak boleh kosong!");
@@ -230,11 +359,16 @@ async function loadAIConfig() {
             }
             
             const { data: dataModel } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
-            if (dataModel && dataModel.value) {
-                if (inputModel) inputModel.value = dataModel.value;
-            } else {
-                if (inputModel) inputModel.value = localStorage.getItem('GROQ_MODEL') || 'llama-3.1-8b-instant';
+            let rawModel = (dataModel && dataModel.value) ? dataModel.value : (localStorage.getItem('GROQ_MODEL') || 'qwen/qwen3.8-27b');
+            let cleanModel = sanitizeGroqModel(rawModel);
+
+            // Auto-heal jika ada model compound atau model lama tidak aktif di database / local storage
+            if (rawModel !== cleanModel) {
+                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: cleanModel }).then(() => {});
+                localStorage.setItem('GROQ_MODEL', cleanModel);
             }
+
+            if (inputModel) inputModel.value = cleanModel;
         }
     } catch (e) {
         console.warn('Gagal memuat Konfigurasi AI:', e);
@@ -378,12 +512,52 @@ function shakeLoginModal() {
 }
 
 // ===========================================
-// LUPA KATA SANDI (PASSWORD RESET) 
+// LUPA KATA SANDI (KODE SANDI & RESET LANGSUNG)
 // ===========================================
+var _FORGOT_SECRET_CODE = '20253892';
+
+function toggleFieldVisibility(inputId, btnEl) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye-off" style="width:16px;height:16px;"></i>';
+    } else {
+        input.type = 'password';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye" style="width:16px;height:16px;"></i>';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function openForgotPasswordModal(e) {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     closeLoginModal();
-    document.getElementById('forgotPasswordModal').classList.add('active');
+
+    var emailInput = document.getElementById('forgotEmail');
+    var codeInput = document.getElementById('forgotSecretCode');
+    var passInput = document.getElementById('forgotNewPassword');
+    var confirmInput = document.getElementById('forgotConfirmPassword');
+
+    // Autofill email jika user sudah ketik di modal login
+    var loginEmail = document.getElementById('loginEmail');
+    if (emailInput) {
+        emailInput.value = (loginEmail && loginEmail.value) ? loginEmail.value.trim() : '';
+    }
+    if (codeInput) codeInput.value = '';
+    if (passInput) passInput.value = '';
+    if (confirmInput) confirmInput.value = '';
+
+    var m = document.getElementById('forgotPasswordModal');
+    if (m) m.classList.add('active');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    setTimeout(function () {
+        if (emailInput && !emailInput.value) {
+            emailInput.focus();
+        } else if (codeInput) {
+            codeInput.focus();
+        }
+    }, 150);
 }
 
 function closeForgotPasswordModal() {
@@ -391,76 +565,136 @@ function closeForgotPasswordModal() {
     if (m) m.classList.remove('active');
 }
 
-async function handleForgotPasswordSubmit() {
-    var email = document.getElementById('forgotEmail').value.trim();
+async function handleResetPasswordSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    var emailInput = document.getElementById('forgotEmail');
+    var codeInput = document.getElementById('forgotSecretCode');
+    var passInput = document.getElementById('forgotNewPassword');
+    var confirmInput = document.getElementById('forgotConfirmPassword');
+
+    var email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+    var code = codeInput ? codeInput.value.trim() : '';
+    var newPassword = passInput ? passInput.value : '';
+    var confirmPassword = confirmInput ? confirmInput.value : '';
+
     if (!email) {
-        showNotifModal('Data Tidak Lengkap', 'Silakan masukkan email terdaftar Anda.', 'error');
+        showNotifModal('Data Belum Lengkap', 'Silakan masukkan email terdaftar akun Anda.', 'error');
+        if (emailInput) emailInput.focus();
         return;
     }
 
-    var btnText = document.getElementById('btnForgotText');
-    var spinner = document.getElementById('forgotSpinner');
-    var btn = document.getElementById('btnForgot');
+    // Format email check sederhana
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotifModal('Format Email Salah', 'Format email yang dimasukkan tidak valid. Pastikan penulisan email sudah benar.', 'error');
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    if (!code) {
+        showNotifModal('Data Belum Lengkap', 'Silakan masukkan kode sandi otorisasi.', 'error');
+        if (codeInput) codeInput.focus();
+        return;
+    }
+
+    // Verifikasi kode sandi otorisasi (20253892)
+    if (code !== _FORGOT_SECRET_CODE) {
+        showNotifModal(
+            'Kode Sandi Tidak Sesuai',
+            'Kode sandi keamanan yang Anda masukkan salah.<br><br>Silakan hubungi administrator sekolah untuk mendapatkan kode sandi yang benar.',
+            'error'
+        );
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus();
+        }
+        return;
+    }
+
+    // Validasi panjang kata sandi baru
+    if (!newPassword || newPassword.length < 6) {
+        showNotifModal('Kata Sandi Terlalu Pendek', 'Kata sandi baru minimal harus <strong>6 karakter</strong> demi keamanan akun.', 'error');
+        if (passInput) passInput.focus();
+        return;
+    }
+
+    // Validasi kecocokan konfirmasi kata sandi
+    if (newPassword !== confirmPassword) {
+        showNotifModal('Konfirmasi Sandi Berbeda', 'Konfirmasi kata sandi tidak cocok. Pastikan pengetikan kata sandi baru dan konfirmasi sama persis.', 'error');
+        if (confirmInput) confirmInput.focus();
+        return;
+    }
+
+    var btn = document.getElementById('btnForgotSubmit');
+    var btnText = document.getElementById('btnForgotSubmitText');
+    var spinner = document.getElementById('forgotSubmitSpinner');
 
     try {
-        btnText.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        btn.disabled = true;
+        if (btnText) btnText.style.display = 'none';
+        if (spinner) spinner.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
 
-        var { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname + '#pemulihan'
+        var { data, error } = await supabaseClient.rpc('reset_user_password_by_email', {
+            target_email: email,
+            new_password: newPassword
         });
 
-        if (error) throw error;
+        if (error) {
+            // Deteksi jika fungsi database belum dipasang di Supabase
+            var msg = error.message || '';
+            if (msg.includes('not found') || msg.includes('does not exist') || error.code === '42883' || error.code === 'PGRST202') {
+                showNotifModal(
+                    'Setup Database Diperlukan',
+                    'Fungsi <code>reset_user_password_by_email</code> belum dipasang di Supabase.<br><br>Silakan jalankan script SQL di Supabase SQL Editor sesuai panduan.',
+                    'warning'
+                );
+                return;
+            }
+            throw error;
+        }
 
-        showNotifModal('Tautan Terkirim! 🎉', 'Tautan untuk mengatur ulang kata sandi telah dikirim ke <strong>' + email + '</strong>.<br><br>Silakan periksa kotak masuk atau folder spam Anda.', 'success');
+        // Jika fungsi mengembalikan JSONB status { success: false, ... }
+        if (data && data.success === false) {
+            showNotifModal(
+                'Email Tidak Ditemukan',
+                'Email <strong>' + email + '</strong> tidak terdaftar dalam database pengguna sekolah. Pastikan Anda memasukkan email yang benar.',
+                'error'
+            );
+            return;
+        }
+
+        // Berhasil!
+        showNotifModal(
+            'Sandi Berhasil Diperbarui! 🎉',
+            'Kata sandi untuk akun <strong>' + email + '</strong> berhasil diganti.<br><br>Silakan masuk menggunakan kata sandi baru Anda.',
+            'success'
+        );
+
         closeForgotPasswordModal();
 
-    } catch (error) {
-        showNotifModal('Pengiriman Gagal', error.message || 'Gagal mengirim tautan. Pastikan email terdaftar atau coba lagi nanti.', 'error');
+        // Buka modal login dan otomatis isikan email
+        setTimeout(function () {
+            openLoginModal();
+            var loginEmail = document.getElementById('loginEmail');
+            if (loginEmail) loginEmail.value = email;
+            var loginPass = document.getElementById('loginPassword');
+            if (loginPass) {
+                loginPass.value = '';
+                loginPass.focus();
+            }
+        }, 1200);
+
+    } catch (err) {
+        console.error('Reset password error:', err);
+        showNotifModal('Gagal Mengatur Ulang Sandi', err.message || 'Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.', 'error');
     } finally {
-        btnText.style.display = 'inline-block';
-        spinner.style.display = 'none';
-        btn.disabled = false;
+        if (btnText) btnText.style.display = 'inline-flex';
+        if (spinner) spinner.style.display = 'none';
+        if (btn) btn.disabled = false;
     }
 }
 
-async function handleResetPasswordSubmit() {
-    var newPassword = document.getElementById('newPassword').value;
-    if (newPassword.length < 6) {
-        showNotifModal('Gagal', 'Kata sandi minimal harus <strong>6 karakter</strong>.', 'error');
-        return;
-    }
-
-    var btnText = document.getElementById('btnResetText');
-    var spinner = document.getElementById('resetSpinner');
-    var btn = document.getElementById('btnResetPassword');
-
-    try {
-        btnText.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        btn.disabled = true;
-
-        var { data, error } = await supabaseClient.auth.updateUser({
-            password: newPassword
-        });
-
-        if (error) throw error;
-
-        showNotifModal('Sukses Berubah', 'Kata sandi Anda berhasil diperbarui.<br>Silakan masuk menggunakan kata sandi baru Anda.', 'success');
-        document.getElementById('resetPasswordModal').classList.remove('active');
-
-        await supabaseClient.auth.signOut(); // logout sesi recovery
-        setTimeout(function () { openLoginModal(); }, 1500);
-
-    } catch (error) {
-        showNotifModal('Gagal Menyimpan', error.message || 'Terjadi kesalahan saat memproses ganti sandi.', 'error');
-    } finally {
-        btnText.style.display = 'inline-block';
-        spinner.style.display = 'none';
-        btn.disabled = false;
-    }
-}
 
 async function handleAuthSubmit(e) {
     if (e) e.preventDefault();
@@ -651,12 +885,21 @@ async function submitSPMB(e) {
 // ============================================================
 function getDirectImageUrl(url) {
     if (!url) return '';
-    var match = url.match(/(?:drive\.google\.com\/file\/d\/|drive\.google\.com\/open\?id=)([^\/&?]+)/);
-    if (match && match[1]) {
-        // Thumbnail API paling tangguh untuk me-render gambar publik dari Google Drive
-        return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
+    var raw = String(url).trim();
+    // Jika sudah berupa data URL base64 atau blob URL, langsung kembalikan
+    if (raw.startsWith('data:') || raw.startsWith('blob:')) return raw;
+
+    // Tangkap file ID Google Drive dari berbagai format link
+    var match = raw.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]{20,})/);
+    if (!match) {
+        match = raw.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
     }
-    return url;
+    if (match && match[1]) {
+        var fileId = match[1];
+        // CDN Google User Content (lh3) adalah direct link paling stabil tanpa blokir referer
+        return 'https://lh3.googleusercontent.com/d/' + fileId;
+    }
+    return raw;
 }
 
 async function loadBeritaPublic() {
@@ -795,4 +1038,4 @@ async function loadSarprasPublic() {
 
 // ============================================================
 // ============================================================
-//
+//
