@@ -17,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20260523responsive" />
+  <link rel="stylesheet" href="style.css?v=20261029panelResponsive" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -142,10 +142,7 @@
           <i data-lucide="layout-dashboard" style="width:18px;height:18px"></i>
           <span>Manajemen Asesmen</span>
         </a>
-        <a href="#" class="sidebar-link role-admin-kurikulum" onclick="showSection('sectionHasilAsesmen',this)">
-          <i data-lucide="bar-chart-2" style="width:18px;height:18px"></i>
-          <span>Hasil & Analisis Asesmen</span>
-        </a>
+
         <a href="#" class="sidebar-link role-ujian" onclick="showSection('sectionSoalUjian',this)">
           <i data-lucide="clipboard-list" style="width:18px;height:18px"></i>
           <span>Soal Ujian</span>
@@ -353,7 +350,7 @@
   </aside>
 
   <!-- ========== SIDEBAR OVERLAY (mobile) ========== -->
-  <div class="dash-overlay" id="dashOverlay" onclick="toggleSidebar()"></div>
+  <div class="dash-overlay" id="dashOverlay" onclick="closeSidebar()"></div>
 
   <!-- ========== MAIN CONTENT ========== -->
   <main class="dash-main" id="dashMain">
@@ -1508,7 +1505,7 @@
               <h3 style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Google
                 Apps Script Engine</h3>
               <p style="margin: 0.4rem 0 0 0; color: #cbd5e1; font-size: 1rem; line-height:1.4;">Hubungkan dan
-                otomasikan pembuatan arsip Google Form & Spreadsheet Ujian.</p>
+                otomasi integrasi API dengan layanan Google Workspace sekolah.</p>
             </div>
           </div>
         </div>
@@ -1626,18 +1623,27 @@
             </script>
             
             <label class="form-label"
-              style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-top: 1.5rem; margin-bottom: 1rem; display: block;">
-              Groq AI Model Name <span style="color: #ef4444">*</span>
+              style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-top: 1.5rem; margin-bottom: 0.5rem; display: block;">
+              Model AI (Groq LLM) <span style="color: #ef4444">*</span>
             </label>
+            <div style="font-size:0.85rem; color:#64748b; margin-bottom:0.75rem;">
+              Pilih model resmi Groq yang aktif. Untuk membuat soal asesmen dan asisten chat, sangat direkomendasikan menggunakan <strong>qwen/qwen3.8-27b</strong> atau <strong>openai/gpt-oss-120b</strong>.
+            </div>
             <div style="position: relative; display: flex; align-items: center;">
-              <div style="position: absolute; left: 18px; color: #94a3b8; display: flex;">
+              <div style="position: absolute; left: 18px; color: #94a3b8; display: flex; z-index: 2;">
                 <i data-lucide="cpu" style="width:22px;height:22px"></i>
               </div>
-              <input type="text" id="aiModelInput" class="form-input"
+              <input type="text" id="aiModelInput" list="groqModelList" class="form-input"
                 style="padding-left: 54px; font-family: 'Fira Code', 'Courier M', monospace; font-size: 1rem; background: #f8fafc; border: 2px solid #e2e8f0; height: 60px; border-radius: 12px; transition: all 0.25s; width: 100%; box-sizing: border-box;"
-                placeholder="misal: llama-3.1-70b-versatile"
+                placeholder="Pilih atau ketik model (Rekomendasi: qwen/qwen3.8-27b)"
                 onfocus="this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 4px rgba(139, 92, 246, 0.15)'"
                 onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" />
+              <datalist id="groqModelList">
+                <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Rekomendasi Utama - Sangat Cepat & Akurat untuk Soal Asesmen)</option>
+                <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Flagship 120B - Penalaran Mendalam & Cerdas)</option>
+                <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ringan & Cepat)</option>
+                <option value="allam-2-7b">allam-2-7b (Khusus Bahasa Arab & PAI)</option>
+              </datalist>
             </div>
 
             <div
@@ -2975,16 +2981,30 @@
           <h2>Manajemen Asesmen</h2>
           <p>Kelola semua ujian siap uji, riwayat ujian, referensi bank soal, dan tempat sampah.</p>
         </div>
-        <button class="btn btn-primary" onclick="showSection('sectionBuatSoal')" style="padding:0.75rem 1.5rem; font-size:1rem;">
+        <button class="btn btn-primary" onclick="bukaPilihanMetodeSoal()" style="padding:0.75rem 1.5rem; font-size:1rem;">
           <i data-lucide="plus-circle" style="width:20px;height:20px;margin-right:8px;"></i> Buat Ujian Baru
         </button>
       </div>
 
-      <div class="asesmen-tabs" style="display:flex; gap:1.5rem; border-bottom:2px solid #e2e8f0; margin-bottom:1.5rem; overflow-x:auto;">
-        <button class="asesmen-tab active" onclick="switchAsesmenTab('aktif', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid var(--primary-color); color:var(--primary-color); font-weight:700; font-size:1rem; cursor:pointer; white-space:nowrap;">Daftar Ujian Aktif</button>
-        <button class="asesmen-tab" onclick="switchAsesmenTab('riwayat', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap;">Riwayat (Arsip)</button>
-        <button class="asesmen-tab" onclick="switchAsesmenTab('referensi', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap;">Referensi Soal</button>
-        <button class="asesmen-tab" onclick="switchAsesmenTab('sampah', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap;">Tong Sampah</button>
+      <div class="asesmen-tabs" style="display:flex; gap:1rem; border-bottom:2px solid #e2e8f0; margin-bottom:1.5rem; overflow-x:auto;">
+        <button class="asesmen-tab active" onclick="switchAsesmenTab('aktif', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid var(--primary-color); color:var(--primary-color); font-weight:700; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="radio" style="width:16px;height:16px;"></i> Ujian Siap Uji
+          <span id="tabBadgeAktif" style="display:none; background:#10b981; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700;">0</span>
+        </button>
+        <button class="asesmen-tab" onclick="switchAsesmenTab('review', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="clipboard-check" style="width:16px;height:16px;"></i> Review & Draft Soal
+          <span id="tabBadgeReview" style="display:none; background:#f59e0b; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700;">0</span>
+        </button>
+        <button class="asesmen-tab" onclick="switchAsesmenTab('riwayat', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="archive" style="width:16px;height:16px;"></i> Riwayat (Arsip)
+        </button>
+        <button class="asesmen-tab" onclick="switchAsesmenTab('referensi', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="book-marked" style="width:16px;height:16px;"></i> Bank Soal
+        </button>
+        <button class="asesmen-tab" onclick="switchAsesmenTab('sampah', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="trash-2" style="width:16px;height:16px;"></i> Tong Sampah
+          <span id="tabBadgeSampah" style="display:none; background:#ef4444; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700;">0</span>
+        </button>
       </div>
 
       <div id="asesmenTabContentArea">
@@ -2997,19 +3017,68 @@
       <div class="dash-section-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
         <div>
           <h2>Buat Soal Asesmen</h2>
-          <p>Buat soal pilihan ganda & essay, simpan draft, lalu terbitkan ke Google Form.</p>
+          <p>Pilih metode pembuatan soal, lengkapi naskah soal, lalu simpan draft untuk diajukan.</p>
         </div>
         <button class="btn btn-outline" onclick="showSection('sectionManajemenAsesmen')" style="padding:0.6rem 1.2rem;border-radius:10px;font-weight:600;display:flex;align-items:center;gap:.4rem;">
-          <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali
+          <i data-lucide="arrow-left" style="width:16px;height:16px;"></i> Kembali ke Manajemen Asesmen
         </button>
       </div>
 
-      <!-- Konfigurasi Google Apps Script telah dipindahkan ke menu Kelola Konten! -->
+      <!-- Toolbar Pilihan Metode Pembuatan Soal -->
+      <div class="dash-toolbar asesmen-method-toolbar"
+        style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; width: 100%; margin-bottom: 2rem;">
+        <button class="btn btn-primary"
+          style="width:100%; justify-content:center; padding: 0.85rem 1.2rem; font-weight: 700; background:#2563eb; border-color:#2563eb; border-radius:12px; box-shadow:0 4px 12px rgba(37,99,235,0.25);"
+          onclick="openAsesmenBuilder()">
+          <i data-lucide="edit" style="width:18px;height:18px;margin-right:8px;"></i> 1. Buat Manual
+        </button>
+        <button class="btn btn-primary"
+          style="width:100%; justify-content:center; padding: 0.85rem 1.2rem; font-weight: 700; background:#059669; border-color:#059669; border-radius:12px; box-shadow:0 4px 12px rgba(5,150,105,0.25);"
+          onclick="openParseArea()">
+          <i data-lucide="clipboard-paste" style="width:18px;height:18px;margin-right:8px;"></i> 2. Copy-Paste Naskah
+        </button>
+        <button class="btn btn-primary"
+          style="width:100%; justify-content:center; padding: 0.85rem 1.2rem; font-weight: 700; background:#7c3aed; border-color:#7c3aed; border-radius:12px; box-shadow:0 4px 12px rgba(124,58,237,0.25);"
+          onclick="openAIArea()">
+          <i data-lucide="sparkles" style="width:18px;height:18px;margin-right:8px;"></i> 3. Buat Dengan AI
+        </button>
+      </div>
+
+      <!-- Panduan Pilihan Metode Soal (Ditampilkan sebelum memilih metode) -->
+      <div id="pilihMetodePlaceholder" class="card asesmen-placeholder-card" style="text-align:center; padding:3rem 1.5rem; background:#f8fafc; border:2px dashed #cbd5e1; border-radius:18px; margin-bottom:2rem;">
+        <div style="width:64px; height:64px; border-radius:50%; background:rgba(37,99,235,0.1); color:#2563eb; display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem;">
+          <i data-lucide="layers" style="width:32px; height:32px;"></i>
+        </div>
+        <h3 style="font-size:1.25rem; font-weight:700; color:#1e293b; margin-bottom:0.5rem;">Pilih Metode Pembuatan Soal</h3>
+        <p style="color:#64748b; max-width:560px; margin:0 auto 1.75rem; font-size:0.95rem;">
+          Silakan tentukan salah satu cara di bawah untuk mulai menyusun naskah soal. Panel pembuatan soal akan terbuka sesuai opsi yang Anda pilih:
+        </p>
+        <div class="asesmen-placeholder-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; max-width:900px; margin:0 auto; text-align:left;">
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:1.25rem; cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openAsesmenBuilder()" onmouseover="this.style.borderColor='#2563eb';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform='none'">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#2563eb; font-weight:700; font-size:1rem;">
+              <i data-lucide="edit" style="width:20px; height:20px;"></i> 1. Buat Manual
+            </div>
+            <p style="font-size:0.85rem; color:#64748b; margin:0; line-height:1.5;">Input butir soal pilihan ganda dan essay satu per satu menggunakan form editor lengkap.</p>
+          </div>
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:1.25rem; cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openParseArea()" onmouseover="this.style.borderColor='#059669';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform='none'">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#059669; font-weight:700; font-size:1rem;">
+              <i data-lucide="clipboard-paste" style="width:20px; height:20px;"></i> 2. Copy-Paste Naskah
+            </div>
+            <p style="font-size:0.85rem; color:#64748b; margin:0; line-height:1.5;">Salin teks soal dari Word/PDF, sistem otomatis mengekstrak soal, opsi, dan kunci jawaban.</p>
+          </div>
+          <div style="background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:1.25rem; cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,0.03);" onclick="openAIArea()" onmouseover="this.style.borderColor='#7c3aed';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#e2e8f0';this.style.transform='none'">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:#7c3aed; font-weight:700; font-size:1rem;">
+              <i data-lucide="sparkles" style="width:20px; height:20px;"></i> 3. Buat Dengan AI
+            </div>
+            <p style="font-size:0.85rem; color:#64748b; margin:0; line-height:1.5;">Hasilkan soal otomatis secara cerdas dan cepat berdasarkan topik materi yang Anda tentukan.</p>
+          </div>
+        </div>
+      </div>
 
       <!-- Builder Area (hidden by default) -->
-      <div id="asesmenBuilderArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
-        <div class="card" style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
-          <div
+      <div id="asesmenBuilderArea" class="asesmen-panel-wrapper" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
+        <div class="card asesmen-panel-card" style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
+          <div class="asesmen-panel-header"
             style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; position: relative;">
             <div style="display: flex; align-items: flex-start; gap: 1rem; z-index: 2; flex:1; min-width: 200px;">
               <div
@@ -3021,7 +3090,7 @@
                 <p style="margin: 0.3rem 0 0 0; color: #bfdbfe; font-size: 0.85rem; opacity: 0.9;">Buat soal secara manual dengan menambahkan pilihan ganda dan essay.</p>
               </div>
             </div>
-            <button class="btn" onclick="closeAsesmenBuilder()"
+            <button class="btn asesmen-close-panel-btn" onclick="closeAsesmenBuilder()"
               style="flex: 1 1 100%; display: flex; justify-content: center; align-items: center; text-align: center; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.8rem 1rem; box-shadow: none; z-index: 2; white-space: nowrap;"
               onmouseover="this.style.background='rgba(0,0,0,0.25)'"
               onmouseout="this.style.background='rgba(0,0,0,0.15)'">
@@ -3031,12 +3100,12 @@
               style="position: absolute; right:-20px; top:-50px; width:200px; height:200px; background: rgba(255,255,255,0.05); border-radius:50%;">
             </div>
           </div>
-          <div style="padding: 2.5rem; background:#ffffff;">
+          <div class="asesmen-panel-body" style="padding: 2.5rem; background:#ffffff;">
 
           <input type="hidden" id="builderAsesmenId" />
 
           <!-- Form Header -->
-          <div
+          <div class="asesmen-form-grid"
             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
             <div class="form-group" style="margin: 0;">
               <label class="form-label"
@@ -3102,7 +3171,7 @@
             </div>
           </div>
 
-          <div
+          <div class="asesmen-bobot-box"
             style="padding: 1rem 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
               <h4
@@ -3113,7 +3182,7 @@
               <small style="color:var(--text-light);"><i data-lucide="info"
                   style="width:12px;height:12px;vertical-align:middle;"></i> <strong>Note:</strong> (Total PG x Bobot) + (Total Essay x Bobot) = 100.</small>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+            <div class="asesmen-bobot-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
               <div class="form-group" style="margin: 0;">
                 <label class="form-label"
                   style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal PG
@@ -3160,11 +3229,8 @@
               <i data-lucide="plus-circle" style="width:16px;height:16px"></i> + Soal Essay
             </button>
             <div style="flex:1;"></div>
-            <button class="btn btn-outline btn-hover-green" onclick="saveDraftAsesmen()" id="btnSimpanDraft">
-              <i data-lucide="save" style="width:16px;height:16px"></i> Simpan Draft
-            </button>
-            <button class="btn btn-accent" onclick="confirmPublishAsesmen()">
-              <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan Ujian
+            <button class="btn btn-primary" onclick="saveDraftAsesmen()" id="btnSimpanDraft" style="padding:0.6rem 1.4rem;">
+              <i data-lucide="save" style="width:16px;height:16px"></i> Simpan
             </button>
           </div>
         </div>
@@ -3172,10 +3238,10 @@
     </div>
 
       <!-- Parse Area (Copy-Paste) -->
-      <div id="asesmenParseArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
-        <div class="card"
+      <div id="asesmenParseArea" class="asesmen-panel-wrapper" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
+        <div class="card asesmen-panel-card"
           style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
-          <div
+          <div class="asesmen-panel-header"
             style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; position: relative;">
             <div style="display: flex; align-items: flex-start; gap: 1rem; z-index: 2; flex:1; min-width: 200px;">
               <div
@@ -3189,7 +3255,7 @@
                   Word/PDF Anda menjadi form ujian interaktif.</p>
               </div>
             </div>
-            <button class="btn" onclick="closeParseArea()"
+            <button class="btn asesmen-close-panel-btn" onclick="closeParseArea()"
               style="flex: 1 1 100%; display: flex; justify-content: center; align-items: center; text-align: center; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.8rem 1rem; box-shadow: none; z-index: 2; white-space: nowrap;"
               onmouseover="this.style.background='rgba(0,0,0,0.25)'"
               onmouseout="this.style.background='rgba(0,0,0,0.15)'">
@@ -3200,8 +3266,8 @@
             </div>
           </div>
 
-          <div style="padding: 2.5rem; background:#ffffff;">
-            <div
+          <div class="asesmen-panel-body" style="padding: 2.5rem; background:#ffffff;">
+            <div class="asesmen-form-grid"
               style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
               <div class="form-group" style="margin: 0;">
                 <label class="form-label"
@@ -3267,14 +3333,14 @@
               </div>
             </div>
 
-            <div
+            <div class="asesmen-bobot-box"
               style="padding: 1rem 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
               <h4
                 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: flex-start; gap: 0.5rem;">
                 <i data-lucide="sliders" style="width:18px;height:18px; color:#10b981; flex-shrink:0;"></i> Detail Ujian
                 & Pembobotan
               </h4>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+              <div class="asesmen-bobot-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label"
                     style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal PG
@@ -3345,12 +3411,9 @@
                 <button class="btn btn-outline" style="flex:1; min-width:140px;" onclick="previewAutoGenerate('parse')">
                   <i data-lucide="eye" style="width:16px;height:16px"></i> Pratinjau Terbaca
                 </button>
-                <button class="btn btn-outline btn-hover-green" style="flex:1; min-width:140px;"
+                <button class="btn btn-primary" style="flex:1; min-width:140px;"
                   onclick="saveDraftAsesmen('parse')" id="btnSimpanDraftParse">
-                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan ke Draft
-                </button>
-                <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="submitAutoGenerate('parse')">
-                  <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke Formulir
+                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan
                 </button>
               </div>
             </div>
@@ -3359,10 +3422,10 @@
       </div>
 
       <!-- AI Generate Area (Baru) -->
-      <div id="asesmenAIGenerateArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
-        <div class="card"
+      <div id="asesmenAIGenerateArea" class="asesmen-panel-wrapper" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
+        <div class="card asesmen-panel-card"
           style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
-          <div
+          <div class="asesmen-panel-header"
             style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; position: relative;">
             <div style="display: flex; align-items: flex-start; gap: 1rem; z-index: 2; flex:1; min-width: 200px;">
               <div
@@ -3376,7 +3439,7 @@
                   dari sebuah topik, dilengkapi pengatur tingkat kesulitan.</p>
               </div>
             </div>
-            <button class="btn" onclick="closeAIArea()"
+            <button class="btn asesmen-close-panel-btn" onclick="closeAIArea()"
               style="flex: 1 1 100%; display: flex; justify-content: center; align-items: center; text-align: center; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.8rem 1rem; box-shadow: none; z-index: 2; white-space: nowrap;"
               onmouseover="this.style.background='rgba(0,0,0,0.25)'"
               onmouseout="this.style.background='rgba(0,0,0,0.15)'">
@@ -3387,8 +3450,8 @@
             </div>
           </div>
 
-          <div style="padding: 2.5rem; background:#ffffff;">
-            <div
+          <div class="asesmen-panel-body" style="padding: 2.5rem; background:#ffffff;">
+            <div class="asesmen-form-grid"
               style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
               <div class="form-group" style="margin: 0;">
                 <label class="form-label"
@@ -3466,14 +3529,14 @@
               </div>
             </div>
 
-            <div
+            <div class="asesmen-bobot-box"
               style="padding: 1rem 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; margin-bottom: 2.5rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
               <h4
                 style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #334155; display: flex; align-items: flex-start; gap: 0.5rem;">
                 <i data-lucide="sliders" style="width:18px;height:18px; color:#7c3aed; flex-shrink:0;"></i> Detail Ujian
                 & Pembobotan
               </h4>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+              <div class="asesmen-bobot-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
                 <div class="form-group" style="margin: 0;">
                   <label class="form-label"
                     style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom:0.5rem;">Bobot / Soal PG
@@ -3569,192 +3632,15 @@
                 <button class="btn btn-outline" style="flex:1; min-width:140px;" onclick="previewAutoGenerate('ai')">
                   <i data-lucide="eye" style="width:16px;height:16px"></i> Pratinjau Terbaca
                 </button>
-                <button class="btn btn-outline btn-hover-green" style="flex:1; min-width:140px;"
+                <button class="btn btn-primary" style="flex:1; min-width:140px;"
                   onclick="saveDraftAsesmen('ai')" id="btnSimpanDraftAI">
-                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan ke Draft
-                </button>
-                <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="submitAutoGenerate('ai')">
-                  <i data-lucide="send" style="width:16px;height:16px"></i> Terbitkan ke Formulir
+                  <i data-lucide="save" style="width:16px;height:16px"></i> Simpan
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- Google Form Link Area -->
-      <div id="asesmenGFormLinkArea" style="display:none; margin-bottom:2.5rem; animation: fadeIn 0.3s ease-out;">
-        <div class="card"
-          style="border: none; box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08); border-radius: 20px; overflow: hidden; padding: 0;">
-          <div
-            style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; position: relative;">
-            <div style="display: flex; align-items: flex-start; gap: 1rem; z-index: 2; flex:1; min-width: 200px;">
-              <div
-                style="background: rgba(255,255,255,0.15); padding: 10px; border-radius: 12px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;">
-                <i data-lucide="link" style="width:24px;height:24px; color: #fef3c7;"></i>
-              </div>
-              <div>
-                <h3 style="font-size: 1.25rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">Paste
-                  Link Google Form</h3>
-                <p style="margin: 0.3rem 0 0 0; color: #fef3c7; font-size: 0.85rem; opacity: 0.9;">Tempelkan link Google
-                  Form yang sudah dibuat secara pribadi oleh guru.</p>
-              </div>
-            </div>
-            <button class="btn" onclick="closeGoogleFormLinkArea()"
-              style="flex: 1 1 100%; display: flex; justify-content: center; align-items: center; text-align: center; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 10px; font-weight: 600; padding: 0.8rem 1rem; box-shadow: none; z-index: 2; white-space: nowrap;"
-              onmouseover="this.style.background='rgba(0,0,0,0.25)'"
-              onmouseout="this.style.background='rgba(0,0,0,0.15)'">
-              <i data-lucide="x" style="width:16px;height:16px; margin-right: 6px;"></i> Tutup Panel
-            </button>
-            <div
-              style="position: absolute; right:-20px; top:-50px; width:200px; height:200px; background: rgba(255,255,255,0.05); border-radius:50%;">
-            </div>
-          </div>
-
-          <div style="padding: 2.5rem; background:#ffffff;">
-            <div
-              style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="type" style="width:18px;height:18px;color:#94a3b8"></i> Judul Asesmen <span
-                    style="color:#ef4444">*</span></label>
-                <input type="text" id="gformJudul" class="form-input"
-                  style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;"
-                  placeholder="Contoh: UTS Bahasa Indonesia Kelas 8" />
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="file-badge-2" style="width:18px;height:18px;color:#94a3b8"></i> Tipe Ujian <span
-                    style="color:#ef4444">*</span></label>
-                <select id="gformTipe" class="form-input"
-                  style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
-                  <option value="PH">Penilaian Harian (PH)</option>
-                  <option value="STS">Sumatif Tengah Semester (STS)</option>
-                  <option value="SAS">Sumatif Akhir Semester (SAS)</option>
-                  <option value="SAJ">Sumatif Akhir Jenjang (SAJ)</option>
-                  <option value="SAT">Sumatif Akhir Tahun (SAT)</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="book-open" style="width:18px;height:18px;color:#94a3b8"></i> Mata Pelajaran <span
-                    style="color:#ef4444">*</span></label>
-                <select id="gformMapel" class="form-input"
-                  style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
-                  <option value="">Pilih Mata Pelajaran</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="users" style="width:18px;height:18px;color:#94a3b8"></i> Kelas <span
-                    style="color:#ef4444">*</span></label>
-                <select id="gformKelas" class="form-input"
-                  style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
-                  <option value="">Pilih Kelas</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="calendar-days" style="width:18px;height:18px;color:#94a3b8"></i> Tahun
-                  Pelajaran</label>
-                <input type="text" id="gformTahun" class="form-input" readonly
-                  style="height: 52px; border-radius: 12px; background: #f1f5f9; border: 1px dashed #94a3b8; color: #475569; font-weight: 700; cursor: not-allowed; text-align: center;" />
-              </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;"><i
-                    data-lucide="book-copy" style="width:18px;height:18px;color:#94a3b8"></i> Semester <span
-                    style="color:#ef4444">*</span></label>
-                <select id="gformSemester" class="form-input"
-                  style="height: 52px; border-radius: 12px; background: #f8fafc; border: 1px solid #cbd5e1; font-weight:500; font-size: 0.95rem;">
-                  <option value="Ganjil">Ganjil</option>
-                  <option value="Genap">Genap</option>
-                </select>
-              </div>
-            </div>
-
-            <div
-              style="padding: 1rem 1.25rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 16px; margin-bottom: 2rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-              <h4
-                style="margin: 0 0 1rem 0; font-size: 1rem; font-weight: 800; color: #92400e; display: flex; align-items: flex-start; gap: 0.5rem;">
-                <i data-lucide="sliders" style="width:18px;height:18px; color:#d97706; flex-shrink:0;"></i> Detail Ujian
-                & Link
-              </h4>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                <div class="form-group" style="margin: 0;">
-                  <label class="form-label"
-                    style="font-size: 0.85rem; font-weight: 700; color: #92400e; margin-bottom:0.5rem;">Waktu Pengerjaan
-                    (Menit) <span style="color:#ef4444">*</span></label>
-                  <input type="number" id="gformWaktu" class="form-input" placeholder="Contoh: 90"
-                    style="height: 48px; border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.1rem; color: #1e293b;" />
-                </div>
-              <div class="form-group" style="margin: 0;">
-                <label class="form-label"
-                  style="font-size: 0.85rem; font-weight: 700; color: #92400e; margin-bottom:0.5rem;">Hari/Tanggal
-                  Ujian <span style="color:#ef4444">*</span></label>
-                <input type="date" id="gformTanggal" class="form-input"
-                  style="height: 48px; border-radius: 10px; font-weight: 600;" />
-              </div>
-
-                <div class="form-group" style="margin: 0; grid-column: 1 / -1;">
-                  <label class="form-label"
-                    style="font-size: 0.85rem; font-weight: 700; color: #92400e; margin-bottom:0.5rem; display: flex; align-items: center; gap: 0.4rem;"><i
-                      data-lucide="link" style="width:16px;height:16px;color:#d97706;"></i> Link Google Form <span
-                      style="color:#ef4444">*</span></label>
-                  <input type="url" id="gformLink" class="form-input"
-                    placeholder="https://docs.google.com/forms/d/e/..."
-                    style="height: 52px; border-radius: 10px; font-weight: 600; font-size: 0.95rem; color: #1e293b; background: #fff; border: 2px solid #fbbf24;" />
-                  <small style="display:block; color:#92400e; margin-top:0.5rem; font-size:0.78rem;"><i
-                      data-lucide="info" style="width:12px;height:12px;vertical-align:middle;"></i> Tempelkan link
-                    Google Form yang sudah dibuat. Link ini akan ditampilkan di Riwayat Asesmen tanpa mengubah isi soal
-                    di Google Form.</small>
-                </div>
-              </div>
-            </div>
-
-            <div style="display:flex; gap:10px; flex-wrap:wrap; width:100%;">
-              <button class="btn btn-primary"
-                style="flex:1; min-width:200px; padding: 0.85rem; font-weight: 700; background: linear-gradient(135deg, #d97706 0%, #b45309 100%); border: none; border-radius: 12px; font-size: 0.95rem; box-shadow: 0 4px 12px rgba(217,119,6,0.3);"
-                onclick="saveGoogleFormLink()">
-                <i data-lucide="save" style="width:18px;height:18px"></i> Simpan & Tampilkan di Riwayat
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      <!-- Action Bar -->
-      <div class="dash-toolbar"
-        style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; width: 100%;">
-        <button class="btn btn-primary"
-          style="width:100%; justify-content:center; padding: 0.8rem; font-weight: 600; background:#2563eb; border-color:#2563eb;"
-          onclick="openAsesmenBuilder()">
-          <i data-lucide="edit" style="width:18px;height:18px"></i> Buat Manual
-        </button>
-        <button class="btn btn-primary"
-          style="width:100%; justify-content:center; padding: 0.8rem; font-weight: 600; background:#059669; border-color:#059669;"
-          onclick="openParseArea()">
-          <i data-lucide="clipboard-paste" style="width:18px;height:18px"></i> Copy-Paste Naskah Soal
-        </button>
-        <button class="btn btn-primary"
-          style="width:100%; justify-content:center; padding: 0.8rem; font-weight: 600; background:#7c3aed; border-color:#7c3aed;"
-          onclick="openAIArea()">
-          <i data-lucide="sparkles" style="width:18px;height:18px"></i> Buat Dengan AI
-        </button>
-        <button class="btn btn-primary"
-          style="width:100%; justify-content:center; padding: 0.8rem; font-weight: 600; background:#d97706; border-color:#d97706;"
-          onclick="openGoogleFormLinkArea()">
-          <i data-lucide="link" style="width:18px;height:18px"></i> Paste Link Google Form
-        </button>
-      </div>
-
-      <!-- Akhir dari action buttons Buat Soal -->
     </section>
 
     <!-- ========== SECTION: DAFTAR UJIAN AKTIF (GURU) ========== -->
@@ -3762,7 +3648,10 @@
       <!-- Tabel Daftar Asesmen -->
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-          <h3>Daftar Ujian Aktif (Siap Uji)</h3>
+          <div>
+            <h3 style="margin:0;"><i data-lucide="radio" style="width:20px;height:20px;color:#10b981;vertical-align:middle;margin-right:8px;"></i>Ujian Siap Uji (Aktif di CBT)</h3>
+            <p style="margin:0.2rem 0 0 0;font-size:0.85rem;color:var(--text-light);">Daftar ujian yang telah disetujui & aktif untuk dikerjakan siswa di CBT Native.</p>
+          </div>
           <span style="font-size:.85rem;color:var(--text-light);" id="asesmenCount">0 asesmen</span>
         </div>
         <div style="overflow-x:auto;">
@@ -3770,20 +3659,64 @@
             <thead>
               <tr>
                 <th style="width:40px">No</th>
-                <th>Judul</th>
+                <th>Judul Ujian</th>
                 <th>Mapel</th>
                 <th>Kelas</th>
                 <th style="width:70px">Tipe</th>
                 <th style="width:110px">Tanggal Ujian</th>
                 <th style="width:70px">Soal</th>
-                <th style="width:80px">Status</th>
+                <th style="width:100px">Status CBT</th>
                 <th>Akses Link</th>
-                <th style="width:140px;text-align:center;">Aksi</th>
+                <th style="width:160px;text-align:center;white-space:nowrap;">Aksi</th>
               </tr>
             </thead>
             <tbody id="asesmenTableBody">
               <tr>
                 <td colspan="10" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECTION: REVIEW & DRAFT SOAL (GURU & ADMIN) ========== -->
+    <section id="sectionReviewDraftSoal" class="dash-section" style="display:none;">
+      <div class="card"
+        style="border: none; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border-radius: 20px; overflow: hidden; padding: 0;">
+        <div
+          style="background: linear-gradient(135deg, #d97706 0%, #b45309 100%); padding: 1.5rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
+              <i data-lucide="clipboard-check" style="width:26px;height:26px; color: #fff;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: white;">Review & Draft Pengajuan Soal</h3>
+              <p style="margin: 0.2rem 0 0 0; color: #fef3c7; font-size: 0.88rem;" id="reviewSubtitle">
+                Antrean soal guru untuk diverifikasi dan diterbitkan ke CBT Native oleh Admin.
+              </p>
+            </div>
+          </div>
+          <span style="font-size:.85rem; background:rgba(255,255,255,0.2); padding:4px 14px; border-radius:20px; font-weight:700;" id="reviewCountBadge">0 soal</span>
+        </div>
+        <div style="padding: 1.5rem; overflow-x:auto;">
+          <table class="dash-table" id="reviewTable">
+            <thead>
+              <tr>
+                <th style="width:40px">No</th>
+                <th>Judul Asesmen</th>
+                <th>Mata Pelajaran</th>
+                <th>Kelas</th>
+                <th style="width:70px">Tipe</th>
+                <th>Guru Pembuat</th>
+                <th style="width:70px">Soal</th>
+                <th style="width:140px">Status Pengajuan</th>
+                <th style="width:140px;text-align:center;white-space:nowrap;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="reviewTableBody">
+              <tr>
+                <td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td>
               </tr>
             </tbody>
           </table>
@@ -3952,8 +3885,8 @@
     <!-- ========== SECTION: HASIL & ANALISIS ASESMEN ========== -->
     <section id="sectionHasilAsesmen" class="dash-section">
       <div class="dash-section-header">
-        <h2>Hasil & Analisis Asesmen (Google Form)</h2>
-        <p>Tarik hasil koreksi otomatis dari Spreadsheet Google Form untuk melihat analisis detail dan sinkronisasi ke
+        <h2>Hasil & Analisis Asesmen</h2>
+        <p>Tarik hasil koreksi otomatis dari Spreadsheet untuk melihat analisis detail dan sinkronisasi ke
           buku nilai Rapor Resmi.</p>
       </div>
 
@@ -4028,7 +3961,7 @@
               <tr>
                 <th style="width:40px;">No</th>
                 <th>Siswa (Database)</th>
-                <th>Akun Google Form</th>
+                <th>Akun Siswa</th>
                 <th style="text-align:center;">Benar PG</th>
                 <th style="text-align:center;">Salah PG</th>
                 <th style="text-align:center;">Skor PG</th>
@@ -6219,6 +6152,55 @@
           <span id="sarprasSaveBtnText">Simpan Data</span>
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- ========== MODAL MONITOR CBT & TOKEN (Responsive, Wide on Desktop) ========== -->
+  <div class="modal-overlay" id="monitorCbtModal" style="align-items:center; justify-content:center; z-index:99999; backdrop-filter:blur(6px); background:rgba(0,0,0,0.55);" onclick="if(event.target === this) closeMonitorCbtModal()">
+    <div class="modal" style="width:95% !important; max-width:1100px !important; max-height:90vh; border-radius:20px; display:flex; flex-direction:column; overflow:hidden; padding:0 !important; box-shadow:0 25px 70px rgba(0,0,0,0.35); border:none; background:#ffffff;">
+      <div style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color:white; padding:1.25rem 1.75rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:2;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:rgba(59,130,246,0.2); display:flex; align-items:center; justify-content:center; color:#60a5fa; border:1px solid rgba(59,130,246,0.3);">
+            <i data-lucide="radio" style="width:22px; height:22px;"></i>
+          </div>
+          <div>
+            <h3 id="monitorCbtModalTitle" style="margin:0; font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-0.3px;">Monitor CBT & Token Ujian</h3>
+            <span style="font-size:0.82rem; color:#94a3b8;">Kelola token aktif, pantau pengerjaan siswa secara realtime, dan rekap nilai CBT</span>
+          </div>
+        </div>
+        <button onclick="closeMonitorCbtModal()" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); width:38px; height:38px; border-radius:10px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s;" onmouseover="this.style.background='rgba(239,68,68,0.8)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'" title="Tutup Modal (Esc atau klik di luar)">
+          <i data-lucide="x" style="width:20px; height:20px;"></i>
+        </button>
+      </div>
+      <div id="monitorCbtModalBody" style="padding:1.75rem; overflow-y:auto; flex:1; background:#ffffff;">
+        <!-- Injected via openMonitorCbt -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MODAL REVIEW & TERBITKAN SOAL (Admin/Kurikulum) ========== -->
+  <div class="modal-overlay admin-review-overlay" id="adminReviewModal" style="align-items:center; justify-content:center; z-index:99999; backdrop-filter:blur(6px); background:rgba(0,0,0,0.55);" onclick="if(event.target === this) closeAdminReviewModal()">
+    <div class="modal admin-review-dialog">
+      <div class="admin-review-header">
+        <div class="admin-review-header-info">
+          <div class="admin-review-header-icon">
+            <i data-lucide="clipboard-check" style="width:20px; height:20px;"></i>
+          </div>
+          <div class="admin-review-header-text">
+            <h3 class="admin-review-header-title">Review & Verifikasi Soal Asesmen</h3>
+            <span class="admin-review-header-sub">Periksa kelengkapan butir soal, kunci jawaban, dan bobot penilaian</span>
+          </div>
+        </div>
+        <button class="admin-review-close-btn" onclick="closeAdminReviewModal()" title="Tutup Modal (Esc atau klik di luar)">
+          <i data-lucide="x" style="width:18px; height:18px;"></i>
+        </button>
+      </div>
+      <div id="adminReviewModalBody" class="admin-review-body">
+        <!-- Injected via openAdminReviewModal -->
+      </div>
+      <div id="adminReviewModalFooter" class="admin-review-footer">
+        <!-- Injected actions -->
+      </div>
     </div>
   </div>
 
