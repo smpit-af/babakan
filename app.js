@@ -12,20 +12,6 @@ let currentRole = null;
 try {
     if (window.supabase && window.supabase.createClient) {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // Listener for Password Recovery Redirect
-        supabaseClient.auth.onAuthStateChange(function (event, session) {
-            if (event === 'PASSWORD_RECOVERY') {
-                setTimeout(function () {
-                    // Tutup modal lain bila ada yang terbuka
-                    var lm = document.getElementById('loginModal');
-                    if (lm) lm.classList.remove('active');
-
-                    var rm = document.getElementById('resetPasswordModal');
-                    if (rm) rm.classList.add('active');
-                }, 500);
-            }
-        });
     }
 } catch (e) { console.warn('Supabase init error:', e); }
 
@@ -188,23 +174,49 @@ function closeApiKeyModal() {
     if (input) input.value = '';
 }
 
+function sanitizeGroqModel(model) {
+    if (!model || typeof model !== 'string') return 'qwen/qwen3.8-27b';
+    var clean = model.trim();
+    // Model yang tidak aktif / invalid / compound / llama-3 lama di Groq
+    if (
+        clean.toLowerCase().includes('compound') ||
+        clean.toLowerCase().includes('llama-3') ||
+        clean.toLowerCase().includes('mixtral') ||
+        clean.toLowerCase().includes('gemma') ||
+        clean === 'llama-3.3-70b-versatile' ||
+        clean === 'llama-3.1-8b-instant' ||
+        clean === 'llama-3.1-70b-versatile'
+    ) {
+        return 'qwen/qwen3.8-27b';
+    }
+    if (!clean) return 'qwen/qwen3.8-27b';
+    return clean;
+}
+
 async function saveApiKeyBaru() {
-    const input = document.getElementById('aiApiKeyInput') || document.getElementById('inputApiKeyBaru');
-    if (!input) return;
-    const newKey = input.value.trim();
+    const inputKey = document.getElementById('aiApiKeyInput') || document.getElementById('inputApiKeyBaru');
+    const inputModel = document.getElementById('aiModelInput');
+    if (!inputKey) return;
+    const newKey = inputKey.value.trim();
+    const rawModel = inputModel ? inputModel.value.trim() : 'qwen/qwen3.8-27b';
+    const newModel = sanitizeGroqModel(rawModel);
+    
     if (newKey) {
-        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan API Key...');
+        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan Konfigurasi AI...');
         try {
             if (supabaseClient) {
                 await supabaseClient.from('system_settings').upsert({ key: 'groq_api_key', value: newKey });
+                await supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: newModel });
             }
-        } catch (e) { console.warn('Gagal menyimpan API key ke DB:', e); }
+        } catch (e) { console.warn('Gagal menyimpan AI config ke DB:', e); }
         if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
 
         localStorage.setItem('GROQ_API_KEY', newKey);
+        localStorage.setItem('GROQ_MODEL', newModel);
+        if (inputModel) inputModel.value = newModel;
         closeApiKeyModal(); // Keep if modal still used somewhere
-        if (typeof showToast === 'function') showToast("API Key AI berhasil disimpan dan diperbarui.", "success");
-        else alert("API Key AI berhasil disimpan dan diperbarui.");
+        if (typeof showToast === 'function') showToast("Konfigurasi AI (" + newModel + ") berhasil disimpan.", "success");
+        else alert("Konfigurasi AI (" + newModel + ") berhasil disimpan.");
     } else {
         if (typeof showToast === 'function') showToast("API Key tidak boleh kosong!", "error");
         else alert("API Key tidak boleh kosong!");
@@ -212,19 +224,32 @@ async function saveApiKeyBaru() {
 }
 
 async function loadAIConfig() {
-    var input = document.getElementById('aiApiKeyInput');
-    if (!input) return;
+    var inputKey = document.getElementById('aiApiKeyInput');
+    var inputModel = document.getElementById('aiModelInput');
+    if (!inputKey) return;
     try {
         if (supabaseClient) {
-            const { data, error } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
-            if (data && data.value) {
-                input.value = data.value;
+            const { data: dataKey } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+            if (dataKey && dataKey.value) {
+                inputKey.value = dataKey.value;
             } else {
-                input.value = localStorage.getItem('GROQ_API_KEY') || '';
+                inputKey.value = localStorage.getItem('GROQ_API_KEY') || '';
             }
+            
+            const { data: dataModel } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
+            let rawModel = (dataModel && dataModel.value) ? dataModel.value : (localStorage.getItem('GROQ_MODEL') || 'qwen/qwen3.8-27b');
+            let cleanModel = sanitizeGroqModel(rawModel);
+
+            // Auto-heal jika ada model compound atau model lama tidak aktif di database / local storage
+            if (rawModel !== cleanModel) {
+                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: cleanModel }).then(() => {});
+                localStorage.setItem('GROQ_MODEL', cleanModel);
+            }
+
+            if (inputModel) inputModel.value = cleanModel;
         }
     } catch (e) {
-        console.warn('Gagal memuat API Key AI:', e);
+        console.warn('Gagal memuat Konfigurasi AI:', e);
     }
 }
 function hideGlobalLoader() {
@@ -365,12 +390,52 @@ function shakeLoginModal() {
 }
 
 // ===========================================
-// LUPA KATA SANDI (PASSWORD RESET) 
+// LUPA KATA SANDI (KODE SANDI & RESET LANGSUNG)
 // ===========================================
+var _FORGOT_SECRET_CODE = '20253892';
+
+function toggleFieldVisibility(inputId, btnEl) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye-off" style="width:16px;height:16px;"></i>';
+    } else {
+        input.type = 'password';
+        if (btnEl) btnEl.innerHTML = '<i data-lucide="eye" style="width:16px;height:16px;"></i>';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function openForgotPasswordModal(e) {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     closeLoginModal();
-    document.getElementById('forgotPasswordModal').classList.add('active');
+
+    var emailInput = document.getElementById('forgotEmail');
+    var codeInput = document.getElementById('forgotSecretCode');
+    var passInput = document.getElementById('forgotNewPassword');
+    var confirmInput = document.getElementById('forgotConfirmPassword');
+
+    // Autofill email jika user sudah ketik di modal login
+    var loginEmail = document.getElementById('loginEmail');
+    if (emailInput) {
+        emailInput.value = (loginEmail && loginEmail.value) ? loginEmail.value.trim() : '';
+    }
+    if (codeInput) codeInput.value = '';
+    if (passInput) passInput.value = '';
+    if (confirmInput) confirmInput.value = '';
+
+    var m = document.getElementById('forgotPasswordModal');
+    if (m) m.classList.add('active');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    setTimeout(function () {
+        if (emailInput && !emailInput.value) {
+            emailInput.focus();
+        } else if (codeInput) {
+            codeInput.focus();
+        }
+    }, 150);
 }
 
 function closeForgotPasswordModal() {
@@ -378,76 +443,136 @@ function closeForgotPasswordModal() {
     if (m) m.classList.remove('active');
 }
 
-async function handleForgotPasswordSubmit() {
-    var email = document.getElementById('forgotEmail').value.trim();
+async function handleResetPasswordSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    var emailInput = document.getElementById('forgotEmail');
+    var codeInput = document.getElementById('forgotSecretCode');
+    var passInput = document.getElementById('forgotNewPassword');
+    var confirmInput = document.getElementById('forgotConfirmPassword');
+
+    var email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+    var code = codeInput ? codeInput.value.trim() : '';
+    var newPassword = passInput ? passInput.value : '';
+    var confirmPassword = confirmInput ? confirmInput.value : '';
+
     if (!email) {
-        showNotifModal('Data Tidak Lengkap', 'Silakan masukkan email terdaftar Anda.', 'error');
+        showNotifModal('Data Belum Lengkap', 'Silakan masukkan email terdaftar akun Anda.', 'error');
+        if (emailInput) emailInput.focus();
         return;
     }
 
-    var btnText = document.getElementById('btnForgotText');
-    var spinner = document.getElementById('forgotSpinner');
-    var btn = document.getElementById('btnForgot');
+    // Format email check sederhana
+    var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotifModal('Format Email Salah', 'Format email yang dimasukkan tidak valid. Pastikan penulisan email sudah benar.', 'error');
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    if (!code) {
+        showNotifModal('Data Belum Lengkap', 'Silakan masukkan kode sandi otorisasi.', 'error');
+        if (codeInput) codeInput.focus();
+        return;
+    }
+
+    // Verifikasi kode sandi otorisasi (20253892)
+    if (code !== _FORGOT_SECRET_CODE) {
+        showNotifModal(
+            'Kode Sandi Tidak Sesuai',
+            'Kode sandi keamanan yang Anda masukkan salah.<br><br>Silakan hubungi administrator sekolah untuk mendapatkan kode sandi yang benar.',
+            'error'
+        );
+        if (codeInput) {
+            codeInput.value = '';
+            codeInput.focus();
+        }
+        return;
+    }
+
+    // Validasi panjang kata sandi baru
+    if (!newPassword || newPassword.length < 6) {
+        showNotifModal('Kata Sandi Terlalu Pendek', 'Kata sandi baru minimal harus <strong>6 karakter</strong> demi keamanan akun.', 'error');
+        if (passInput) passInput.focus();
+        return;
+    }
+
+    // Validasi kecocokan konfirmasi kata sandi
+    if (newPassword !== confirmPassword) {
+        showNotifModal('Konfirmasi Sandi Berbeda', 'Konfirmasi kata sandi tidak cocok. Pastikan pengetikan kata sandi baru dan konfirmasi sama persis.', 'error');
+        if (confirmInput) confirmInput.focus();
+        return;
+    }
+
+    var btn = document.getElementById('btnForgotSubmit');
+    var btnText = document.getElementById('btnForgotSubmitText');
+    var spinner = document.getElementById('forgotSubmitSpinner');
 
     try {
-        btnText.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        btn.disabled = true;
+        if (btnText) btnText.style.display = 'none';
+        if (spinner) spinner.style.display = 'inline-block';
+        if (btn) btn.disabled = true;
 
-        var { data, error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname + '#pemulihan'
+        var { data, error } = await supabaseClient.rpc('reset_user_password_by_email', {
+            target_email: email,
+            new_password: newPassword
         });
 
-        if (error) throw error;
+        if (error) {
+            // Deteksi jika fungsi database belum dipasang di Supabase
+            var msg = error.message || '';
+            if (msg.includes('not found') || msg.includes('does not exist') || error.code === '42883' || error.code === 'PGRST202') {
+                showNotifModal(
+                    'Setup Database Diperlukan',
+                    'Fungsi <code>reset_user_password_by_email</code> belum dipasang di Supabase.<br><br>Silakan jalankan script SQL di Supabase SQL Editor sesuai panduan.',
+                    'warning'
+                );
+                return;
+            }
+            throw error;
+        }
 
-        showNotifModal('Tautan Terkirim! 🎉', 'Tautan untuk mengatur ulang kata sandi telah dikirim ke <strong>' + email + '</strong>.<br><br>Silakan periksa kotak masuk atau folder spam Anda.', 'success');
+        // Jika fungsi mengembalikan JSONB status { success: false, ... }
+        if (data && data.success === false) {
+            showNotifModal(
+                'Email Tidak Ditemukan',
+                'Email <strong>' + email + '</strong> tidak terdaftar dalam database pengguna sekolah. Pastikan Anda memasukkan email yang benar.',
+                'error'
+            );
+            return;
+        }
+
+        // Berhasil!
+        showNotifModal(
+            'Sandi Berhasil Diperbarui! 🎉',
+            'Kata sandi untuk akun <strong>' + email + '</strong> berhasil diganti.<br><br>Silakan masuk menggunakan kata sandi baru Anda.',
+            'success'
+        );
+
         closeForgotPasswordModal();
 
-    } catch (error) {
-        showNotifModal('Pengiriman Gagal', error.message || 'Gagal mengirim tautan. Pastikan email terdaftar atau coba lagi nanti.', 'error');
+        // Buka modal login dan otomatis isikan email
+        setTimeout(function () {
+            openLoginModal();
+            var loginEmail = document.getElementById('loginEmail');
+            if (loginEmail) loginEmail.value = email;
+            var loginPass = document.getElementById('loginPassword');
+            if (loginPass) {
+                loginPass.value = '';
+                loginPass.focus();
+            }
+        }, 1200);
+
+    } catch (err) {
+        console.error('Reset password error:', err);
+        showNotifModal('Gagal Mengatur Ulang Sandi', err.message || 'Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.', 'error');
     } finally {
-        btnText.style.display = 'inline-block';
-        spinner.style.display = 'none';
-        btn.disabled = false;
+        if (btnText) btnText.style.display = 'inline-flex';
+        if (spinner) spinner.style.display = 'none';
+        if (btn) btn.disabled = false;
     }
 }
 
-async function handleResetPasswordSubmit() {
-    var newPassword = document.getElementById('newPassword').value;
-    if (newPassword.length < 6) {
-        showNotifModal('Gagal', 'Kata sandi minimal harus <strong>6 karakter</strong>.', 'error');
-        return;
-    }
-
-    var btnText = document.getElementById('btnResetText');
-    var spinner = document.getElementById('resetSpinner');
-    var btn = document.getElementById('btnResetPassword');
-
-    try {
-        btnText.style.display = 'none';
-        spinner.style.display = 'inline-block';
-        btn.disabled = true;
-
-        var { data, error } = await supabaseClient.auth.updateUser({
-            password: newPassword
-        });
-
-        if (error) throw error;
-
-        showNotifModal('Sukses Berubah', 'Kata sandi Anda berhasil diperbarui.<br>Silakan masuk menggunakan kata sandi baru Anda.', 'success');
-        document.getElementById('resetPasswordModal').classList.remove('active');
-
-        await supabaseClient.auth.signOut(); // logout sesi recovery
-        setTimeout(function () { openLoginModal(); }, 1500);
-
-    } catch (error) {
-        showNotifModal('Gagal Menyimpan', error.message || 'Terjadi kesalahan saat memproses ganti sandi.', 'error');
-    } finally {
-        btnText.style.display = 'inline-block';
-        spinner.style.display = 'none';
-        btn.disabled = false;
-    }
-}
 
 async function handleAuthSubmit(e) {
     if (e) e.preventDefault();
@@ -1016,12 +1141,26 @@ function applyRoleVisibility() {
 // ============================================================
 // SIDEBAR & NAVIGATION
 // ============================================================
+function closeSidebar() {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('dashOverlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+}
+window.closeSidebar = closeSidebar;
+
 function toggleSidebar() {
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('dashOverlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('open');
+    if (!sidebar || !overlay) return;
+    if (sidebar.classList.contains('open')) {
+        closeSidebar();
+    } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+    }
 }
+window.toggleSidebar = toggleSidebar;
 
 window.showSection = function (sectionId, linkEl) {
     document.querySelectorAll('.dash-section').forEach(function (s) { s.classList.remove('active'); });
@@ -1032,8 +1171,8 @@ window.showSection = function (sectionId, linkEl) {
     document.querySelectorAll('.sidebar-link').forEach(function (l) { l.classList.remove('active'); });
     if (linkEl) linkEl.classList.add('active');
 
-    // Close sidebar on mobile
-    if (window.innerWidth <= 768) toggleSidebar();
+    // Close sidebar on mobile ONLY if currently open (never toggle open)
+    closeSidebar();
 
     // Lazy-load data for sections
     if (sectionId === 'sectionBerita' && typeof loadBeritaAdmin === 'function') loadBeritaAdmin();
@@ -1066,8 +1205,11 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionAlumni') loadAlumniData();
     if (sectionId === 'sectionSiswaPindah') { loadMasterKelas(); loadSiswaPindahData(); }
     if (sectionId === 'sectionSiswaDikeluarkan') { loadMasterKelas(); loadSiswaDikeluarkanData(); }
-    if (sectionId === 'sectionBankSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadBankSoal(); }
-    if (sectionId === 'sectionBuatSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadAsesmenList(); }
+    if (sectionId === 'sectionBuatSoal') {
+        loadMasterKelas();
+        loadActiveYear();
+        loadMasterMapel();
+    }
     if (sectionId === 'sectionArsipAsesmen') { loadArsipAsesmen(); }
     if (sectionId === 'sectionSampahAsesmen') { loadSampahAsesmen(); }
     if (sectionId === 'sectionHasilAsesmen') {
@@ -6454,8 +6596,7 @@ function cetakLaporanNilai() {
     setTimeout(function () { printWindow.print(); }, 500);
 }
 
-// ============================================================
-// HASIL & ANALISIS ASESMEN (GOOGLE FORM)
+// HASIL & ANALISIS ASESMEN
 // ============================================================
 var hasilAsesmenState = {
     data: [], // Array of objects parsed from CSV
@@ -6643,7 +6784,7 @@ async function loadDataHasilAsesmen() {
                     }
                 }
             } catch(e) {
-                throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban melalui Google Form.');
+                throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban ujian.');
             }
         }
 
@@ -7002,7 +7143,7 @@ async function loadDataHasilAsesmen() {
                     sEs = idxTotalEssay !== -1 ? (parseFloat(bestMatch[idxTotalEssay]) || 0) : 0;
                     nAkhir = parseFloat(bestMatch[idxNilaiAkhir]) || 0;
                     
-                    // Jika ini dari sheet default Google Form yg hanya ada "Skor", jadikan skor itu sebagai Skor PG
+                    // Jika ini dari sheet dengan kolom tunggal "Skor", jadikan skor itu sebagai Skor PG
                     if (idxSkorPG === -1 && idxNilaiAkhir !== -1 && idxTotalEssay === -1) {
                         sPg = nAkhir;
                     }
@@ -8059,7 +8200,7 @@ function deleteKesehatan(id) {
 }
 
 // ============================================================
-// BUAT SOAL ASESMEN — Google Forms & Sheets Integration
+// BUAT SOAL ASESMEN (CBT NATIVE)
 // ============================================================
 var asesmenBuilderSoalList = []; // in-memory soal list for builder
 var asesmenList = [];
@@ -8409,7 +8550,9 @@ async function loadSoalUjian() {
 
 // --- Open Builder (new or edit) ---
 async function openAsesmenBuilder(existingId) {
-    document.getElementById('asesmenBuilderArea').style.display = 'block';
+    if (typeof showSection === 'function') showSection('sectionBuatSoal');
+    var bArea = document.getElementById('asesmenBuilderArea');
+    if (bArea) bArea.style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
     var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
@@ -8488,7 +8631,9 @@ function closeAsesmenBuilder() {
 }
 
 function openParseArea() {
-    document.getElementById('asesmenParseArea').style.display = 'block';
+    if (typeof showSection === 'function') showSection('sectionBuatSoal');
+    var pArea = document.getElementById('asesmenParseArea');
+    if (pArea) pArea.style.display = 'block';
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
     var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
@@ -8509,7 +8654,9 @@ function closeParseArea() {
 }
 
 function openAIArea() {
-    document.getElementById('asesmenAIGenerateArea').style.display = 'block';
+    if (typeof showSection === 'function') showSection('sectionBuatSoal');
+    var aArea = document.getElementById('asesmenAIGenerateArea');
+    if (aArea) aArea.style.display = 'block';
     document.getElementById('asesmenParseArea').style.display = 'none';
     document.getElementById('asesmenBuilderArea').style.display = 'none';
     var gformArea = document.getElementById('asesmenGFormLinkArea'); if (gformArea) gformArea.style.display = 'none';
@@ -8529,96 +8676,10 @@ function closeAIArea() {
     document.getElementById('asesmenAIGenerateArea').style.display = 'none';
 }
 
-// --- Google Form Link Area (Paste link dari guru) ---
-function openGoogleFormLinkArea() {
-    document.getElementById('asesmenGFormLinkArea').style.display = 'block';
-    document.getElementById('asesmenBuilderArea').style.display = 'none';
-    document.getElementById('asesmenParseArea').style.display = 'none';
-    document.getElementById('asesmenAIGenerateArea').style.display = 'none';
-
-    populateMapelNameDropdown('gformMapel', '');
-    populateKelasNameDropdown('gformKelas', '');
-    var lblYear = document.getElementById('lblActiveYear');
-    var gformTahun = document.getElementById('gformTahun');
-    if (lblYear && gformTahun) {
-        var yearVal = lblYear.textContent;
-        gformTahun.value = (yearVal && yearVal !== 'Belum diatur') ? yearVal : '';
-    }
-    // Reset form fields
-    document.getElementById('gformJudul').value = '';
-    document.getElementById('gformTipe').value = 'PH';
-    document.getElementById('gformSemester').value = 'Ganjil';
-    document.getElementById('gformWaktu').value = '';
-    document.getElementById('gformTanggal').value = '';
-    document.getElementById('gformLink').value = '';
-
-    document.getElementById('asesmenGFormLinkArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (window.lucide) lucide.createIcons();
-}
-
-function closeGoogleFormLinkArea() {
-    document.getElementById('asesmenGFormLinkArea').style.display = 'none';
-}
-
-async function saveGoogleFormLink() {
-    var judul = (document.getElementById('gformJudul') || {}).value || '';
-    var tipe = (document.getElementById('gformTipe') || {}).value || 'PH';
-    var mapel = (document.getElementById('gformMapel') || {}).value || '';
-    var kelas = (document.getElementById('gformKelas') || {}).value || '';
-    var tahun = (document.getElementById('gformTahun') || {}).value || '';
-    var semester = (document.getElementById('gformSemester') || {}).value || 'Ganjil';
-    var waktu = (document.getElementById('gformWaktu') || {}).value || '';
-    var tanggal = (document.getElementById('gformTanggal') || {}).value || '';
-    var link = (document.getElementById('gformLink') || {}).value || '';
-
-    // Validasi
-    if (!judul.trim()) { showToast('Judul Asesmen wajib diisi!', 'warning'); return; }
-    if (!mapel) { showToast('Mata Pelajaran wajib dipilih!', 'warning'); return; }
-    if (!kelas) { showToast('Kelas wajib dipilih!', 'warning'); return; }
-    if (!waktu) { showToast('Waktu pengerjaan wajib diisi!', 'warning'); return; }
-    if (!tanggal) { showToast('Tanggal ujian wajib diisi!', 'warning'); return; }
-    if (!link.trim()) { showToast('Link Google Form wajib diisi!', 'warning'); return; }
-
-    // Validasi format URL Google Form
-    var linkLower = link.trim().toLowerCase();
-    if (linkLower.indexOf('docs.google.com/forms') === -1 && linkLower.indexOf('forms.gle') === -1 && linkLower.indexOf('google.com') === -1) {
-        showToast('Link yang dimasukkan bukan URL Google Form yang valid!', 'warning');
-        return;
-    }
-
-    try {
-        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan link Google Form...');
-
-        var payload = {
-            judul: judul.trim(),
-            mata_pelajaran: mapel,
-            kelas: kelas,
-            tipe_ujian: tipe,
-            tahun_pelajaran: tahun || null,
-            semester: semester,
-            waktu_menit: parseInt(waktu) || 0,
-            tanggal_pelaksanaan: tanggal,
-            google_form_url: link.trim(),
-            status: 'terbit',
-            bobot_pg: 0,
-            bobot_essay: 0,
-            published_at: new Date().toISOString(),
-            created_by: currentUser ? currentUser.id : null,
-            updated_at: new Date().toISOString()
-        };
-
-        const { data, error } = await supabaseClient.from('asesmen').insert([payload]).select('id').single();
-        if (error) throw error;
-
-        showToast('✅ Link Google Form berhasil disimpan dan akan tampil di Riwayat Asesmen!', 'success');
-        closeGoogleFormLinkArea();
-        loadAsesmenList();
-    } catch (e) {
-        showToast('Gagal menyimpan: ' + e.message, 'error');
-    } finally {
-        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-    }
-}
+// --- Google Form Link Area (REMOVED — CBT Native only) ---
+function openGoogleFormLinkArea() { showToast('Fitur Google Form sudah dihapus. Gunakan CBT Native.', 'info'); }
+function closeGoogleFormLinkArea() { }
+async function saveGoogleFormLink() { showToast('Fitur Google Form sudah dihapus. Gunakan CBT Native.', 'info'); }
 
 async function editAsesmenDraft(id) {
     await openAsesmenBuilder(id);
@@ -9462,8 +9523,8 @@ function submitAutoGenerate(source) {
         showCustomConfirm(
             'Terbitkan Langsung?',
             'Anda sudah melihat pratinjaunya di form bawah.' +
-            '<br>Sistem akan otomatis menge-save data ini dan menerbitkannya ke Google Form.<br>Lanjutkan?',
-            'Ya, Terbitkan',
+            '<br>Sistem akan otomatis menge-save data ini dan menerbitkannya ke CBT Native.<br>Lanjutkan?',
+            'Ya, Terbitkan CBT',
             function () {
                 if (source === 'ai') closeAIArea();
                 else closeParseArea();
@@ -9473,7 +9534,7 @@ function submitAutoGenerate(source) {
     }
 }
 
-// --- Publish to Google Form ---
+// --- Publish to CBT Native ---
 function confirmPublishAsesmen() {
     collectSoalFromDOM();
 
@@ -9515,178 +9576,91 @@ function confirmPublishAsesmen() {
     var pgCount = asesmenBuilderSoalList.filter(function (s) { return s.tipe === 'pg'; }).length;
     var essayCount = asesmenBuilderSoalList.filter(function (s) { return s.tipe === 'essay'; }).length;
 
+    var bobotPG = parseInt((document.getElementById('builderBobotPG') || {}).value || 0);
+    var bobotEssay = parseInt((document.getElementById('builderBobotEssay') || {}).value || 0);
+    var totalPoin = (pgCount * bobotPG) + (essayCount * bobotEssay);
+    
+    if (totalPoin !== 100) {
+        showToast('Gagal Menerbitkan: Total bobot saat ini (' + totalPoin + '). Harap sesuaikan bobot x soal agar total menjadi 100 (misal: 50 soal PG x 2 = 100)! Anda tetap bisa menyimpannya ke Draft.', 'warning');
+        return;
+    }
+
     showCustomConfirm(
-        'Terbitkan ke Google Form?',
-        'Asesmen <strong>"' + escHtml(judul) + '"</strong> akan dikirim ke Google Form.<br><br>' +
+        'Terbitkan ke CBT Native?',
+        'Asesmen <strong>"' + escHtml(judul) + '"</strong> akan diterbitkan ke CBT Native.<br><br>' +
         '📋 Total: <strong>' + asesmenBuilderSoalList.length + ' soal</strong> (' + pgCount + ' PG, ' + essayCount + ' Essay)<br><br>' +
         '⚠️ <strong>Setelah diterbitkan, soal TIDAK bisa diedit lagi.</strong><br>Pastikan semua soal sudah benar dan lengkap.',
-        'Ya, Terbitkan',
-        function () { publishToGoogleForm(); }
+        'Ya, Terbitkan CBT',
+        function () { publishToCbtNative(); }
     );
 }
 
+function showPublishChoiceModal(judul) {
+    publishToCbtNative();
+}
+
 async function publishToGoogleForm() {
-    // 1. Save draft first
+    showToast('Fitur Google Form sudah dinonaktifkan. Mengalihkan ke CBT Native...', 'info');
+    await publishToCbtNative();
+}
+
+async function publishToCbtNative() {
     await saveDraftAsesmen(false);
 
     var asesmenId = (document.getElementById('builderAsesmenId') || {}).value;
     if (!asesmenId) { showToast('Simpan draft terlebih dahulu!', 'error'); return; }
 
-    // 2. Get GAS URL
-    var gasUrl = (document.getElementById('gasUrlInput') || {}).value || '';
-    if (!gasUrl.trim()) {
-        showToast('URL Google Apps Script belum dikonfigurasi!', 'warning');
-        return;
-    }
-
-    // 3. Prepare payload
-    var judul = (document.getElementById('builderJudul') || {}).value || '';
-    var mapel = (document.getElementById('builderMapel') || {}).value || '';
-    var kelas = (document.getElementById('builderKelas') || {}).value || '';
-    var tipe = (document.getElementById('builderTipe') || {}).value || '';
-    var waktu = (document.getElementById('builderWaktu') || {}).value || '';
-    var tanggal = (document.getElementById('builderTanggal') || {}).value || '';
-    var tahun = (document.getElementById('builderTahun') || {}).value || '';
-    var semester = (document.getElementById('builderSemester') || {}).value || '';
-    var bobotPG = parseInt((document.getElementById('builderBobotPG') || {}).value) || 0;
-    var bobotEssay = parseInt((document.getElementById('builderBobotEssay') || {}).value) || 0;
-
-    collectSoalFromDOM();
-
-    // Validate Points
-    var jmlPG = asesmenBuilderSoalList.filter(s => s.tipe === 'pg').length;
-    var jmlEssay = asesmenBuilderSoalList.filter(s => s.tipe === 'essay').length;
-    if (jmlPG === 0 && jmlEssay === 0) {
-        showToast('Tidak ada soal yang dibuat!', 'warning');
-        return;
-    }
-
-    var totalPoin = (jmlPG * bobotPG) + (jmlEssay * bobotEssay);
-    if (totalPoin !== 100) {
-        showToast('Info Keamanan: Total bobot saat ini (' + totalPoin + '). Harap sesuaikan bobot x soal agar total menjadi 100 (misal: 50 soal PG x 2 = 100)!', 'warning');
-        return;
-    }
-
-    var payload = {
-        judul: judul,
-        tipe: tipe,
-        mapel: mapel,
-        kelas: kelas,
-        waktu: waktu,
-        tanggal: tanggal,
-        tahun: tahun,
-        semester: semester,
-        bobotPG: bobotPG,
-        bobotEssay: bobotEssay,
-        jmlPG: jmlPG,
-        jmlEssay: jmlEssay,
-        soal: asesmenBuilderSoalList.map(function (s, i) {
-            var item = {
-                nomor: i + 1,
-                tipe: s.tipe,
-                naskah: s.naskah || '',
-                gambar_url: s.gambar_url || ''
-            };
-            if (s.tipe === 'pg') {
-                item.opsi = { a: s.opsi_a || '', b: s.opsi_b || '', c: s.opsi_c || '', d: s.opsi_d || '' };
-                item.kunci = s.kunci || '';
-            } else if (s.tipe === 'essay') {
-                item.kunci = s.kunci || '';
-            }
-            return item;
-        })
-    };
-
-    // 4. Send to GAS
-    showGlobalLoader('Menerbitkan ke Google Form... Harap tunggu');
+    showGlobalLoader('Menerbitkan ke CBT Native...');
     try {
-        var response = await fetch(gasUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-        });
-        var result = await response.json();
+        const { error } = await supabaseClient.from('asesmen').update({ 
+            status: 'terbit', 
+            is_cbt_native: true, 
+            published_at: new Date().toISOString(), 
+            updated_at: new Date().toISOString(),
+            ujian_sent_at: null,
+            ujian_aktif: null
+        }).eq('id', asesmenId);
+        
+        if (error) throw error;
 
-        if (result.status === 'success' || result.formUrl) {
-            // Update asesmen status in Supabase
-            var updatePayload = {
-                status: 'terbit',
-                published_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            if (result.formUrl) updatePayload.google_form_url = result.formUrl;
-            if (result.sheetUrl) updatePayload.google_sheet_url = result.sheetUrl;
-            if (result.editUrl) updatePayload.google_form_edit_url = result.editUrl;
-            updatePayload.tahun_pelajaran = tahun;
-            updatePayload.semester = semester;
-
-            await supabaseClient.from('asesmen').update(updatePayload).eq('id', asesmenId);
-
-            var warningHtml = '';
-            if (result.message && result.message.indexOf('PERINGATAN') !== -1) {
-                var warnText = result.message.substring(result.message.indexOf('PERINGATAN')).replace(/\n/g, '<br>');
-                warningHtml = '<div style="margin-top:1rem;padding:1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#d97706;font-size:0.85rem;">' + warnText + '</div>';
-            }
-
-            showNotifModal('Berhasil Diterbitkan! 🎉',
-                'Soal asesmen berhasil dikirim ke Google Form!<br><br>' +
-                (result.formUrl ? '📋 <strong>Link Form:</strong><br><a href="' + result.formUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.formUrl + '</a>' : '') +
-                (result.sheetUrl ? '<br><br>📊 <strong>Link Sheets:</strong><br><a href="' + result.sheetUrl + '" target="_blank" style="color:var(--primary-light);word-break:break-all;">' + result.sheetUrl + '</a>' : '') +
-                warningHtml,
-                'success');
-
-            closeAsesmenBuilder();
-            closeAutoGenerateArea();
-            resetAsesmenForms();
-            loadAsesmenList();
-        } else {
-            throw new Error(result.message || result.error || 'Gagal membuat Google Form');
+        // Auto-clone to draft as a backup
+        try {
+            await supabaseClient.rpc('clone_asesmen_to_draft', { p_asesmen_id: asesmenId });
+        } catch (cloneErr) {
+            console.warn("Gagal membuat clone backup:", cloneErr);
         }
+
+        showToast('Asesmen berhasil diterbitkan ke CBT Native!', 'success');
+        
+        if (typeof closeAsesmenBuilder === 'function') closeAsesmenBuilder();
+        if (typeof loadAsesmenList === 'function') loadAsesmenList();
+        if (typeof showSection === 'function') showSection('sectionManajemenAsesmen');
+        if (typeof switchAsesmenTab === 'function') {
+            var firstTab = document.querySelector('.asesmen-tab');
+            if (firstTab) switchAsesmenTab('aktif', firstTab);
+        }
+
     } catch (e) {
-        showNotifModal('Gagal Menerbitkan', 'Terjadi kesalahan saat mengirim ke Google Apps Script:<br><br><strong>' + e.message + '</strong><br><br>Pastikan URL GAS benar dan sudah di-deploy sebagai Web App.', 'error');
+        showNotifModal('Gagal Menerbitkan CBT', 'Terjadi kesalahan saat menyimpan ke database:<br><br><strong>' + e.message + '</strong>', 'error');
     } finally {
         hideGlobalLoader();
     }
 }
-
 
 // ============================================================
 // ARSIP ASESMEN MODULE
 // ============================================================
 
 async function archiveAsesmen(id) {
-    showCustomConfirm('Arsipkan Asesmen?', 'Asesmen ini akan dipindahkan ke <strong>Arsip</strong>.<br><br>⚠️ <strong>Link Form akan ditutup</strong> (siswa tidak bisa mengakses lagi).<br>Link Rekap Nilai tetap bisa diakses dari menu Arsip.', 'Ya, Arsipkan', async function () {
-        showGlobalLoader('Menutup form dan mengarsipkan...');
+    showCustomConfirm('Arsipkan Asesmen?', 'Asesmen ini akan dipindahkan ke <strong>Arsip</strong>.<br><br>Asesmen yang telah diarsipkan tidak akan aktif lagi di CBT Siswa.<br>Rekap Nilai tetap bisa diakses dari menu Arsip.', 'Ya, Arsipkan', async function () {
+        showGlobalLoader('Mengarsipkan asesmen...');
         try {
-            // Ambil data URL form
-            const { data: asm } = await supabaseClient.from('asesmen').select('google_form_url, google_sheet_url').eq('id', id).single();
-
-            // Tutup Google Form via GAS (setAcceptingResponses = false)
-            if (asm && asm.google_form_url) {
-                var gasUrl = (document.getElementById('gasUrlInput') || {}).value;
-                if (gasUrl) {
-                    try {
-                        await fetch(gasUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({
-                                action: 'close',
-                                formUrl: asm.google_form_url
-                            })
-                        });
-                    } catch (e) { console.warn('Gagal menutup form:', e); }
-                }
-            }
-
-            // Update DB: arsipkan, hapus link form (siswa tidak perlu akses lagi)
             await supabaseClient.from('asesmen').update({
                 archived_at: new Date().toISOString(),
-                google_form_url: null,
-                google_form_edit_url: null,
                 updated_at: new Date().toISOString()
             }).eq('id', id);
 
-            showToast('Asesmen berhasil diarsipkan! Form sudah ditutup.', 'success');
+            showToast('Asesmen berhasil diarsipkan!', 'success');
             loadAsesmenList();
         } catch (e) { showToast('Gagal mengarsipkan: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
@@ -9808,7 +9782,7 @@ async function loadArsipAsesmen() {
 }
 
 async function restoreArsipAsesmen(id) {
-    showCustomConfirm('Kembalikan Asesmen?', 'Asesmen ini akan dikembalikan ke daftar aktif dengan status <strong>Draft</strong>.<br><br>Anda bisa mengedit soal dan menerbitkan ulang ke Google Form baru.', 'Ya, Kembalikan', async function () {
+    showCustomConfirm('Kembalikan Asesmen?', 'Asesmen ini akan dikembalikan ke daftar aktif dengan status <strong>Draft</strong>.<br><br>Anda bisa mengedit soal dan menerbitkan ulang ke CBT Native.', 'Ya, Kembalikan', async function () {
         showGlobalLoader('Mengembalikan Asesmen...');
         try {
             await supabaseClient.from('asesmen').update({
@@ -10989,6 +10963,7 @@ async function sendAiMessage() {
     try {
         // Ambil dari DB dulu agar Tersinkronisasi, fallback ke localStorage
         let dbKey = null;
+        let dbModel = null;
         try {
             if (supabaseClient) {
                 const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
@@ -10998,8 +10973,17 @@ async function sendAiMessage() {
             }
         } catch (e) { }
 
-        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
-        let GROQ_MODEL = dbModel || localStorage.getItem('GROQ_MODEL') || "llama-3.1-8b-instant";
+        let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
+        let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+
+        if (rawModel !== GROQ_MODEL) {
+            localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+            if (supabaseClient) {
+                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
+            }
+        }
+
+        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
@@ -11206,6 +11190,7 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
 
 async function fetchGroqAI(prompt, systemMsg) {
     let dbKey = null;
+    let dbModel = null;
     try {
         if (supabaseClient) {
             const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
@@ -11215,12 +11200,21 @@ async function fetchGroqAI(prompt, systemMsg) {
         }
     } catch (e) { }
 
-    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
-    let GROQ_MODEL = dbModel || localStorage.getItem('GROQ_MODEL') || "llama-3.1-8b-instant";
+    let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
+    let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+
+    if (rawModel !== GROQ_MODEL) {
+        localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+        if (supabaseClient) {
+            supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
+        }
+    }
+
+    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
     const url = "https://api.groq.com/openai/v1/chat/completions";
 
     try {
-        const res = await fetch(url, {
+        let res = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -11232,29 +11226,60 @@ async function fetchGroqAI(prompt, systemMsg) {
                     { role: "system", content: systemMsg },
                     { role: "user", content: prompt }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                max_tokens: 8000
             })
         });
 
         if (!res.ok) {
             const errData = await res.json();
-            if (res.status === 401 || (errData.error && errData.error.message.includes('Invalid API Key'))) {
-                if (currentRole === 'admin' || currentRole === 'kurikulum') {
-                    const modal = document.getElementById('apiKeyModal');
-                    if (modal) modal.classList.add('active');
-                } else {
-                    if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
-                    else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+            const errMsg = errData.error?.message || "";
+            if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model') || errMsg.includes('compound')) {
+                console.warn('Model Groq invalid di fetchGroqAI (' + GROQ_MODEL + '), otomatis beralih ke llama-3.3-70b-versatile...');
+                GROQ_MODEL = 'llama-3.3-70b-versatile';
+                localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+                if (supabaseClient) {
+                    supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
                 }
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: GROQ_MODEL,
+                        messages: [
+                            { role: "system", content: systemMsg },
+                            { role: "user", content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 8000
+                    })
+                });
+                if (!res.ok) {
+                    const retryErr = await res.json();
+                    throw new Error(retryErr.error?.message || "Gagal memanggil API Groq");
+                }
+            } else {
+                if (res.status === 401 || errMsg.includes('Invalid API Key')) {
+                    if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                        const modal = document.getElementById('apiKeyModal');
+                        if (modal) modal.classList.add('active');
+                    } else {
+                        if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
+                        else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+                    }
+                }
+                throw new Error(errMsg || "Gagal memanggil API Groq");
             }
-            throw new Error(errData.error?.message || "Gagal memanggil API Groq");
         }
         const data = await res.json();
-        return data.choices[0].message.content.trim();
+        return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : null;
     } catch (e) {
-        console.error(e);
-        if (typeof showToast === 'function') showToast("Gagal memproses AI. Coba lagi.", "error");
-        else alert("Gagal memproses AI. Coba lagi.");
+        console.error("fetchGroqAI error:", e);
+        if (typeof showToast === 'function') showToast(e.message || "Gagal memproses AI. Coba lagi.", "error");
+        else alert(e.message || "Gagal memproses AI. Coba lagi.");
         return null;
     }
 }
