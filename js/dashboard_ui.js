@@ -104,6 +104,16 @@ async function initDashboard() {
 
         animateDashboardCards();
 
+        // Auto-resume sesi CBT aktif jika siswa sempat keluar browser atau baterai habis saat ujian
+        if (currentRole === 'siswa' && typeof cbtAutoResumeSession === 'function') {
+            cbtAutoResumeSession();
+        }
+
+        // Cek dan tutup otomatis sesi CBT yang jadwalnya sudah selesai
+        if (['admin', 'guru', 'kurikulum'].includes(currentRole) && typeof cbtScheduleChecker === 'function') {
+            cbtScheduleChecker();
+        }
+
         // Setup Jeda Pemeliharaan Auto Kick
         if (currentRole !== 'admin' && currentRole !== 'kurikulum') {
             setInterval(async function () {
@@ -231,12 +241,26 @@ function applyRoleVisibility() {
 // ============================================================
 // SIDEBAR & NAVIGATION
 // ============================================================
+function closeSidebar() {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('dashOverlay');
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+}
+window.closeSidebar = closeSidebar;
+
 function toggleSidebar() {
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('dashOverlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('open');
+    if (!sidebar || !overlay) return;
+    if (sidebar.classList.contains('open')) {
+        closeSidebar();
+    } else {
+        sidebar.classList.add('open');
+        overlay.classList.add('open');
+    }
 }
+window.toggleSidebar = toggleSidebar;
 
 window.showSection = function (sectionId, linkEl) {
     document.querySelectorAll('.dash-section').forEach(function (s) { s.classList.remove('active'); });
@@ -247,8 +271,8 @@ window.showSection = function (sectionId, linkEl) {
     document.querySelectorAll('.sidebar-link').forEach(function (l) { l.classList.remove('active'); });
     if (linkEl) linkEl.classList.add('active');
 
-    // Close sidebar on mobile
-    if (window.innerWidth <= 768) toggleSidebar();
+    // Close sidebar on mobile ONLY if currently open (never toggle open)
+    closeSidebar();
 
     // Lazy-load data for sections
     if (sectionId === 'sectionBerita' && typeof loadBeritaAdmin === 'function') loadBeritaAdmin();
@@ -281,8 +305,26 @@ window.showSection = function (sectionId, linkEl) {
     if (sectionId === 'sectionAlumni') loadAlumniData();
     if (sectionId === 'sectionSiswaPindah') { loadMasterKelas(); loadSiswaPindahData(); }
     if (sectionId === 'sectionSiswaDikeluarkan') { loadMasterKelas(); loadSiswaDikeluarkanData(); }
-    if (sectionId === 'sectionBankSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); loadBankSoal(); }
-    if (sectionId === 'sectionBuatSoal') { loadMasterKelas(); loadActiveYear(); loadMasterMapel(); }
+    if (sectionId === 'sectionManajemenAsesmen') {
+        if (typeof loadAsesmenList === 'function') loadAsesmenList();
+        if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
+    }
+    if (sectionId === 'sectionBuatSoal') {
+        loadMasterKelas();
+        loadActiveYear();
+        loadMasterMapel();
+        var bId = document.getElementById('builderAsesmenId');
+        if (!bId || !bId.value) {
+            var b = document.getElementById('asesmenBuilderArea');
+            var p = document.getElementById('asesmenParseArea');
+            var a = document.getElementById('asesmenAIGenerateArea');
+            if (b && p && a && b.style.display !== 'block' && p.style.display !== 'block' && a.style.display !== 'block') {
+                var ph = document.getElementById('pilihMetodePlaceholder');
+                if (ph) ph.style.display = 'block';
+            }
+        }
+        if (window.lucide) lucide.createIcons();
+    }
     if (sectionId === 'sectionArsipAsesmen') { loadArsipAsesmen(); }
     if (sectionId === 'sectionSampahAsesmen') { loadSampahAsesmen(); }
     if (sectionId === 'sectionHasilAsesmen') {
@@ -2035,6 +2077,7 @@ async function sendAiMessage() {
     try {
         // Ambil dari DB dulu agar Tersinkronisasi, fallback ke localStorage
         let dbKey = null;
+        let dbModel = null;
         try {
             if (supabaseClient) {
                 const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
@@ -2044,8 +2087,18 @@ async function sendAiMessage() {
             }
         } catch (e) { }
 
-        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
-        let GROQ_MODEL = dbModel || localStorage.getItem('GROQ_MODEL') || "llama-3.1-8b-instant";
+        let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
+        let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+
+        // Auto perbaiki jika model di DB / localStorage invalid
+        if (rawModel !== GROQ_MODEL) {
+            localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+            if (supabaseClient) {
+                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
+            }
+        }
+
+        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
@@ -2093,7 +2146,7 @@ Kamu HARUS tahu bahwa aplikasi web ini adalah **Sistem Informasi Sekolah Terpadu
    - *Ruang Diskusi (Forum)* untuk berinteraksi, memposting gambar, berkomentar, dan memberi "Like".
    - *Galeri* foto/video kegiatan sekolah.
 
-6. **Fitur AI Terintegrasi (Groq Llama-3)**:
+6. **Fitur AI Terintegrasi (Groq AI)**:
    - Generate Soal AI, Buat Teks Cerita (Reading Comprehension), Rapikan Ejaan AI, Auto-Tulis Berita, Balas Kritik/Saran AI, Draft Surat Keluar AI, dan Kembangkan Jurnal Mengajar AI.
    - **Asisten Chat AI (Asfa)** — Itu adalah dirimu sendiri!
 
@@ -2105,7 +2158,7 @@ Kamu HARUS tahu bahwa aplikasi web ini adalah **Sistem Informasi Sekolah Terpadu
 
 Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesifik, jelaskan kemampuan yang relevan dengan antusias dan ramah sebagai Asfa!`;
 
-        const payload = {
+        let payload = {
             model: GROQ_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
@@ -2116,7 +2169,7 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
             max_tokens: 8000
         };
 
-        const res = await fetch(url, {
+        let res = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -2127,16 +2180,40 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
 
         if (!res.ok) {
             const errData = await res.json();
-            if (res.status === 401 || (errData.error && errData.error.message.includes('Invalid API Key'))) {
-                if (currentRole === 'admin' || currentRole === 'kurikulum') {
-                    const modal = document.getElementById('apiKeyModal');
-                    if (modal) modal.classList.add('active');
-                } else {
-                    if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
-                    else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+            const errMsg = errData.error?.message || "";
+            // Jika error karena model salah / tidak ada / tidak aktif di Groq
+            if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model') || errMsg.includes('access') || errMsg.includes('compound')) {
+                console.warn('Model Groq tidak dapat diakses, otomatis beralih ke qwen/qwen3.8-27b...');
+                GROQ_MODEL = 'qwen/qwen3.8-27b';
+                localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+                if (supabaseClient) {
+                    supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
                 }
+                payload.model = GROQ_MODEL;
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const retryErr = await res.json();
+                    throw new Error(retryErr.error?.message || "Gagal menghubungi server AI Groq");
+                }
+            } else {
+                if (res.status === 401 || errMsg.includes('Invalid API Key')) {
+                    if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                        const modal = document.getElementById('apiKeyModal');
+                        if (modal) modal.classList.add('active');
+                    } else {
+                        if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
+                        else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+                    }
+                }
+                throw new Error(errMsg || "Gagal menghubungi server AI Groq");
             }
-            throw new Error(errData.error?.message || "Gagal menghubungi server AI Groq");
         }
 
         // Siapkan kontainer untuk streaming text
@@ -2253,6 +2330,7 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
 
 async function fetchGroqAI(prompt, systemMsg) {
     let dbKey = null;
+    let dbModel = null;
     try {
         if (supabaseClient) {
             const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
@@ -2262,12 +2340,22 @@ async function fetchGroqAI(prompt, systemMsg) {
         }
     } catch (e) { }
 
-    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
-    let GROQ_MODEL = dbModel || localStorage.getItem('GROQ_MODEL') || "llama-3.1-8b-instant";
+    let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
+    let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+
+    // Auto-heal jika model di DB / localStorage invalid
+    if (rawModel !== GROQ_MODEL) {
+        localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+        if (supabaseClient) {
+            supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
+        }
+    }
+
+    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
     const url = "https://api.groq.com/openai/v1/chat/completions";
 
     try {
-        const res = await fetch(url, {
+        let res = await fetch(url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${GROQ_API_KEY}`,
@@ -2286,23 +2374,54 @@ async function fetchGroqAI(prompt, systemMsg) {
 
         if (!res.ok) {
             const errData = await res.json();
-            if (res.status === 401 || (errData.error && errData.error.message.includes('Invalid API Key'))) {
-                if (currentRole === 'admin' || currentRole === 'kurikulum') {
-                    const modal = document.getElementById('apiKeyModal');
-                    if (modal) modal.classList.add('active');
-                } else {
-                    if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
-                    else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+            const errMsg = errData.error?.message || "";
+            // Jika error karena model salah / tidak ada / tidak aktif di Groq
+            if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model') || errMsg.includes('access') || errMsg.includes('compound')) {
+                console.warn('Model Groq invalid di fetchGroqAI (' + GROQ_MODEL + '), otomatis beralih ke qwen/qwen3.8-27b...');
+                GROQ_MODEL = 'qwen/qwen3.8-27b';
+                localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
+                if (supabaseClient) {
+                    supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
                 }
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: GROQ_MODEL,
+                        messages: [
+                            { role: "system", content: systemMsg },
+                            { role: "user", content: prompt }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 8000
+                    })
+                });
+                if (!res.ok) {
+                    const retryErr = await res.json();
+                    throw new Error(retryErr.error?.message || "Gagal memanggil API Groq");
+                }
+            } else {
+                if (res.status === 401 || errMsg.includes('Invalid API Key')) {
+                    if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                        const modal = document.getElementById('apiKeyModal');
+                        if (modal) modal.classList.add('active');
+                    } else {
+                        if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
+                        else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
+                    }
+                }
+                throw new Error(errMsg || "Gagal memanggil API Groq");
             }
-            throw new Error(errData.error?.message || "Gagal memanggil API Groq");
         }
         const data = await res.json();
-        return data.choices[0].message.content.trim();
+        return data.choices && data.choices[0] ? data.choices[0].message.content.trim() : null;
     } catch (e) {
-        console.error(e);
-        if (typeof showToast === 'function') showToast("Gagal memproses AI. Coba lagi.", "error");
-        else alert("Gagal memproses AI. Coba lagi.");
+        console.error("fetchGroqAI error:", e);
+        if (typeof showToast === 'function') showToast(e.message || "Gagal memproses AI. Coba lagi.", "error");
+        else alert(e.message || "Gagal memproses AI. Coba lagi.");
         return null;
     }
 }
@@ -2669,4 +2788,4 @@ function hitungTotalTagihan(jenis) {
 function formatRupiah(angka) {
     return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(angka);
 }
-
+
