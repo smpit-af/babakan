@@ -5413,3 +5413,828 @@ body.dark-mode .toast-info {
     background: rgba(37,99,235, 0.05) !important;
   }
 }
+
+/* =========================================================
+   RESPONSIVE ADMIN REVIEW & TERBITKAN MODAL (DESKTOP, TABLET & MOBILE)
+   ========================================================= */
+
+.admin-review-dialog {
+  width: 95% !important;
+  max-width: 1050px !important;
+  max-height: 90vh !important;
+  border-radius: 20px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35) !important;
+  border: none !important;
+  background: #ffffff !important;
+}
+
+.admin-review-header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  padding: 1.15rem 1.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 2;
+  gap: 12px;
+}
+
+.admin-review-header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-review-header-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  flex-shrink: 0;
+}
+
+.admin-review-header-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-review-header-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-review-header-sub {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.admin-review-close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: #ffffff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.admin-review-close-btn:hover {
+  background: rgba(239, 68, 68, 0.85);
+  border-color: rgba(239, 68, 68, 0.9);
+}
+
+.admin-review-body {
+  padding: 1.75rem;
+  overflow-y: auto;
+  flex: 1;
+  background: #ffffff;
+}
+
+.admin-review-footer {
+  padding: 1rem 1.75rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-review-footer-left {
+  display: flex;
+  align-items: center;
+}
+
+.admin-review-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-review-btn-close {
+  padding: 0.6rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-review-btn-revisi {
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-review-btn-publish {
+  padding: 0.6rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Summary Card */
+.admin-review-summary-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-review-summary-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.admin-review-asm-title {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.admin-review-asm-creator {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: block;
+  margin-top: 2px;
+}
+
+.admin-review-badge-tipe {
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.admin-review-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.admin-review-meta-grid span {
+  color: #64748b;
+}
+
+.admin-review-bobot-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.admin-review-bobot-box.bobot-valid {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.admin-review-bobot-box.bobot-invalid {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.admin-review-pg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* Tablet Layout (max-width: 900px) */
+@media (max-width: 900px) {
+  .admin-review-dialog {
+    width: 95% !important;
+    max-height: 92vh !important;
+    border-radius: 16px !important;
+  }
+  .admin-review-header {
+    padding: 1rem 1.25rem;
+  }
+  .admin-review-header-title {
+    font-size: 1.05rem;
+  }
+  .admin-review-body {
+    padding: 1.25rem;
+  }
+  .admin-review-footer {
+    padding: 0.85rem 1.25rem;
+    gap: 8px;
+  }
+  .admin-review-btn-close,
+  .admin-review-btn-revisi,
+  .admin-review-btn-publish {
+    font-size: 0.82rem !important;
+    padding: 0.55rem 0.9rem !important;
+  }
+}
+
+/* Mobile & Small Tablet (max-width: 768px) */
+@media (max-width: 768px) {
+  .admin-review-overlay {
+    padding: 10px !important;
+  }
+
+  .admin-review-dialog {
+    width: 100% !important;
+    max-height: 94vh !important;
+    border-radius: 14px !important;
+  }
+
+  .admin-review-header {
+    padding: 0.85rem 1rem;
+    gap: 10px;
+  }
+
+  .admin-review-header-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .admin-review-header-title {
+    font-size: 0.95rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  .admin-review-header-sub {
+    display: none;
+  }
+
+  .admin-review-close-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .admin-review-body {
+    padding: 0.9rem;
+  }
+
+  .admin-review-summary-card {
+    padding: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-review-asm-title {
+    font-size: 1rem;
+  }
+
+  .admin-review-meta-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+
+  .admin-review-bobot-box {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 0.8rem;
+  }
+
+  .admin-review-card {
+    padding: 0.85rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* PG Options: Full width on mobile/tablet */
+  .admin-review-pg-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* FOOTER: Stacked cleanly with prominent Terbitkan button */
+  .admin-review-footer {
+    padding: 0.85rem 1rem;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .admin-review-footer-left {
+    width: 100% !important;
+    order: 3 !important;
+  }
+
+  .admin-review-footer-right {
+    width: 100% !important;
+    order: 1 !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .admin-review-btn-publish {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    order: 1;
+  }
+
+  .admin-review-btn-revisi {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.82rem !important;
+    order: 2;
+  }
+
+  .admin-review-btn-close {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE PANEL PEMBUATAN SOAL (MANUAL, COPAS, & AI)
+   ========================================================= */
+
+.asesmen-panel-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.asesmen-panel-card {
+  border: none !important;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08) !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+}
+
+.asesmen-panel-header {
+  padding: 1.5rem !important;
+  color: white !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-start !important;
+  flex-wrap: wrap !important;
+  gap: 1rem !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.asesmen-panel-body {
+  padding: 2rem !important;
+  background: #ffffff !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.asesmen-form-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  gap: 1.25rem !important;
+  margin-bottom: 2rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.asesmen-bobot-box {
+  padding: 1.15rem 1.4rem !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 16px !important;
+  margin-bottom: 2rem !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.asesmen-bobot-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+  gap: 1rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* =========================================================
+   RESPONSIVE: TABLET & MOBILE (max-width: 992px)
+   Semua form & pembobotan urut ke bawah 1 kolom penuh
+   ========================================================= */
+@media (max-width: 992px) {
+  /* Prevent horizontal scrolling on sectionBuatSoal and dash-main */
+  #sectionBuatSoal {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  #sectionBuatSoal .form-input,
+  #sectionBuatSoal .form-select,
+  #sectionBuatSoal textarea,
+  #sectionBuatSoal input,
+  #sectionBuatSoal select {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .asesmen-panel-card {
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  .asesmen-panel-header {
+    padding: 1.15rem 1.25rem !important;
+    gap: 0.85rem !important;
+  }
+
+  .asesmen-panel-header > div:first-child {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  .asesmen-panel-header h3 {
+    font-size: 1.1rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .asesmen-panel-header p {
+    font-size: 0.82rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Button Tutup Panel */
+  .asesmen-close-panel-btn {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    padding: 0.7rem 1rem !important;
+    font-size: 0.88rem !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Panel body */
+  .asesmen-panel-body {
+    padding: 1rem 1.15rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* FORM UTAMA: Selalu Urut ke Bawah (1 Kolom Penuh) */
+  .asesmen-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.9rem !important;
+    margin-bottom: 1.5rem !important;
+    width: 100% !important;
+  }
+
+  .asesmen-form-grid .form-group {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .asesmen-form-grid .form-label {
+    font-size: 0.88rem !important;
+    margin-bottom: 0.45rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+  }
+
+  .asesmen-form-grid .form-input,
+  .asesmen-form-grid select {
+    height: 48px !important;
+    font-size: 0.92rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* DETAIL UJIAN & PEMBOBOTAN: Selalu Urut ke Bawah (1 Kolom Penuh) */
+  .asesmen-bobot-box {
+    padding: 1rem 1.15rem !important;
+    margin-bottom: 1.5rem !important;
+    border-radius: 14px !important;
+  }
+
+  .asesmen-bobot-box > div:first-child {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.35rem !important;
+    margin-bottom: 0.85rem !important;
+  }
+
+  .asesmen-bobot-box h4 {
+    font-size: 0.95rem !important;
+    margin: 0 !important;
+  }
+
+  .asesmen-bobot-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+    width: 100% !important;
+  }
+
+  .asesmen-bobot-grid .form-group {
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .asesmen-bobot-grid .form-label {
+    font-size: 0.82rem !important;
+    margin-bottom: 0.4rem !important;
+    font-weight: 700 !important;
+  }
+
+  .asesmen-bobot-grid .form-input {
+    height: 46px !important;
+    font-size: 0.95rem !important;
+    border-radius: 9px !important;
+    text-align: left !important;
+    padding-left: 12px !important;
+  }
+
+  /* 3 Main Method Buttons in Toolbar */
+  .asesmen-method-toolbar {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    margin-bottom: 1.25rem !important;
+    width: 100% !important;
+  }
+
+  .asesmen-method-toolbar .btn {
+    width: 100% !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* Method Placeholder Card */
+  .asesmen-placeholder-card {
+    padding: 1.5rem 1rem !important;
+    border-radius: 14px !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .asesmen-placeholder-card h3 {
+    font-size: 1.1rem !important;
+  }
+
+  .asesmen-placeholder-card p {
+    font-size: 0.85rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .asesmen-placeholder-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  .asesmen-placeholder-grid > div {
+    padding: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* Parse & AI Textareas */
+  #parseTextarea,
+  #aiPromptInput,
+  #aiTextarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 0.9rem !important;
+    padding: 0.75rem !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Manual Builder: Soal Card & Options */
+  .soal-card {
+    padding: 0.85rem !important;
+    border-radius: 12px !important;
+  }
+
+  .soal-card-top {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .soal-options-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  .soal-toolbar {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding-top: 1rem !important;
+    margin-top: 1rem !important;
+  }
+
+  .soal-toolbar .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.7rem 1rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+  }
+}
+
+/* ========== NOTIF & TOAST: Mobile/Tablet Responsive ========== */
+@media (max-width: 992px) {
+  /* TOAST NOTIFICATIONS: Responsive Mobile/Tablet */
+  .toast-container {
+    top: auto !important;
+    bottom: 1rem !important;
+    right: 0.5rem !important;
+    left: 0.5rem !important;
+    align-items: stretch !important;
+  }
+
+  .toast {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    font-size: 0.82rem !important;
+    padding: 0.65rem 0.9rem !important;
+    border-radius: 10px !important;
+    gap: 0.5rem !important;
+  }
+
+  .toast-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .toast-message {
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+    word-break: break-word !important;
+  }
+
+  .toast-close svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  /* NOTIF MODAL: Responsive Mobile/Tablet */
+  .notif-modal {
+    max-width: 92vw !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 16px !important;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
+  }
+
+  .notif-modal-icon {
+    width: 56px !important;
+    height: 56px !important;
+    margin-bottom: 0.8rem !important;
+  }
+
+  .notif-modal-icon svg,
+  .notif-modal-icon i {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .notif-modal h3 {
+    font-size: 1.05rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .notif-modal p {
+    font-size: 0.82rem !important;
+    line-height: 1.5 !important;
+    margin-bottom: 1rem !important;
+    word-break: break-word !important;
+  }
+
+  .notif-modal-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+
+  .notif-modal-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* Custom Confirm Dialog: Responsive */
+  .custom-confirm-overlay .custom-confirm-box,
+  .custom-confirm-box {
+    max-width: 92vw !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  /* CBT Token Overlay: Responsive */
+  #cbtTokenOverlay > div {
+    width: 92% !important;
+    max-width: 380px !important;
+    padding: 1.25rem !important;
+  }
+
+  #cbtTokenInput {
+    font-size: 1.4rem !important;
+    letter-spacing: 5px !important;
+    padding: 0.6rem !important;
+  }
+}
+
+/* Mobile Extra Compact (< 480px) */
+@media (max-width: 480px) {
+  .asesmen-panel-card {
+    border-radius: 12px !important;
+  }
+
+  .asesmen-panel-header {
+    padding: 0.85rem 1rem !important;
+  }
+
+  .asesmen-panel-body {
+    padding: 0.85rem !important;
+  }
+
+  .asesmen-bobot-box {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+
+  /* Action buttons inside Parse & AI footers */
+  #asesmenParseArea [style*="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;"],
+  #asesmenAIGenerateArea [style*="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #asesmenParseArea [style*="display:flex; gap:10px; flex-wrap:wrap; width:100%;"],
+  #asesmenAIGenerateArea [style*="display:flex; gap:10px; flex-wrap:wrap; width:100%;"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  #asesmenParseArea [style*="display:flex; gap:10px; flex-wrap:wrap; width:100%;"] .btn,
+  #asesmenAIGenerateArea [style*="display:flex; gap:10px; flex-wrap:wrap; width:100%;"] .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 0.7rem 1rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+  }
+}
+
+
