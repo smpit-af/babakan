@@ -6259,6 +6259,30 @@ async function loadSoalUjian() {
         var aktifList = filteredList.filter(function (a) { return a._ujian_status === 'aktif' || a._ujian_status === 'pending'; });
         var nonaktifList = filteredList.filter(function (a) { return a._ujian_status === 'kadaluarsa'; });
 
+        // Ambil status pengerjaan siswa untuk setiap asesmen (khusus role siswa)
+        var studentAnswersMap = {};
+        if (currentRole === 'siswa' && siswaInfo && cbtAsesmenIds.length > 0) {
+            try {
+                var allActiveSesiIds = [];
+                Object.keys(sesiMap).forEach(function(k) {
+                    if (sesiMap[k] && sesiMap[k].id) allActiveSesiIds.push(sesiMap[k].id);
+                });
+                if (allActiveSesiIds.length > 0) {
+                    const { data: stAnswers } = await supabaseClient.from('cbt_jawaban_siswa')
+                        .select('id, sesi_id, status, tab_switch_count, jawaban_json')
+                        .in('sesi_id', allActiveSesiIds)
+                        .eq('siswa_id', siswaInfo.id);
+                    if (stAnswers) {
+                        stAnswers.forEach(function(ans) {
+                            studentAnswersMap[ans.sesi_id] = ans;
+                        });
+                    }
+                }
+            } catch (eAns) {
+                console.warn('Gagal memuat status pengerjaan siswa:', eAns);
+            }
+        }
+
         // ===== Render Tabel Aktif (termasuk pending) =====
         if (aktifList.length === 0) {
             var emptyAktifMsg = currentRole === 'siswa'
@@ -6281,6 +6305,12 @@ async function loadSoalUjian() {
                     }
                 }
 
+                var sesi = sesiMap[a.id];
+                var sAns = sesi ? studentAnswersMap[sesi.id] : null;
+                var isCheatLocked = sAns && ((sAns.tab_switch_count && sAns.tab_switch_count > 3) || 
+                                             (sAns.jawaban_json && sAns.jawaban_json._is_cheat_submitted === true));
+                var isSelesaiNormal = sAns && sAns.status === 'selesai' && !isCheatLocked;
+
                 var linkBtn, statusBadge;
                 if (isPending) {
                     linkBtn = '<span style="color:#94a3b8;font-size:.82rem;">Belum diaktifkan</span>';
@@ -6288,6 +6318,12 @@ async function loadSoalUjian() {
                 } else if (!isAllowed) {
                     linkBtn = '<button class="btn btn-sm" disabled style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:not-allowed;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;" title="Ujian ini dikhususkan untuk kelas ' + escHtml(a.kelas || '-') + '"><i data-lucide="lock" style="width:13px;height:13px"></i> Bukan Kelas Anda</button>';
                     statusBadge = '<span class="badge" style="background:#fef2f2;color:#dc2626;font-size:.75rem;font-weight:700;">Bukan Kelas Anda</span>';
+                } else if (isCheatLocked) {
+                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;" title="Ujian dihentikan karena pelanggaran > 3x. Butuh izin pengawas untuk lanjut."><i data-lucide="shield-alert" style="width:13px;height:13px"></i> Terkunci (>3x)</button>';
+                    statusBadge = '<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;">Pelanggaran (&gt;3x)</span>';
+                } else if (isSelesaiNormal) {
+                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#f1f5f9;color:#059669;border:1px solid #cbd5e1;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="check-circle" style="width:13px;height:13px"></i> Sudah Selesai</button>';
+                    statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Sudah Selesai</span>';
                 } else {
                     linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="radio" style="width:13px;height:13px"></i> Kerjakan CBT</button>';
                     statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Aktif</span>';
