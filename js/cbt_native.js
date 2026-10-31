@@ -428,8 +428,9 @@ async function refreshMonitorCbt(sesiId) {
             var nama = d.siswa ? d.siswa.nama_lengkap : 'Unknown';
             var mulai = d.waktu_mulai_mengerjakan ? new Date(d.waktu_mulai_mengerjakan).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
             var tabSwitch = d.tab_switch_count || 0;
+            var isCheatLocked = (tabSwitch > 3) || (d.is_cheat_submitted === true) || (d.jawaban_json && d.jawaban_json._is_cheat_submitted === true);
             var pelanggaran = tabSwitch > 0
-                ? '<span style="color:#dc2626;font-weight:700;">' + tabSwitch + 'x</span>'
+                ? '<span style="color:#dc2626;font-weight:700;">' + tabSwitch + 'x' + (isCheatLocked ? ' ⚠️' : '') + '</span>'
                 : '<span style="color:#10b981;">0</span>';
 
             // Check susulan: if student started on a different date than sesi created
@@ -443,7 +444,11 @@ async function refreshMonitorCbt(sesiId) {
 
             var stat, nilaiHtml, aksiHtml;
             if (d.status === 'selesai') {
-                stat = '<span style="background:rgba(16,185,129,.1);color:#10b981;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Selesai</span>';
+                if (isCheatLocked) {
+                    stat = '<span style="background:rgba(220,38,38,.12);color:#dc2626;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Pelanggaran (&gt;3x)</span>';
+                } else {
+                    stat = '<span style="background:rgba(16,185,129,.1);color:#10b981;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Selesai</span>';
+                }
                 nilaiHtml = '<span style="font-weight:800;color:#0369a1;font-size:1.05rem;">' + (d.nilai != null ? d.nilai : '-') + '</span>' + nilaiSyncBadge;
                 aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">' +
                     '<button onclick="showDetailJawabanSiswaCbt(\'' + d.id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Detail</button>' +
@@ -452,11 +457,20 @@ async function refreshMonitorCbt(sesiId) {
                     '<button onclick="tambahWaktuSiswaCbt(\'' + d.id + '\', \'' + sesiId + '\')" class="btn btn-sm" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;background:#eab308;color:white;border:none;" title="Buka akses & tambah waktu"><i data-lucide="clock" style="width:12px;height:12px;"></i> +Waktu</button>' +
                     '</div>';
             } else if (d.status === 'mengerjakan') {
-                stat = '<span style="background:rgba(245,158,11,.1);color:#f59e0b;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Mengerjakan</span>';
-                nilaiHtml = '<span style="color:var(--text-light);">-</span>';
-                aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;">' +
-                    '<button onclick="showDetailJawabanSiswaCbt(\'' + d.id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Intip</button>' +
-                    '</div>';
+                if (isCheatLocked) {
+                    stat = '<span style="background:rgba(220,38,38,.12);color:#dc2626;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Pelanggaran (&gt;3x)</span>';
+                    nilaiHtml = '<span style="font-weight:800;color:#dc2626;font-size:1.05rem;">' + (d.nilai != null ? d.nilai : '-') + '</span>';
+                    aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">' +
+                        '<button onclick="showDetailJawabanSiswaCbt(\'' + d.id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Detail</button>' +
+                        '<button onclick="izinkanLanjutUjianCbt(\'' + d.id + '\', \'' + sesiId + '\')" class="btn btn-sm" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;background:#8b5cf6;color:white;border:none;" title="Izinkan siswa melanjutkan ujian (reset pelanggaran)"><i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i> Izinkan Lanjut</button>' +
+                        '</div>';
+                } else {
+                    stat = '<span style="background:rgba(245,158,11,.1);color:#f59e0b;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Mengerjakan</span>';
+                    nilaiHtml = '<span style="color:var(--text-light);">-</span>';
+                    aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;">' +
+                        '<button onclick="showDetailJawabanSiswaCbt(\'' + d.id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Intip</button>' +
+                        '</div>';
+                }
             } else if (d.status === 'diblokir') {
                 stat = '<span style="background:rgba(220,38,38,.1);color:#dc2626;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Diblokir</span>';
                 nilaiHtml = '<span style="color:var(--text-light);">-</span>';
@@ -555,14 +569,40 @@ async function izinkanLanjutUjianCbt(jawabanId, sesiId) {
         async function() {
             showGlobalLoader('Membuka kembali akses ujian siswa...');
             try {
-                const { error } = await supabaseClient.from('cbt_jawaban_siswa').update({
+                var updatePayload = {
                     status: 'mengerjakan',
                     tab_switch_count: 0,
-                    waktu_kumpul: null,
-                    is_cheat_submitted: false
-                }).eq('id', jawabanId);
-                if (error) throw error;
-                showToast('Akses ujian siswa berhasil dibuka kembali!', 'success');
+                    waktu_kumpul: null
+                };
+
+                // Bersihkan flag pelanggaran dari jawaban_json
+                try {
+                    const { data: curJwb } = await supabaseClient.from('cbt_jawaban_siswa')
+                        .select('jawaban_json').eq('id', jawabanId).single();
+                    if (curJwb && curJwb.jawaban_json) {
+                        var cleanedJwb = Object.assign({}, curJwb.jawaban_json);
+                        delete cleanedJwb._is_cheat_submitted;
+                        delete cleanedJwb._tabSwitchCount;
+                        updatePayload.jawaban_json = cleanedJwb;
+                    }
+                } catch (eJson) {
+                    console.warn('Gagal membaca jawaban_json:', eJson);
+                }
+
+                // Coba update dengan is_cheat_submitted: false jika kolom tersedia
+                var { error } = await supabaseClient.from('cbt_jawaban_siswa')
+                    .update(Object.assign({}, updatePayload, { is_cheat_submitted: false }))
+                    .eq('id', jawabanId);
+
+                // Fallback jika kolom is_cheat_submitted belum dibuat di DB
+                if (error) {
+                    var { error: errRetry } = await supabaseClient.from('cbt_jawaban_siswa')
+                        .update(updatePayload)
+                        .eq('id', jawabanId);
+                    if (errRetry) throw errRetry;
+                }
+
+                showToast('Akses ujian siswa berhasil dibuka kembali! Pelanggaran telah direset ke 0.', 'success');
                 if (sesiId) refreshMonitorCbt(sesiId);
             } catch(e) {
                 showToast('Gagal membuka akses: ' + e.message, 'error');
@@ -729,6 +769,66 @@ async function mulaiUjianCbtSiswa(asesmenId) {
                 if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
                 return;
             }
+
+            // Validasi riwayat pengerjaan siswa untuk asesmen ini (terutama diskualifikasi pelanggaran > 3x)
+            var cSiswaId = siswaData.id;
+            const { data: allSesiList } = await supabaseClient.from('cbt_sesi_ujian')
+                .select('id').eq('asesmen_id', asesmenId);
+            var checkSesiIds = (allSesiList || []).map(function(s) { return s.id; });
+            if (checkSesiIds.length > 0) {
+                const { data: exJwbList } = await supabaseClient.from('cbt_jawaban_siswa')
+                    .select('*').in('sesi_id', checkSesiIds).eq('siswa_id', cSiswaId).order('created_at', { ascending: false });
+                var exJwb = (exJwbList && exJwbList.length > 0) ? exJwbList[0] : null;
+                if (exJwb) {
+                    var isCheatLocked = (exJwb.tab_switch_count && exJwb.tab_switch_count > 3) || 
+                                        (exJwb.is_cheat_submitted === true) || 
+                                        (exJwb.jawaban_json && exJwb.jawaban_json._is_cheat_submitted === true);
+                    if (isCheatLocked) {
+                        hideGlobalLoader();
+                        showNotifModal('Akses Ujian Ditolak (Pelanggaran > 3x)',
+                            '<div style="text-align:center;padding:1rem 0;">' +
+                            '<div style="background:#fee2e2;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
+                            '<i data-lucide="shield-alert" style="width:34px;height:34px;color:#dc2626;"></i></div>' +
+                            '<h3 style="margin-bottom:.5rem;color:#991b1b;font-size:1.2rem;">Ujian Dihentikan Sistem</h3>' +
+                            '<p style="color:#475569;font-size:.9rem;line-height:1.6;margin-bottom:1rem;">' +
+                            'Anda terdeteksi melakukan pelanggaran meninggalkan layar ujian lebih dari 3 kali sehingga ujian Anda telah otomatis dikumpulkan.<br><br>' +
+                            '<strong style="color:#dc2626;">Anda belum diizinkan oleh Guru Pengawas / Administrator untuk melanjutkan ujian ini.</strong>' +
+                            '</p>' +
+                            '<div style="background:#fef2f2;border:1px solid #fca5a5;padding:.8rem 1rem;border-radius:10px;font-size:.82rem;color:#b91c1c;line-height:1.5;">' +
+                            'Silakan hubungi Guru Pengawas CBT atau Administrator di sekolah untuk meminta izin melanjutkan pengerjaan.' +
+                            '</div>' +
+                            '</div>', 'error');
+                        if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
+                        return;
+                    }
+
+                    if (exJwb.status === 'selesai') {
+                        hideGlobalLoader();
+                        showNotifModal('Ujian Telah Diselesaikan',
+                            '<div style="text-align:center;padding:1rem 0;">' +
+                            '<div style="background:#dcfce7;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
+                            '<i data-lucide="check-circle-2" style="width:32px;height:32px;color:#10b981;"></i></div>' +
+                            '<h3 style="margin-bottom:.5rem;color:#1e293b;font-size:1.2rem;">Anda Sudah Mengerjakan!</h3>' +
+                            '<p style="color:#64748b;font-size:.9rem;line-height:1.5;">Anda sudah mengerjakan dan mengumpulkan ujian ini sebelumnya. Jawaban Anda telah tersimpan dengan aman di sistem.</p></div>', 'info');
+                        if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
+                        return;
+                    }
+
+                    if (exJwb.status === 'diblokir') {
+                        var today = new Date().toISOString().split('T')[0];
+                        if (exJwb.blocked_date === today) {
+                            hideGlobalLoader();
+                            showNotifModal('Akses Ditolak',
+                                '<div style="text-align:center;padding:1rem 0;">' +
+                                '<div style="background:#fee2e2;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
+                                '<i data-lucide="lock" style="width:32px;height:32px;color:#dc2626;"></i></div>' +
+                                '<h3 style="margin-bottom:.5rem;color:#1e293b;font-size:1.2rem;">Anda Diblokir</h3><p style="color:#64748b;font-size:.9rem;line-height:1.5;">Anda diblokir dari ujian ini untuk hari ini. Silakan hubungi guru yang bersangkutan.</p></div>', 'error');
+                            if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
+                            return;
+                        }
+                    }
+                }
+            }
         }
     } catch (e) {
         hideGlobalLoader();
@@ -821,6 +921,33 @@ async function verifikasiTokenCbt(asesmenId) {
                 .select('*').in('sesi_id', sesiIds).eq('siswa_id', cbtSiswaId).order('created_at', {ascending: false});
             if (listJawaban && listJawaban.length > 0) {
                 cekJawaban = listJawaban[0]; // ambil yang terbaru
+            }
+        }
+
+        // VALIDASI DISKUALIFIKASI PELANGGARAN (>3x)
+        if (cekJawaban) {
+            var isCheatLocked = (cekJawaban.tab_switch_count && cekJawaban.tab_switch_count > 3) || 
+                                (cekJawaban.is_cheat_submitted === true) || 
+                                (cekJawaban.jawaban_json && cekJawaban.jawaban_json._is_cheat_submitted === true);
+            if (isCheatLocked) {
+                var ov = document.getElementById('cbtTokenOverlay');
+                if (ov) ov.remove();
+                hideGlobalLoader();
+                showNotifModal('Akses Ujian Ditolak (Pelanggaran > 3x)',
+                    '<div style="text-align:center;padding:1rem 0;">' +
+                    '<div style="background:#fee2e2;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
+                    '<i data-lucide="shield-alert" style="width:34px;height:34px;color:#dc2626;"></i></div>' +
+                    '<h3 style="margin-bottom:.5rem;color:#991b1b;font-size:1.2rem;">Ujian Dihentikan Sistem</h3>' +
+                    '<p style="color:#475569;font-size:.9rem;line-height:1.6;margin-bottom:1rem;">' +
+                    'Anda telah melakukan pelanggaran meninggalkan layar ujian lebih dari 3 kali sehingga ujian otomatis dikumpulkan.<br><br>' +
+                    '<strong style="color:#dc2626;">Anda belum diizinkan oleh Guru Pengawas / Administrator untuk melanjutkan ujian ini.</strong>' +
+                    '</p>' +
+                    '<div style="background:#fef2f2;border:1px solid #fca5a5;padding:.8rem 1rem;border-radius:10px;font-size:.82rem;color:#b91c1c;line-height:1.5;">' +
+                    'Silakan hubungi Guru Pengawas CBT atau Administrator untuk meminta izin melanjutkan pengerjaan.' +
+                    '</div>' +
+                    '</div>', 'error');
+                if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
+                return;
             }
         }
 
@@ -1292,14 +1419,31 @@ async function handleCheatDisqualification(jawabanId) {
 
         var nilai = hitungNilaiCbt(jawabanClean, soalList || [], asm);
 
-        await supabaseClient.from('cbt_jawaban_siswa').update({
+        // Tandai flag pelanggaran di dalam jawaban_json
+        jawabanClean._is_cheat_submitted = true;
+        jawabanClean._tabSwitchCount = cbtTabSwitchCount;
+
+        var updatePayload = {
             jawaban_json: jawabanClean,
             nilai: nilai,
             status: 'selesai',
             tab_switch_count: cbtTabSwitchCount,
-            waktu_kumpul: new Date().toISOString(),
-            is_cheat_submitted: true
-        }).eq('id', jawabanId);
+            waktu_kumpul: new Date().toISOString()
+        };
+
+        // Coba update dengan is_cheat_submitted jika kolom tersedia di tabel
+        var { error: errCheatCol } = await supabaseClient.from('cbt_jawaban_siswa')
+            .update(Object.assign({}, updatePayload, { is_cheat_submitted: true }))
+            .eq('id', jawabanId);
+        
+        // Fallback jika kolom is_cheat_submitted belum dibuat di DB
+        if (errCheatCol) {
+            console.warn('Update dengan kolom is_cheat_submitted gagal, menggunakan fallback update:', errCheatCol.message);
+            var { error: errFallback } = await supabaseClient.from('cbt_jawaban_siswa')
+                .update(updatePayload)
+                .eq('id', jawabanId);
+            if (errFallback) console.error('Fallback handleCheatDisqualification gagal:', errFallback);
+        }
 
         // Otomatis kirim nilai ke Input Penilaian (nilai_akademik)
         if (typeof _syncSingleCbtNilai === 'function') {
@@ -1320,7 +1464,7 @@ async function handleCheatDisqualification(jawabanId) {
             'Nilai Akhir: <strong style="color:#0369a1;font-size:1.3rem;">' + nilai + '</strong> (dihitung dari nomor yang sudah dikerjakan).' +
             '</p>' +
             '<div style="background:#fef2f2;border:1px solid #fca5a5;padding:.8rem 1rem;border-radius:10px;font-size:.82rem;color:#b91c1c;margin-bottom:1rem;line-height:1.5;">' +
-            '🔒 Anda <strong>tidak dapat melanjutkan pengerjaan</strong> kembali kecuali telah mendapatkan izin khusus dari Guru / Administrator pengawas ujian.' +
+            '🔒 Anda <strong>tidak dapat masuk kembali</strong> ke ujian ini dengan token kecuali telah mendapatkan izin khusus dari Guru Pengawas / Administrator CBT.' +
             '</div>' +
             '</div>', 'error');
 
@@ -1468,6 +1612,8 @@ async function submitCbtFinal() {
 async function autoKumpulCbt(jawabanId) {
     showGlobalLoader('Waktu habis! Mengumpulkan jawaban otomatis...');
     try {
+        // Gunakan jawabanId parameter jika tersedia, fallback ke cbtJawabanId global
+        var jId = jawabanId || cbtJawabanId;
         var jawabanClean = {};
         Object.keys(cbtJawabanMap).forEach(function (k) {
             if (!k.startsWith('_')) jawabanClean[k] = cbtJawabanMap[k];
@@ -1487,11 +1633,11 @@ async function autoKumpulCbt(jawabanId) {
             status: 'selesai',
             tab_switch_count: cbtTabSwitchCount,
             waktu_kumpul: new Date().toISOString()
-        }).eq('id', cbtJawabanId);
+        }).eq('id', jId);
 
         // Otomatis sinkronisasi nilai ke menu Input Penilaian (nilai_akademik)
         if (typeof _syncSingleCbtNilai === 'function') {
-            try { await _syncSingleCbtNilai(cbtJawabanId); } catch(errSync) { console.warn('Auto sync nilai cbt error:', errSync); }
+            try { await _syncSingleCbtNilai(jId); } catch(errSync) { console.warn('Auto sync nilai cbt error:', errSync); }
         }
 
         cleanupCbtSession();
@@ -1509,28 +1655,32 @@ async function autoKumpulCbt(jawabanId) {
 // ================= GRADING =================
 function hitungNilaiCbt(jawaban, soalList, asm) {
     if (!soalList || soalList.length === 0) return 0;
+    jawaban = jawaban || {};
 
-    var bobotPG = (asm && asm.bobot_pg) ? parseInt(asm.bobot_pg) : 100;
-    var bobotEssay = (asm && asm.bobot_essay) ? parseInt(asm.bobot_essay) : 0;
+    var bobotPG = (asm && asm.bobot_pg !== null && asm.bobot_pg !== undefined && !isNaN(Number(asm.bobot_pg)))
+        ? parseFloat(asm.bobot_pg) : 0;
+    var bobotEssay = (asm && asm.bobot_essay !== null && asm.bobot_essay !== undefined && !isNaN(Number(asm.bobot_essay)))
+        ? parseFloat(asm.bobot_essay) : 0;
 
     var pgSoal = soalList.filter(function (s) { return s.tipe_soal === 'pg'; });
     var essaySoal = soalList.filter(function (s) { return s.tipe_soal === 'essay'; });
 
-    // Grade PG (auto)
+    // Grade PG (auto) — bandingkan huruf pertama (charAt(0)) agar "A. Opsi" tetap match "A"
     var pgBenar = 0;
     pgSoal.forEach(function (s) {
         var key = 'soal_' + s.nomor_soal;
         var jawabanSiswa = String(jawaban[key] || '').trim().toUpperCase();
-        var kunci = String(s.kunci_jawaban || '').trim().toUpperCase().charAt(0);
-        if (jawabanSiswa && kunci && jawabanSiswa === kunci) pgBenar++;
+        var kunci = String(s.kunci_jawaban || '').trim().toUpperCase();
+        var userChar = jawabanSiswa ? jawabanSiswa.charAt(0) : '';
+        var kunciChar = kunci ? kunci.charAt(0) : '';
+        if (userChar && kunciChar && userChar === kunciChar) pgBenar++;
     });
 
     var nilaiPG = pgBenar * bobotPG;
 
     // Essay: Cek keyword matching (sederhana)
-    var essayNilai = 0;
-    if (essaySoal.length > 0 && bobotEssay > 0) {
-        var essayBenar = 0;
+    var essayBenar = 0;
+    if (essaySoal.length > 0) {
         essaySoal.forEach(function (s) {
             var key = 'soal_' + s.nomor_soal;
             var jawabanSiswa = String(jawaban[key] || '').trim().toLowerCase();
@@ -1567,11 +1717,32 @@ function hitungNilaiCbt(jawaban, soalList, asm) {
                 essayBenar += matchCount / keywords.length;
             }
         });
-        essayNilai = essayBenar * bobotEssay;
+    }
+    var essayNilai = essayBenar * bobotEssay;
+
+    // Hitung total bobot keseluruhan ujian
+    var totalBobot = (pgSoal.length * bobotPG) + (essaySoal.length * bobotEssay);
+    var finalScore = 0;
+
+    if (totalBobot > 0) {
+        if (totalBobot === 100) {
+            // Bobot sudah terkalibrasi sempurna ke skala 100
+            finalScore = nilaiPG + essayNilai;
+        } else {
+            // Auto-scale ke 100 jika totalBobot bukan 100
+            finalScore = ((nilaiPG + essayNilai) / totalBobot) * 100;
+        }
+    } else {
+        // Fallback: bobot 0 atau tidak diset — hitung persentase benar
+        if (pgSoal.length > 0 && essaySoal.length === 0) {
+            finalScore = (pgBenar / pgSoal.length) * 100;
+        } else if (soalList.length > 0) {
+            finalScore = ((pgBenar + essayBenar) / soalList.length) * 100;
+        }
     }
 
-    var total = Math.round((nilaiPG + essayNilai) * 100) / 100;
-    return Math.min(total, 100);
+    finalScore = Math.round(finalScore * 100) / 100;
+    return Math.max(0, Math.min(finalScore, 100));
 }
 
 // ================= HASIL =================
@@ -1673,7 +1844,7 @@ async function kirimNilaiCbtSatuan(jawabanId) {
     try {
         var result = await _syncSingleCbtNilai(jawabanId);
         if (result.success) {
-            showToast('Nilai ' + result.nama + ' berhasil dikirim ke buku nilai!', 'success');
+            showToast('Nilai ' + result.nama + (result.nilai !== undefined ? ' (' + result.nilai + ')' : '') + ' berhasil dikirim ke buku nilai!', 'success');
             // Refresh monitor table
             var sesiId = result.sesiId;
             if (sesiId) refreshMonitorCbt(sesiId);
@@ -1725,38 +1896,68 @@ async function kirimSemuaNilaiCbt(asesmenId, sesiId) {
 }
 
 async function _syncSingleCbtNilai(jawabanId) {
-    // 1. Get jawaban data with asesmen info
+    // 1. Get jawaban data with asesmen info (termasuk jawaban_json untuk recalculate)
     const { data: jwb } = await supabaseClient.from('cbt_jawaban_siswa')
-        .select('id, siswa_id, nilai, sesi_id, siswa:siswa_id(nama_lengkap, kelas_id), sesi_ujian:sesi_id(asesmen_id)')
+        .select('id, siswa_id, nilai, jawaban_json, sesi_id, siswa:siswa_id(nama_lengkap, kelas_id), sesi_ujian:sesi_id(asesmen_id)')
         .eq('id', jawabanId).single();
 
-    if (!jwb || jwb.nilai == null) return { success: false, error: 'Data jawaban tidak valid' };
+    if (!jwb) return { success: false, error: 'Data jawaban tidak valid' };
 
     var asesmenId = jwb.sesi_ujian ? jwb.sesi_ujian.asesmen_id : null;
     if (!asesmenId) return { success: false, error: 'Asesmen ID tidak ditemukan' };
 
-    // 2. Get asesmen info
+    // 2. Get asesmen info (termasuk bobot untuk recalculate)
     const { data: asm } = await supabaseClient.from('asesmen')
-        .select('tipe_ujian, mata_pelajaran, kelas, tahun_pelajaran, semester')
+        .select('tipe_ujian, mata_pelajaran, kelas, tahun_pelajaran, semester, bobot_pg, bobot_essay')
         .eq('id', asesmenId).single();
     if (!asm) return { success: false, error: 'Data asesmen tidak ditemukan' };
 
-    // 3. Map tipe_ujian to nilai_akademik column
+    // 3. RECALCULATE nilai dari jawaban_json + asesmen_soal (JANGAN percaya jwb.nilai yang bisa 0/stale)
+    var verifiedNilai = jwb.nilai || 0;
+    try {
+        const { data: soalList } = await supabaseClient.from('asesmen_soal')
+            .select('*').eq('asesmen_id', asesmenId).order('nomor_soal', { ascending: true });
+
+        if (soalList && soalList.length > 0 && jwb.jawaban_json) {
+            // Bersihkan jawaban dari internal flags
+            var cleanJawaban = {};
+            Object.keys(jwb.jawaban_json).forEach(function(k) {
+                if (!k.startsWith('_')) cleanJawaban[k] = jwb.jawaban_json[k];
+            });
+            var recalculated = hitungNilaiCbt(cleanJawaban, soalList, asm);
+            if (recalculated !== null && !isNaN(recalculated)) {
+                verifiedNilai = recalculated;
+            }
+        }
+    } catch (calcErr) {
+        console.warn('[CBT Sync] Gagal recalculate nilai, gunakan nilai tersimpan:', calcErr);
+    }
+
+    verifiedNilai = Math.round(verifiedNilai * 100) / 100;
+
+    // 4. Update nilai di cbt_jawaban_siswa jika berbeda dari yang tersimpan
+    if (verifiedNilai !== jwb.nilai) {
+        await supabaseClient.from('cbt_jawaban_siswa')
+            .update({ nilai: verifiedNilai }).eq('id', jawabanId);
+        console.log('[CBT Sync] Nilai dikoreksi dari', jwb.nilai, 'menjadi', verifiedNilai, 'untuk jawaban', jawabanId);
+    }
+
+    // 5. Map tipe_ujian to nilai_akademik column
     var tipe = (asm.tipe_ujian || '').toUpperCase();
     var updateObj = {};
     if (tipe === 'STS' || tipe === 'PENILAIAN HARIAN') {
-        updateObj.nilai_sts = Math.round(jwb.nilai * 100) / 100;
+        updateObj.nilai_sts = verifiedNilai;
     } else if (tipe === 'SAS') {
-        updateObj.nilai_sas = Math.round(jwb.nilai * 100) / 100;
+        updateObj.nilai_sas = verifiedNilai;
     } else if (tipe === 'SAJ') {
-        updateObj.nilai_saj = Math.round(jwb.nilai * 100) / 100;
+        updateObj.nilai_saj = verifiedNilai;
     } else if (tipe === 'SAT') {
-        updateObj.nilai_sat = Math.round(jwb.nilai * 100) / 100;
+        updateObj.nilai_sat = verifiedNilai;
     } else {
-        updateObj.nilai_sts = Math.round(jwb.nilai * 100) / 100;
+        updateObj.nilai_sts = verifiedNilai;
     }
 
-    // 4. Find mapel_id and kelas_id from master data
+    // 6. Find mapel_id and kelas_id from master data
     var siswaKelasId = jwb.siswa ? jwb.siswa.kelas_id : null;
     if (!siswaKelasId) return { success: false, error: 'Kelas siswa tidak ditemukan' };
 
@@ -1766,7 +1967,7 @@ async function _syncSingleCbtNilai(jawabanId) {
     var mapelId = (mapelMatch && mapelMatch.length > 0) ? mapelMatch[0].id : null;
     if (!mapelId) return { success: false, error: 'Mata pelajaran "' + asm.mata_pelajaran + '" tidak ditemukan di master data' };
 
-    // 5. Upsert to nilai_akademik
+    // 7. Upsert to nilai_akademik
     var tahun = asm.tahun_pelajaran || '';
     var semester = asm.semester || 'Ganjil';
     // If tahun not set in asesmen, try from active year
@@ -1813,10 +2014,10 @@ async function _syncSingleCbtNilai(jawabanId) {
         .upsert(payload, { onConflict: 'tahun_pelajaran, semester, kelas_id, mapel_id, siswa_id' });
     if (upsertErr) return { success: false, error: upsertErr.message };
 
-    // 6. Mark as synced
+    // 8. Mark as synced
     await supabaseClient.from('cbt_jawaban_siswa').update({ nilai_synced: true }).eq('id', jawabanId);
 
-    return { success: true, nama: jwb.siswa ? jwb.siswa.nama_lengkap : '', sesiId: jwb.sesi_id };
+    return { success: true, nama: jwb.siswa ? jwb.siswa.nama_lengkap : '', sesiId: jwb.sesi_id, nilai: verifiedNilai };
 }
 
 // ================= AUTO END SESI CBT & SCHEDULE CHECKER =================
@@ -1990,14 +2191,18 @@ async function cbtAutoResumeSession() {
             return;
         }
 
-        // Cek apakah jawaban masih berstatus 'mengerjakan' di database
+        // Cek apakah jawaban masih berstatus 'mengerjakan' di database dan bukan terkena diskualifikasi
         var { data: jwb, error: jwbErr } = await supabaseClient.from('cbt_jawaban_siswa')
-            .select('id, status, jawaban_json, sesi_id')
+            .select('id, status, jawaban_json, sesi_id, tab_switch_count')
             .eq('id', session.jawabanId)
             .single();
 
-        if (jwbErr || !jwb || jwb.status !== 'mengerjakan') {
-            // Sesi sudah selesai/diblokir/tidak valid → hapus
+        var isCheatResumeLocked = jwb && ((jwb.tab_switch_count && jwb.tab_switch_count > 3) || 
+                                          (jwb.is_cheat_submitted === true) || 
+                                          (jwb.jawaban_json && jwb.jawaban_json._is_cheat_submitted === true));
+
+        if (jwbErr || !jwb || jwb.status !== 'mengerjakan' || isCheatResumeLocked) {
+            // Sesi sudah selesai/diblokir/diskualifikasi pelanggaran/tidak valid → hapus
             localStorage.removeItem('cbt_active_session');
             return;
         }
