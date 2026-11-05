@@ -1091,6 +1091,14 @@ async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
 }
 
 function buildCbtFullscreenUI(asm, jawabanId) {
+    // Bersihkan sesi UI CBT lama jika ada agar tidak terjadi duplikasi elemen DOM
+    var existingContainer = document.getElementById('cbtFullscreen');
+    if (existingContainer) {
+        existingContainer.remove();
+    }
+    if (cbtInterval) { clearInterval(cbtInterval); cbtInterval = null; }
+    if (cbtAutoSaveInterval) { clearInterval(cbtAutoSaveInterval); cbtAutoSaveInterval = null; }
+
     var cbtContainer = document.createElement('div');
     cbtContainer.id = 'cbtFullscreen';
     cbtContainer.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f1f5f9;display:flex;flex-direction:column;font-family:Inter,system-ui,sans-serif;';
@@ -1334,15 +1342,17 @@ function updateNavGridCbt() {
 
 // ================= TIMER =================
 function startCbtTimer(jawabanId) {
-    if (cbtInterval) clearInterval(cbtInterval);
-    cbtInterval = setInterval(function () {
+    if (cbtInterval) { clearInterval(cbtInterval); cbtInterval = null; }
+
+    function tickTimer() {
+        if (!cbtDeadline) return;
         var now = new Date();
         var diff = cbtDeadline - now;
         var display = document.getElementById('cbtTimerDisplay');
         var box = document.getElementById('cbtTimerBox');
 
         if (diff <= 0) {
-            clearInterval(cbtInterval);
+            if (cbtInterval) { clearInterval(cbtInterval); cbtInterval = null; }
             if (display) display.textContent = '00:00';
             // Auto submit
             autoKumpulCbt(jawabanId);
@@ -1364,7 +1374,11 @@ function startCbtTimer(jawabanId) {
                 if (display) display.style.color = '#fcd34d';
             }
         }
-    }, 1000);
+    }
+
+    // Jalankan satu kali segera agar tidak tertunda 1 detik dengan tampilan '--:--'
+    tickTimer();
+    cbtInterval = setInterval(tickTimer, 1000);
 }
 
 // ================= AUTO-SAVE =================
@@ -1474,9 +1488,22 @@ async function handleCheatDisqualification(jawabanId) {
     }
 }
 
+var _cbtVisHandler = null;
+var _cbtCtxHandler = null;
+
 function setupAntiCheat(jawabanId) {
+    // Bersihkan listener sebelumnya agar tidak double-count pelanggaran
+    if (_cbtVisHandler) {
+        document.removeEventListener('visibilitychange', _cbtVisHandler);
+        _cbtVisHandler = null;
+    }
+    if (_cbtCtxHandler) {
+        document.removeEventListener('contextmenu', _cbtCtxHandler);
+        _cbtCtxHandler = null;
+    }
+
     // Detect tab switching / visibility change
-    document.addEventListener('visibilitychange', function cbtVisHandler() {
+    _cbtVisHandler = function () {
         if (document.hidden && document.getElementById('cbtFullscreen')) {
             cbtTabSwitchCount++;
             cbtJawabanMap._tabSwitchCount = cbtTabSwitchCount;
@@ -1526,14 +1553,16 @@ function setupAntiCheat(jawabanId) {
             };
             document.addEventListener('visibilitychange', showWarn);
         }
-    });
+    };
+    document.addEventListener('visibilitychange', _cbtVisHandler);
 
     // Disable right-click
-    document.addEventListener('contextmenu', function cbtCtxHandler(e) {
+    _cbtCtxHandler = function (e) {
         if (document.getElementById('cbtFullscreen')) {
             e.preventDefault();
         }
-    });
+    };
+    document.addEventListener('contextmenu', _cbtCtxHandler);
 }
 
 // ================= KUMPULKAN UJIAN =================
@@ -1822,6 +1851,17 @@ function showHasilUjianCbt(nilai, asm) {
 function cleanupCbtSession() {
     if (cbtInterval) { clearInterval(cbtInterval); cbtInterval = null; }
     if (cbtAutoSaveInterval) { clearInterval(cbtAutoSaveInterval); cbtAutoSaveInterval = null; }
+
+    // Bersihkan anti-cheat listeners agar tidak double-fire di sesi berikutnya
+    if (_cbtVisHandler) {
+        document.removeEventListener('visibilitychange', _cbtVisHandler);
+        _cbtVisHandler = null;
+    }
+    if (_cbtCtxHandler) {
+        document.removeEventListener('contextmenu', _cbtCtxHandler);
+        _cbtCtxHandler = null;
+    }
+
     var fs = document.getElementById('cbtFullscreen');
     if (fs) fs.remove();
     cbtSoalListCache = [];
@@ -2175,7 +2215,12 @@ function removeCbtBackButtonGuard() {
 // Dipanggil saat halaman dashboard dimuat.
 // Jika ada sesi CBT aktif di localStorage, cek ke database apakah masih valid,
 // lalu langsung masuk kembali ke CBT tanpa perlu token.
+var _cbtResumeRunning = false; // Guard agar tidak double-fire
 async function cbtAutoResumeSession() {
+    // Cegah pemanggilan ganda (dari dashboard_ui.js + DOMContentLoaded)
+    if (_cbtResumeRunning) return;
+    _cbtResumeRunning = true;
+
     try {
         var raw = localStorage.getItem('cbt_active_session');
         if (!raw) return;
@@ -2188,6 +2233,11 @@ async function cbtAutoResumeSession() {
         // Hanya untuk siswa
         if (!currentUser || currentRole !== 'siswa') {
             localStorage.removeItem('cbt_active_session');
+            return;
+        }
+
+        // Jika UI CBT sudah terbuka (sudah di-resume), lewati
+        if (document.getElementById('cbtFullscreen')) {
             return;
         }
 
@@ -2231,11 +2281,18 @@ async function cbtAutoResumeSession() {
         // Langsung render UI ujian
         await renderUiUjianCbt(session.asesmenId, jwb.sesi_id, session.jawabanId, jwb.jawaban_json || {});
 
+        // Pulihkan tab_switch_count dari database agar pelanggaran tetap terdeteksi pada resume
+        if (jwb.tab_switch_count && jwb.tab_switch_count > 0) {
+            cbtTabSwitchCount = jwb.tab_switch_count;
+        }
+
         hideGlobalLoader();
 
     } catch (e) {
         console.error('[CBT] Auto-resume gagal:', e);
         localStorage.removeItem('cbt_active_session');
+    } finally {
+        _cbtResumeRunning = false;
     }
 }
 
