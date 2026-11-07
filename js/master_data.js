@@ -22,6 +22,7 @@ async function loadMasterMapel() {
     } catch (e) { showToast('Gagal muat mapel: ' + e.message, 'error'); }
 }
 
+
 function openMapelModal() {
     document.getElementById('formMapelId').value = '';
     document.getElementById('formMapelNama').value = '';
@@ -3028,8 +3029,8 @@ async function loadPenilaianTable() {
                 cols +
                 '<td class="td-ket" style="text-align:center;font-size:0.8rem;">-</td>' +
                 '<td style="text-align:center;">' +
-                    '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'var(--primary)\'; this.style.background=\'rgba(30,58,138,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:16px;height:16px"></i></button>' +
-                    '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'#2563eb\'; this.style.background=\'rgba(37,99,235,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="publikasikanNilaiSiswa(\'' + s.id + '\', \'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Kirim/Publikasikan Nilai ke Siswa"><i data-lucide="send" style="width:16px;height:16px"></i></button>' +
+                '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'var(--primary)\'; this.style.background=\'rgba(30,58,138,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="openRiwayatNilai(\'' + s.id + '\',\'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Lihat Riwayat"><i data-lucide="history" style="width:16px;height:16px"></i></button>' +
+                '<button style="background:transparent; border:none; color:var(--text-light); padding:6px; border-radius:6px; cursor:pointer; transition:0.2s;" onmouseover="this.style.color=\'#2563eb\'; this.style.background=\'rgba(37,99,235,0.1)\'" onmouseout="this.style.color=\'var(--text-light)\'; this.style.background=\'transparent\'" onclick="publikasikanNilaiSiswa(\'' + s.id + '\', \'' + s.nama_lengkap.replace(/\'/g, "\\\'") + '\')" title="Kirim/Publikasikan Nilai ke Siswa"><i data-lucide="send" style="width:16px;height:16px"></i></button>' +
                 '</td>' +
                 '</tr>';
         }).join('');
@@ -3186,7 +3187,7 @@ async function saveSemuaNilai() {
 async function publikasikanNilaiSiswa(siswaId, namaLengkap) {
     var tr = document.querySelector('.tr-penilaian[data-siswa="' + siswaId + '"]');
     if (!tr) return;
-    
+
     var filterTahun = document.getElementById('filterPenilaianTahun').value;
     var filterSemester = document.getElementById('filterPenilaianSemester').value;
     var filterKelas = document.getElementById('filterPenilaianKelas').value;
@@ -3200,7 +3201,7 @@ async function publikasikanNilaiSiswa(siswaId, namaLengkap) {
     };
 
     var payload = [];
-    Object.keys(inputs).forEach(function(tipe) {
+    Object.keys(inputs).forEach(function (tipe) {
         if (inputs[tipe] && inputs[tipe] !== '') {
             payload.push({
                 siswa_id: siswaId,
@@ -3223,12 +3224,12 @@ async function publikasikanNilaiSiswa(siswaId, namaLengkap) {
         return;
     }
 
-    showCustomConfirm('Kirim Nilai ke Siswa?', 'Anda akan mempublikasikan ' + payload.length + ' jenis nilai (' + payload.map(function(p){return p.tipe_asesmen}).join(', ') + ') ke dashboard <strong>' + namaLengkap + '</strong>.', 'Ya, Publikasikan', async function() {
+    showCustomConfirm('Kirim Nilai ke Siswa?', 'Anda akan mempublikasikan ' + payload.length + ' jenis nilai (' + payload.map(function (p) { return p.tipe_asesmen }).join(', ') + ') ke dashboard <strong>' + namaLengkap + '</strong>.', 'Ya, Publikasikan', async function () {
         try {
             const { error } = await supabaseClient.from('hasil_ujian_siswa').upsert(payload, { onConflict: 'siswa_id, mapel_id, tahun_pelajaran, semester, tipe_asesmen' });
             if (error) throw error;
             showToast('Berhasil dipublikasikan ke siswa! 🎉', 'success');
-        } catch(e) {
+        } catch (e) {
             showToast('Gagal mempublikasikan: ' + e.message, 'error');
         }
     });
@@ -3252,9 +3253,9 @@ async function publikasikanSemuaNilaiLaporan() {
             'SAJ': tr.querySelector('.val-saj') ? tr.querySelector('.val-saj').value : '',
             'SAT': tr.querySelector('.val-sat') ? tr.querySelector('.val-sat').value : ''
         };
-        
+
         var hasValue = false;
-        Object.keys(inputs).forEach(function(tipe) {
+        Object.keys(inputs).forEach(function (tipe) {
             if (inputs[tipe] && inputs[tipe] !== '') {
                 hasValue = true;
                 payload.push({
@@ -3280,7 +3281,7 @@ async function publikasikanSemuaNilaiLaporan() {
         return;
     }
 
-    showCustomConfirm('Publikasikan Semua Nilai?', 'Anda akan mempublikasikan nilai ke <strong>' + siswaCount + ' siswa</strong> sekaligus. Mereka dapat melihatnya di dashboard masing-masing.', 'Ya, Publikasikan Semua', async function() {
+    showCustomConfirm('Publikasikan Semua Nilai?', 'Anda akan mempublikasikan nilai ke <strong>' + siswaCount + ' siswa</strong> sekaligus. Mereka dapat melihatnya di dashboard masing-masing.', 'Ya, Publikasikan Semua', async function () {
         var btn = document.getElementById('btnPublikasikanNilaiSemua');
         var originalText = btn.innerHTML;
         btn.disabled = true;
@@ -3291,7 +3292,7 @@ async function publikasikanSemuaNilaiLaporan() {
             const { error } = await supabaseClient.from('hasil_ujian_siswa').upsert(payload, { onConflict: 'siswa_id, mapel_id, tahun_pelajaran, semester, tipe_asesmen' });
             if (error) throw error;
             showToast('Berhasil mempublikasikan nilai ke ' + siswaCount + ' siswa! 🎉', 'success');
-        } catch(e) {
+        } catch (e) {
             showToast('Gagal mempublikasikan: ' + e.message, 'error');
         } finally {
             btn.disabled = false;
@@ -3526,7 +3527,7 @@ async function loadHasilUjianSaya() {
                     kkmObj = masterKkmList.find(function (k) { return k.kelas_id === siswaData.kelas_id && k.mapel_id === h.mapel_id; });
                 } else {
                     // For CBT, try to find by mapel name
-                    var matchedMapel = masterMapelList.find(function(m) { return m.nama_mapel === h.mapelNama; });
+                    var matchedMapel = masterMapelList.find(function (m) { return m.nama_mapel === h.mapelNama; });
                     if (matchedMapel) {
                         kkmObj = masterKkmList.find(function (k) { return k.kelas_id === siswaData.kelas_id && k.mapel_id === matchedMapel.id; });
                     }
@@ -4149,7 +4150,7 @@ async function loadDataHasilAsesmen() {
                         throw new Error('Belum ada siswa yang mengumpulkan jawaban ujian.');
                     }
                 }
-            } catch(e) {
+            } catch (e) {
                 throw new Error('Sheet "Hasil Koreksi" kosong dan gagal mengambil data alternatif. Pastikan minimal 1 siswa sudah mengirim jawaban ujian.');
             }
         }
@@ -4192,7 +4193,7 @@ async function loadDataHasilAsesmen() {
                     formUrlForRegrade = asmByUrl[0].google_form_url;
                 }
             }
-        } catch(eUrl) { console.warn('Gagal mencari form URL untuk regrade:', eUrl); }
+        } catch (eUrl) { console.warn('Gagal mencari form URL untuk regrade:', eUrl); }
 
         // ==========================================
         // AUTO-GRADING LOKAL (JIKA HASIL KOREKSI TIDAK ADA)
@@ -4219,7 +4220,7 @@ async function loadDataHasilAsesmen() {
 
             // Ambil Kunci Jawaban dari Supabase
             var tipe = document.getElementById('hasilAsesmenTipe').value;
-            
+
             // Dapatkan nama mapel dari master_mapel
             const { data: dataMapel } = await supabaseClient.from('master_mapel').select('nama_mapel').eq('id', mapelId).single();
             if (!dataMapel) {
@@ -4230,7 +4231,7 @@ async function loadDataHasilAsesmen() {
             var kelasObj = masterKelasList.find(function (k) { return k.id === kelasId; });
             var namaKelas = kelasObj ? kelasObj.nama_kelas : '';
             var tingkat = kelasObj ? kelasObj.tingkat : 0;
-            
+
             let asesmenData = null;
 
             // 0. Paling Akurat: Cari berdasarkan URL Spreadsheet yang diinput user!
@@ -4244,7 +4245,7 @@ async function loadDataHasilAsesmen() {
                     asesmenData = asmByUrl;
                 }
             }
-            
+
             // 1. Jika gagal via URL, cari yang match persis parameter Mapel & Kelas
             if (!asesmenData) {
                 const { data: exactData } = await supabaseClient
@@ -4261,28 +4262,28 @@ async function loadDataHasilAsesmen() {
                     asesmenData = exactData;
                 }
             }
-            
+
             // 2. Fallback: Cari asesmen di kelas lain tapi satu tingkat
             if (!asesmenData && tingkat > 0) {
-                    const { data: allAsesmen } = await supabaseClient
-                        .from('asesmen')
-                        .select('id, kelas, google_form_url')
-                        .eq('mata_pelajaran', namaMapel)
-                        .eq('semester', semester)
-                        .eq('tipe_ujian', tipe)
-                        .order('created_at', { ascending: false });
-                        
-                    if (allAsesmen && allAsesmen.length > 0) {
-                        for (var i = 0; i < allAsesmen.length; i++) {
-                            // Cek apakah string kelas di asesmen ini memiliki tingkat yang sama
-                            var aClass = masterKelasList.find(function(k) { return k.nama_kelas === allAsesmen[i].kelas; });
-                            if (aClass && aClass.tingkat === tingkat) {
-                                asesmenData = [ { id: allAsesmen[i].id } ];
-                                break;
-                            }
+                const { data: allAsesmen } = await supabaseClient
+                    .from('asesmen')
+                    .select('id, kelas, google_form_url')
+                    .eq('mata_pelajaran', namaMapel)
+                    .eq('semester', semester)
+                    .eq('tipe_ujian', tipe)
+                    .order('created_at', { ascending: false });
+
+                if (allAsesmen && allAsesmen.length > 0) {
+                    for (var i = 0; i < allAsesmen.length; i++) {
+                        // Cek apakah string kelas di asesmen ini memiliki tingkat yang sama
+                        var aClass = masterKelasList.find(function (k) { return k.nama_kelas === allAsesmen[i].kelas; });
+                        if (aClass && aClass.tingkat === tingkat) {
+                            asesmenData = [{ id: allAsesmen[i].id }];
+                            break;
                         }
                     }
                 }
+            }
 
             if (!asesmenData || asesmenData.length === 0) {
                 throw new Error('Sheet "Hasil Koreksi" tidak ditemukan ATAU belum di-generate oleh Google Apps Script.\n\nSistem mencoba melakukan Koreksi Otomatis secara lokal, namun gagal karena Kunci Jawaban (Master Soal) untuk Mapel, Tingkat Kelas, Semester, dan Tipe Ujian ini belum dibuat di menu Asesmen Builder.\n\nPastikan Anda sudah membuat Naskah Soal Ujian ini melalui menu "Buat Asesmen". Jika Anda membuat form ujian secara manual, sistem tidak memiliki Kunci Jawaban untuk mengoreksi.');
@@ -4361,7 +4362,7 @@ async function loadDataHasilAsesmen() {
             for (var a = 0; a < availableRows.length; a++) {
                 var item = availableRows[a];
                 if (item.claimedBy) continue;
-                
+
                 var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
                 var emailSheet = idxEmail !== -1 ? (item.row[idxEmail] || '').toLowerCase().trim() : '';
                 var namaSheetNoSpace = namaSheet.replace(/\s/g, '');
@@ -4383,7 +4384,7 @@ async function loadDataHasilAsesmen() {
             for (var a = 0; a < availableRows.length; a++) {
                 var item = availableRows[a];
                 if (item.claimedBy) continue;
-                
+
                 var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
                 var namaSheetNoSpace = namaSheet.replace(/\s/g, '');
 
@@ -4400,24 +4401,24 @@ async function loadDataHasilAsesmen() {
         hasilAsesmenState.siswaList.forEach(function (s) {
             if (siswaMatchMap[s.id]) return;
             var dbWords = s.nama_lengkap.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().split(/\s+/);
-            
+
             var bestRowIdx = -1;
             var maxScore = 0;
 
             for (var a = 0; a < availableRows.length; a++) {
                 var item = availableRows[a];
                 if (item.claimedBy) continue;
-                
+
                 var namaSheet = (item.row[idxNama] || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
                 if (!namaSheet) continue;
-                
+
                 var sheetWords = namaSheet.split(/\s+/);
                 var score = 0;
 
                 for (var w = 0; w < sheetWords.length; w++) {
                     var word = sheetWords[w];
                     if (word.length < 3) continue;
-                    
+
                     for (var dw = 0; dw < dbWords.length; dw++) {
                         if (dbWords[dw] === word) {
                             score += 10; break;
@@ -4448,7 +4449,7 @@ async function loadDataHasilAsesmen() {
             var bestMatch = siswaMatchMap[s.id] || null;
 
             var rowObj = { siswa_id: s.id, nama_db: s.nama_lengkap, matched: false, nilai_akhir: 0, benar_pg: 0, skor_pg: 0, skor_essay: 0 };
-            
+
             var bPg = 0, salahPg = 0, sPg = 0, bEs = 0, salahEs = 0, sEs = 0, nAkhir = 0;
             var namaAsliSheet = '-';
             var isMatchedThisStudent = false;
@@ -4463,7 +4464,7 @@ async function loadDataHasilAsesmen() {
                     for (var noSoal in columnSoalIndexMap) {
                         var colIdx = columnSoalIndexMap[noSoal];
                         var jawabanSiswa = (bestMatch[colIdx] || '').trim().toLowerCase();
-                        
+
                         if (kunciPGMap[noSoal]) {
                             var kunciPG = kunciPGMap[noSoal];
                             var jwbPG = jawabanSiswa.charAt(0);
@@ -4508,13 +4509,13 @@ async function loadDataHasilAsesmen() {
                     sPg = idxSkorPG !== -1 ? (parseFloat(bestMatch[idxSkorPG]) || 0) : 0;
                     sEs = idxTotalEssay !== -1 ? (parseFloat(bestMatch[idxTotalEssay]) || 0) : 0;
                     nAkhir = parseFloat(bestMatch[idxNilaiAkhir]) || 0;
-                    
+
                     // Jika ini dari sheet dengan kolom tunggal "Skor", jadikan skor itu sebagai Skor PG
                     if (idxSkorPG === -1 && idxNilaiAkhir !== -1 && idxTotalEssay === -1) {
                         sPg = nAkhir;
                     }
                     // Estimasi Essay benar/salah dari total poin jika tersedia
-                    if (sEs > 0) bEs = 1; else salahEs = 1; 
+                    if (sEs > 0) bEs = 1; else salahEs = 1;
                 }
 
                 rowObj.matched = true;
@@ -4526,15 +4527,15 @@ async function loadDataHasilAsesmen() {
 
             hasilAsesmenState.data.push(rowObj);
 
-            var statusBadge = rowObj.matched ? 
-                (isLocalGrading ? '<span style="color:#0ea5e9;font-weight:bold;font-size:0.75rem;">Koreksi Lokal</span>' : '<span style="color:#16a34a;font-weight:bold;">Cocok</span>') 
+            var statusBadge = rowObj.matched ?
+                (isLocalGrading ? '<span style="color:#0ea5e9;font-weight:bold;font-size:0.75rem;">Koreksi Lokal</span>' : '<span style="color:#16a34a;font-weight:bold;">Cocok</span>')
                 : '<span style="color:#dc2626;font-size:0.8rem;">Isi Manual</span>';
             var trStyle = rowObj.matched ? '' : 'background:rgba(220,38,38,0.05);';
 
             // Buat options untuk dropdown manual override
             var selectOptionsHtml = '<option value="-1">-- Tidak Ditemukan --</option>';
             if (hasilAsesmenState.availableRows) {
-                hasilAsesmenState.availableRows.forEach(function(ar) {
+                hasilAsesmenState.availableRows.forEach(function (ar) {
                     var nama = ar.row[idxNama] || ('Baris ' + (ar.rowIndex + 1));
                     var email = idxEmail !== -1 && ar.row[idxEmail] ? (' - ' + ar.row[idxEmail]) : '';
                     var isSelected = (bestMatch && bestMatch === ar.row) ? 'selected' : '';
@@ -4545,14 +4546,14 @@ async function loadDataHasilAsesmen() {
             var akunDropdownHtml = '<select class="form-input" style="padding:4px; font-size:0.8rem; height:auto; min-width:140px; max-width:200px; margin:0;" onchange="overrideSiswaMatch(\'' + s.id + '\', this.value)">' + selectOptionsHtml + '</select>';
 
             // FORMAT HTML UNTUK MASING-MASING KOLOM (Semua Editable)
-            var bPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#16a34a;font-weight:bold;':'') + '" value="' + (rowObj.matched ? bPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_pg\', this.value)">';
-            var salahPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#dc2626;font-weight:bold;':'') + '" value="' + (rowObj.matched ? salahPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_pg\', this.value)">';
+            var bPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched ? 'color:#16a34a;font-weight:bold;' : '') + '" value="' + (rowObj.matched ? bPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_pg\', this.value)">';
+            var salahPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched ? 'color:#dc2626;font-weight:bold;' : '') + '" value="' + (rowObj.matched ? salahPg : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_pg\', this.value)">';
             var sPgHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;font-weight:bold;" value="' + (rowObj.matched ? Math.round(sPg) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_pg\', this.value)">';
-            
-            var bEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#16a34a;font-weight:bold;':'') + '" value="' + (rowObj.matched ? bEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_essay\', this.value)">';
-            var salahEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched?'color:#dc2626;font-weight:bold;':'') + '" value="' + (rowObj.matched ? salahEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_essay\', this.value)">';
+
+            var bEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched ? 'color:#16a34a;font-weight:bold;' : '') + '" value="' + (rowObj.matched ? bEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'benar_essay\', this.value)">';
+            var salahEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;' + (rowObj.matched ? 'color:#dc2626;font-weight:bold;' : '') + '" value="' + (rowObj.matched ? salahEs : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'salah_essay\', this.value)">';
             var sEsHtml = '<input type="number" min="0" class="form-input" style="width:55px;padding:4px;margin:0 auto;font-size:0.8rem;text-align:center;font-weight:bold;" value="' + (rowObj.matched ? Math.round(sEs) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'skor_essay\', this.value)">';
-            
+
             var nAkhirHtml = '<input type="number" min="0" max="100" class="form-input" style="width:70px;padding:4px;margin:0 auto;font-size:0.9rem;font-weight:bold;color:var(--primary);text-align:center;" value="' + (rowObj.matched ? Math.round(nAkhir) : 0) + '" onchange="updateHasilAsesmenManual(\'' + s.id + '\', \'nilai_akhir\', this.value)">';
 
             html += '<tr style="' + trStyle + '" data-siswa="' + s.id + '">' +
@@ -4594,41 +4595,41 @@ async function loadDataHasilAsesmen() {
     }
 }
 
-window.overrideSiswaMatch = function(siswaId, rowIndex) {
+window.overrideSiswaMatch = function (siswaId, rowIndex) {
     if (!hasilAsesmenState.manualOverrides) {
         hasilAsesmenState.manualOverrides = {};
     }
     hasilAsesmenState.manualOverrides[siswaId] = rowIndex;
-    
+
     showToast('Memperbarui pencocokan data...', 'info');
-    
-    setTimeout(function() {
+
+    setTimeout(function () {
         loadDataHasilAsesmen();
     }, 100);
 };
 
-window.triggerManualRegrade = async function() {
+window.triggerManualRegrade = async function () {
     var link = document.getElementById('hasilAsesmenLink').value.trim();
     if (!link) {
         showToast('Link Spreadsheet belum diisi!', 'warning');
         return;
     }
-    
+
     var fileId = extractFileId(link);
     if (!fileId) return;
-    
+
     var formUrl = null;
     var matchGid = link.match(/[#&?]gid=([0-9]+)/);
     var sheetGid = matchGid ? matchGid[1] : '0';
     var payloadData = { action: 'regrade', sheet_gid: sheetGid };
-    
+
     try {
         const { data } = await supabaseClient
             .from('asesmen')
             .select('*')
             .ilike('google_sheet_url', '%' + fileId + '%')
             .limit(1);
-            
+
         if (data && data.length > 0) {
             var asm = data[0];
             formUrl = asm.google_form_url;
@@ -4641,12 +4642,12 @@ window.triggerManualRegrade = async function() {
             payloadData.tipe_ujian = asm.tipe_ujian;
             payloadData.tahun_pelajaran = asm.tahun_pelajaran;
             payloadData.semester = asm.semester;
-            
+
             // Fetch soal from asesmen_soal table
             var pgKunci = {};
             var essayKunci = {};
             var jmlEssay = 0;
-            
+
             const { data: soalData } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', asm.id);
             if (soalData && soalData.length > 0) {
                 for (var i = 0; i < soalData.length; i++) {
@@ -4661,7 +4662,7 @@ window.triggerManualRegrade = async function() {
                     }
                 }
             }
-            
+
             // Hanya attach jika kunci tidak kosong (agar GAS bisa fallback ke PropertiesService jika DB kosong)
             if (Object.keys(pgKunci).length > 0 || jmlEssay > 0) {
                 payloadData.kunci = pgKunci;
@@ -4669,19 +4670,19 @@ window.triggerManualRegrade = async function() {
                 payloadData.jml_essay = jmlEssay;
             }
         }
-    } catch(e) { console.error('Gagal fetch asesmen:', e); }
-    
+    } catch (e) { console.error('Gagal fetch asesmen:', e); }
+
     if (!formUrl) {
         showToast('Form URL tidak ditemukan di database untuk link spreadsheet ini.', 'error');
         return;
     }
-    
+
     var btn = document.getElementById('btnSyncSheet');
     var origHtml = btn.innerHTML;
     btn.innerHTML = '<i data-lucide="loader" class="icon-spin" style="width:16px;height:16px;"></i> Memproses...';
     btn.disabled = true;
     if (window.lucide) lucide.createIcons();
-    
+
     try {
         const { data: resData } = await supabaseClient.from('system_settings').select('value').eq('key', 'gas_web_app_url').maybeSingle();
         if (resData && resData.value) {
@@ -4689,7 +4690,7 @@ window.triggerManualRegrade = async function() {
                 method: 'POST',
                 redirect: 'follow',
                 body: JSON.stringify(payloadData)
-            }).then(function(r) { return r.text(); }).then(function(t) {
+            }).then(function (r) { return r.text(); }).then(function (t) {
                 var isError = false;
                 var errorMsg = '';
                 try {
@@ -4698,28 +4699,28 @@ window.triggerManualRegrade = async function() {
                         isError = true;
                         errorMsg = parsed.message;
                     }
-                } catch(e) {}
-                
+                } catch (e) { }
+
                 if (isError) {
                     showToast('Gagal: ' + errorMsg, 'error');
                     console.error('[Hasil Asesmen] Regrade Error:', errorMsg);
                 } else {
                     showToast('Perintah sinkronisasi selesai diproses. Memuat ulang data...', 'success');
                 }
-                
-                setTimeout(function() {
+
+                setTimeout(function () {
                     btn.innerHTML = origHtml;
                     btn.disabled = false;
                     loadDataHasilAsesmen(); // Refresh data setelah selesai
                 }, 5000);
-            }).catch(function(e) {
+            }).catch(function (e) {
                 console.error(e);
                 showToast('Gagal menghubungi Google Apps Script. Pastikan URL Web App valid.', 'error');
                 btn.innerHTML = origHtml;
                 btn.disabled = false;
             });
         }
-    } catch(err) {
+    } catch (err) {
         console.error(err);
         btn.innerHTML = origHtml;
         btn.disabled = false;
@@ -4731,13 +4732,13 @@ function updateHasilAsesmenManual(siswaId, field, value) {
     var item = hasilAsesmenState.data.find(function (d) { return d.siswa_id === siswaId; });
     if (item) {
         item[field] = parseFloat(value) || 0;
-        
+
         // Auto-kalkulasi nilai_akhir ketika skor_pg atau skor_essay berubah
         if (field === 'skor_pg' || field === 'skor_essay') {
             var skorPg = item.skor_pg || 0;
             var skorEs = item.skor_essay || 0;
             item.nilai_akhir = Math.round(skorPg + skorEs);
-            
+
             // Update input nilai akhir di tabel secara visual
             var tr = document.querySelector('#hasilAsesmenTbody tr[data-siswa="' + siswaId + '"]');
             if (tr) {
@@ -4749,7 +4750,7 @@ function updateHasilAsesmenManual(siswaId, field, value) {
                 }
             }
         }
-        
+
         // Tandai sebagai matched agar ikut disimpan ke nilai resmi & dipublikasikan
         if (!item.matched) {
             item.matched = true;
@@ -5605,11 +5606,11 @@ async function loadAsesmenList() {
         var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).is('archived_at', null).order('tanggal_pelaksanaan', { ascending: true, nullsFirst: false });
         const { data, error } = await query;
         if (error) throw error;
-        
+
         var allNonArchived = (data || []).filter(function (a) { return !a.archived_at; });
         // Tab 1 hanya menampilkan yang sudah 'terbit' (siap uji)
         asesmenList = allNonArchived.filter(function (a) { return a.status === 'terbit'; });
-        
+
         // Update badge tab
         var tabBadgeAktif = document.getElementById('tabBadgeAktif');
         if (tabBadgeAktif) {
@@ -5643,7 +5644,7 @@ async function loadAsesmenList() {
 
         tbody.innerHTML = asesmenList.map(function (a, i) {
             var statusBadge = '<span style="background:rgba(16,185,129,0.15);color:#059669;padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="radio" style="width:12px;height:12px;"></i> Siap Uji</span>';
-            
+
             var linkHtml = '<div style="display:flex;flex-direction:column;gap:.25rem;">';
             linkHtml += '<span style="color:#3b82f6;font-size:.82rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="monitor" style="width:12px;height:12px;"></i> CBT Native</span>';
             linkHtml += '</div>';
@@ -5655,7 +5656,7 @@ async function loadAsesmenList() {
             if (canManage) {
                 // Soal yang sudah siap uji (terbit) tidak dapat diedit kembali
                 var cbtBtn = '<button class="btn-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;" onclick="openMonitorCbt(\'' + a.id + '\')" title="Monitor CBT & Token"><i data-lucide="radio" style="width:14px;height:14px"></i></button>';
-                
+
                 var sendBtn = '';
                 if (isAdminKurikulum) {
                     if (a.ujian_sent_at) {
@@ -5664,7 +5665,7 @@ async function loadAsesmenList() {
                         sendBtn = '<button class="btn-icon" style="background:rgba(16,185,129,.1);color:#10b981;" onclick="sendToSoalUjian(\'' + a.id + '\')" title="Kirim ke Soal Ujian"><i data-lucide="send" style="width:14px;height:14px"></i></button>';
                     }
                 }
-                
+
                 aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
                     cbtBtn + sendBtn +
                     '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
@@ -5713,7 +5714,11 @@ async function loadReviewDraftList() {
         const { data, error } = await query;
         if (error) throw error;
 
-        var allItems = (data || []).filter(function (a) { return !a.archived_at; });
+        var rawData = data || [];
+        // Pisahkan soal draft murni (bukan salinan copy)
+        var allItems = rawData.filter(function (a) {
+            return !a.archived_at && (!a.judul || !a.judul.includes('(Copy)'));
+        });
         var displayList = isAdminKurikulum
             ? allItems
             : allItems.filter(function (a) { return currentUser && a.created_by === currentUser.id; });
@@ -5722,6 +5727,19 @@ async function loadReviewDraftList() {
         if (tabBadge) {
             tabBadge.textContent = displayList.length;
             tabBadge.style.display = displayList.length > 0 ? 'inline-block' : 'none';
+        }
+
+        // Sinkronisasi badge tab Salinan Terbit
+        var allCopies = rawData.filter(function (a) {
+            return !a.archived_at && a.judul && a.judul.includes('(Copy)');
+        });
+        var displayCopies = isAdminKurikulum
+            ? allCopies
+            : allCopies.filter(function (a) { return currentUser && a.created_by === currentUser.id; });
+        var tabBadgeSalinan = document.getElementById('tabBadgeSalinan');
+        if (tabBadgeSalinan) {
+            tabBadgeSalinan.textContent = displayCopies.length;
+            tabBadgeSalinan.style.display = displayCopies.length > 0 ? 'inline-block' : 'none';
         }
 
         if (displayList.length === 0) {
@@ -5795,6 +5813,113 @@ async function loadReviewDraftList() {
     }
 }
 
+// --- Load Salinan Soal Terbit (Tab Khusus Soal Copy Hasil Penerbitan) ---
+async function loadSalinanTerbitList() {
+    var tbody = document.getElementById('salinanTableBody');
+    var badgeEl = document.getElementById('salinanCountBadge');
+    var tabBadge = document.getElementById('tabBadgeSalinan');
+    if (!tbody || !supabaseClient) return;
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat data salinan soal...</td></tr>';
+
+    try {
+        var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
+        var subtitle = document.getElementById('salinanSubtitle');
+        if (subtitle) {
+            subtitle.textContent = isAdminKurikulum
+                ? 'Arsip salinan otomatis dari seluruh soal yang telah diterbitkan ke CBT Native. Guru & Admin dapat mengedit kembali untuk ujian susulan atau tahun berikutnya.'
+                : 'Daftar salinan otomatis dari soal Anda yang telah diterbitkan ke CBT Native. Anda dapat mengedit salinan ini untuk kebutuhan ujian berikutnya.';
+        }
+
+        var query = supabaseClient.from('asesmen').select('*').is('deleted_at', null).is('archived_at', null).neq('status', 'terbit').like('judul', '%(Copy)%').order('created_at', { ascending: false });
+        const { data, error } = await query;
+        if (error) throw error;
+
+        var allItems = (data || []).filter(function (a) { return !a.archived_at; });
+        var displayList = isAdminKurikulum
+            ? allItems
+            : allItems.filter(function (a) { return currentUser && a.created_by === currentUser.id; });
+
+        if (badgeEl) badgeEl.textContent = displayList.length + ' salinan';
+        if (tabBadge) {
+            tabBadge.textContent = displayList.length;
+            tabBadge.style.display = displayList.length > 0 ? 'inline-block' : 'none';
+        }
+
+        if (displayList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2.5rem;color:var(--text-light)">' +
+                (isAdminKurikulum ? 'Belum ada arsip salinan soal. Salinan akan otomatis dibuat setiap kali sebuah soal ujian diterbitkan.' : 'Belum ada salinan soal terbit milik Anda.') +
+                '</td></tr>';
+            return;
+        }
+
+        var countMap = {};
+        await Promise.all(displayList.map(async function (a) {
+            const { count } = await supabaseClient.from('asesmen_soal').select('id', { count: 'exact', head: true }).eq('asesmen_id', a.id);
+            countMap[a.id] = count || 0;
+        }));
+
+        tbody.innerHTML = displayList.map(function (a, i) {
+            var jml = countMap[a.id] || 0;
+            var guruName = a.created_by_name || 'Guru';
+            var isCreator = currentUser && a.created_by === currentUser.id;
+
+            var statusPill = '<span style="background:rgba(99,102,241,0.12);color:#4f46e5;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:700;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="copy" style="width:12px;height:12px;"></i> Salinan Cadangan</span>';
+
+            var aksiHtml = '';
+            aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Pratinjau Soal"><i data-lucide="eye" style="width:14px;height:14px"></i></button>';
+
+            if (isAdminKurikulum || isCreator) {
+                aksiHtml += '<button class="btn-icon btn-icon-blue" onclick="editAsesmenDraft(\'' + a.id + '\')" title="Edit Salinan"><i data-lucide="pencil" style="width:14px;height:14px"></i></button>';
+                aksiHtml += '<button class="btn-icon" style="background:rgba(5,150,105,.12);color:#059669;" onclick="submitSalinanAsDraft(\'' + a.id + '\')" title="Gunakan / Ajukan sebagai Ujian Baru"><i data-lucide="send" style="width:14px;height:14px;"></i></button>';
+                aksiHtml += '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus Salinan"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
+            }
+
+            return '<tr>' +
+                '<td style="text-align:center;">' + (i + 1) + '</td>' +
+                '<td><div style="font-weight:700;color:#1e293b;">' + escHtml(a.judul || '-') + '</div><div style="font-size:0.75rem;color:#64748b;margin-top:2px;">Disalin pada: ' + (a.created_at ? new Date(a.created_at).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-') + '</div></td>' +
+                '<td>' + escHtml(a.mata_pelajaran || '-') + '</td>' +
+                '<td>' + escHtml(a.kelas || '-') + '</td>' +
+                '<td>' + escHtml(a.tipe_ujian || '-') + '</td>' +
+                '<td style="font-size:0.85rem;color:#475569;">' + escHtml(guruName) + '</td>' +
+                '<td style="text-align:center;font-weight:700;">' + jml + '</td>' +
+                '<td>' + statusPill + '</td>' +
+                '<td style="white-space:nowrap;text-align:center;"><div style="display:inline-flex;gap:6px;align-items:center;justify-content:center;white-space:nowrap;">' + aksiHtml + '</div></td>' +
+                '</tr>';
+        }).join('');
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal memuat: ' + e.message + '</td></tr>';
+    }
+}
+
+async function submitSalinanAsDraft(id) {
+    showCustomConfirm(
+        'Gunakan Salinan ini?',
+        'Salinan soal ini akan dipindahkan ke antrean Review & Draft agar siap diperiksa dan diterbitkan kembali sebagai ujian baru.<br>Anda juga bisa mengedit soalnya terlebih dahulu.',
+        'Ya, Ajukan Ujian',
+        async function () {
+            showGlobalLoader('Memindahkan ke antrean review...');
+            try {
+                var newStatus = (currentRole === 'admin' || currentRole === 'kurikulum') ? 'draft' : 'menunggu_review';
+                const { error } = await supabaseClient.from('asesmen').update({
+                    review_status: newStatus,
+                    updated_at: new Date().toISOString()
+                }).eq('id', id);
+                if (error) throw error;
+                showToast('Salinan berhasil dipindahkan ke antrean Review & Draft!', 'success');
+                if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
+                if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
+            if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
+            } catch (e) {
+                showToast('Gagal: ' + e.message, 'error');
+            } finally {
+                hideGlobalLoader();
+            }
+        }
+    );
+}
+
 // --- Admin Review Modal (Quality Control Soal sebelum Terbit) ---
 async function openAdminReviewModal(id) {
     showGlobalLoader('Memuat detail soal untuk diverifikasi...');
@@ -5805,15 +5930,15 @@ async function openAdminReviewModal(id) {
         const { data: soalList, error: err2 } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', id).order('nomor_soal', { ascending: true });
         if (err2) throw err2;
 
-        var pgList = (soalList || []).filter(function(s) { return s.tipe_soal === 'pg'; });
-        var essayList = (soalList || []).filter(function(s) { return s.tipe_soal === 'essay'; });
+        var pgList = (soalList || []).filter(function (s) { return s.tipe_soal === 'pg'; });
+        var essayList = (soalList || []).filter(function (s) { return s.tipe_soal === 'essay'; });
         var bobotPG = asm.bobot_pg || 0;
         var bobotEssay = asm.bobot_essay || 0;
         var totalBobot = (pgList.length * bobotPG) + (essayList.length * bobotEssay);
         var bobotValid = totalBobot === 100;
 
         var html = '<div style="text-align:left;">';
-        
+
         // Summary Header Card
         html += '<div class="admin-review-summary-card">';
         html += '<div class="admin-review-summary-top">';
@@ -5883,13 +6008,13 @@ async function openAdminReviewModal(id) {
         html += '</div>';
 
         // Action Toolbar inside modal footer
-        var footerHtml = 
+        var footerHtml =
             '<div class="admin-review-footer-left">' +
-                '<button class="btn btn-outline admin-review-btn-close" onclick="closeAdminReviewModal()"><i data-lucide="x" style="width:15px;height:15px;"></i> <span>Tutup</span></button>' +
+            '<button class="btn btn-outline admin-review-btn-close" onclick="closeAdminReviewModal()"><i data-lucide="x" style="width:15px;height:15px;"></i> <span>Tutup</span></button>' +
             '</div>' +
             '<div class="admin-review-footer-right">' +
-                '<button class="btn btn-outline admin-review-btn-revisi" style="color:#ef4444; border-color:#fca5a5;" onclick="promptAdminRevision(\'' + asm.id + '\')"><i data-lucide="undo-2" style="width:15px;height:15px;"></i> <span>Minta Revisi Guru</span></button>' +
-                '<button class="btn btn-primary admin-review-btn-publish" style="background:#059669; border-color:#059669; box-shadow:0 4px 12px rgba(5,150,105,0.25);" onclick="adminPublishFromReview(\'' + asm.id + '\')"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> <span>Verifikasi & Terbitkan ke CBT</span></button>' +
+            '<button class="btn btn-outline admin-review-btn-revisi" style="color:#ef4444; border-color:#fca5a5;" onclick="promptAdminRevision(\'' + asm.id + '\')"><i data-lucide="undo-2" style="width:15px;height:15px;"></i> <span>Minta Revisi Guru</span></button>' +
+            '<button class="btn btn-primary admin-review-btn-publish" style="background:#059669; border-color:#059669; box-shadow:0 4px 12px rgba(5,150,105,0.25);" onclick="adminPublishFromReview(\'' + asm.id + '\')"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> <span>Verifikasi & Terbitkan ke CBT</span></button>' +
             '</div>';
 
         var modal = document.getElementById('adminReviewModal');
@@ -5921,7 +6046,7 @@ function closeAdminReviewModal() {
 
 if (!window._escReviewListenerAttached) {
     window._escReviewListenerAttached = true;
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             var modal = document.getElementById('adminReviewModal');
             if (modal && modal.style.display !== 'none' && modal.classList.contains('active')) {
@@ -6205,7 +6330,7 @@ async function loadSoalUjian() {
         }
 
         // Ambil semua sesi CBT terbaru untuk setiap asesmen
-        var cbtAsesmenIds = list.filter(function(a) { return a.is_cbt_native; }).map(function(a) { return a.id; });
+        var cbtAsesmenIds = list.filter(function (a) { return a.is_cbt_native; }).map(function (a) { return a.id; });
         var sesiMap = {};
         if (cbtAsesmenIds.length > 0) {
             const { data: sesiData } = await supabaseClient.from('cbt_sesi_ujian')
@@ -6213,7 +6338,7 @@ async function loadSoalUjian() {
                 .in('asesmen_id', cbtAsesmenIds)
                 .order('created_at', { ascending: false });
             if (sesiData) {
-                sesiData.forEach(function(s) {
+                sesiData.forEach(function (s) {
                     if (!sesiMap[s.asesmen_id]) sesiMap[s.asesmen_id] = s; // ambil yang terbaru saja
                 });
             }
@@ -6221,7 +6346,7 @@ async function loadSoalUjian() {
 
         // Tentukan status aktif
         var nowTime = new Date();
-        list.forEach(function(a) {
+        list.forEach(function (a) {
             // CBT: status bergantung pada sesi CBT dan batas waktu ujian
             var sesi = sesiMap[a.id];
             var selesai = a.waktu_selesai_ujian ? new Date(a.waktu_selesai_ujian) : null;
@@ -6250,7 +6375,7 @@ async function loadSoalUjian() {
 
         var filteredList = list;
         if (currentRole === 'siswa') {
-            filteredList = list.filter(function(a) {
+            filteredList = list.filter(function (a) {
                 if (!siswaInfo || typeof isKelasMatch !== 'function') return false;
                 return isKelasMatch(sKelas, sTingkat, a.kelas);
             });
@@ -6264,7 +6389,7 @@ async function loadSoalUjian() {
         if (currentRole === 'siswa' && siswaInfo && cbtAsesmenIds.length > 0) {
             try {
                 var allActiveSesiIds = [];
-                Object.keys(sesiMap).forEach(function(k) {
+                Object.keys(sesiMap).forEach(function (k) {
                     if (sesiMap[k] && sesiMap[k].id) allActiveSesiIds.push(sesiMap[k].id);
                 });
                 if (allActiveSesiIds.length > 0) {
@@ -6273,7 +6398,7 @@ async function loadSoalUjian() {
                         .in('sesi_id', allActiveSesiIds)
                         .eq('siswa_id', siswaInfo.id);
                     if (stAnswers) {
-                        stAnswers.forEach(function(ans) {
+                        stAnswers.forEach(function (ans) {
                             studentAnswersMap[ans.sesi_id] = ans;
                         });
                     }
@@ -6294,7 +6419,7 @@ async function loadSoalUjian() {
                 var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                 var isPending = a._ujian_status === 'pending';
                 var isSusulan = a.judul && a.judul.indexOf('(Susulan') !== -1;
-                
+
                 // Cek kesesuaian kelas (strict untuk role siswa)
                 var isAllowed = true;
                 if (currentRole === 'siswa') {
@@ -6307,8 +6432,8 @@ async function loadSoalUjian() {
 
                 var sesi = sesiMap[a.id];
                 var sAns = sesi ? studentAnswersMap[sesi.id] : null;
-                var isCheatLocked = sAns && ((sAns.tab_switch_count && sAns.tab_switch_count > 3) || 
-                                             (sAns.jawaban_json && sAns.jawaban_json._is_cheat_submitted === true));
+                var isCheatLocked = sAns && ((sAns.tab_switch_count && sAns.tab_switch_count > 3) ||
+                    (sAns.jawaban_json && sAns.jawaban_json._is_cheat_submitted === true));
                 var isSelesaiNormal = sAns && sAns.status === 'selesai' && !isCheatLocked;
 
                 var linkBtn, statusBadge;
@@ -6431,7 +6556,7 @@ async function buatUjianSusulan(asesmenId) {
                 // 4. Duplikasi soal
                 const { data: soalList } = await supabaseClient.from('asesmen_soal').select('*').eq('asesmen_id', asesmenId).order('nomor_soal', { ascending: true });
                 if (soalList && soalList.length > 0) {
-                    var soalRows = soalList.map(function(s) {
+                    var soalRows = soalList.map(function (s) {
                         return {
                             asesmen_id: newAsm.id,
                             nomor_soal: s.nomor_soal,
@@ -6479,7 +6604,7 @@ async function lihatPesertaUjian(asesmenId) {
             return;
         }
 
-        var sesiIds = sesiList.map(function(s) { return s.id; });
+        var sesiIds = sesiList.map(function (s) { return s.id; });
 
         // Ambil semua jawaban
         const { data: jawabanList } = await supabaseClient.from('cbt_jawaban_siswa')
@@ -6493,8 +6618,8 @@ async function lihatPesertaUjian(asesmenId) {
             '</div>';
 
         // Build tabel per sesi
-        sesiList.forEach(function(sesi, sIdx) {
-            var sesiJawaban = (jawabanList || []).filter(function(j) { return j.sesi_id === sesi.id; });
+        sesiList.forEach(function (sesi, sIdx) {
+            var sesiJawaban = (jawabanList || []).filter(function (j) { return j.sesi_id === sesi.id; });
             var waktuMulai = sesi.waktu_mulai ? new Date(sesi.waktu_mulai).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
             var waktuSelesai = sesi.waktu_selesai ? new Date(sesi.waktu_selesai).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
 
@@ -6508,12 +6633,12 @@ async function lihatPesertaUjian(asesmenId) {
                 html += '<div style="padding:1rem;text-align:center;color:#94a3b8;font-size:.85rem;">Tidak ada peserta di sesi ini.</div>';
             } else {
                 html += '<table class="dash-table" style="margin:0;font-size:.82rem;"><thead><tr><th style="width:35px">No</th><th>Nama Siswa</th><th>Status</th><th>Nilai</th><th>Waktu Kumpul</th><th style="text-align:center;">Aksi</th></tr></thead><tbody>';
-                sesiJawaban.forEach(function(j, jIdx) {
+                sesiJawaban.forEach(function (j, jIdx) {
                     var nama = j.siswa ? j.siswa.nama_lengkap : 'Unknown';
                     var status = j.status === 'selesai' ? '<span class="badge" style="background:#dcfce7;color:#16a34a;font-size:.72rem;">Selesai</span>'
                         : j.status === 'mengerjakan' ? '<span class="badge" style="background:#e0f2fe;color:#0284c7;font-size:.72rem;">Mengerjakan</span>'
-                        : j.status === 'diblokir' ? '<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:.72rem;">Diblokir</span>'
-                        : '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.72rem;">' + (j.status || '-') + '</span>';
+                            : j.status === 'diblokir' ? '<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:.72rem;">Diblokir</span>'
+                                : '<span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.72rem;">' + (j.status || '-') + '</span>';
                     var nilai = j.nilai !== null && j.nilai !== undefined ? j.nilai : '-';
                     var kumpul = j.waktu_kumpul ? new Date(j.waktu_kumpul).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
                     var btnAksi = '<button class="btn btn-sm btn-outline" onclick="showDetailJawabanSiswaCbt(\'' + j.id + '\')" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Detail Jawaban</button>';
@@ -6706,7 +6831,7 @@ async function editAsesmenDraft(id) {
     try {
         const { data: asm, error } = await supabaseClient.from('asesmen').select('*').eq('id', id).single();
         if (error || !asm) throw new Error('Data soal tidak ditemukan.');
-        
+
         var isAdminKurikulum = currentRole === 'admin' || currentRole === 'kurikulum';
         if (asm.status === 'terbit') {
             showToast('Soal yang sudah siap diuji (terbit) tidak dapat diedit kembali.', 'warning');
@@ -7152,7 +7277,7 @@ async function saveDraftAsesmen(source) {
                 // Jika sedang revisi, pertahankan status atau kembalikan ke draft saat diedit
                 if (!curr || !curr.review_status) asesmenPayload.review_status = 'draft';
             }
-            
+
             const { error } = await supabaseClient.from('asesmen').update(asesmenPayload).eq('id', existingId);
             if (error) throw error;
         } else {
@@ -7570,7 +7695,7 @@ function previewAutoGenerate(source) {
     document.getElementById('builderBobotEssay').value = (document.getElementById(prefix + 'BobotEssay') || {}).value || '0';
     document.getElementById('builderWaktu').value = (document.getElementById(prefix + 'Waktu') || {}).value || '';
     document.getElementById('builderTanggal').value = (document.getElementById(prefix + 'Tanggal') || {}).value || '';
-    
+
     var srcSemester = document.getElementById(prefix + 'Semester');
     if (srcSemester) document.getElementById('builderSemester').value = srcSemester.value;
 
@@ -7642,7 +7767,7 @@ function confirmPublishAsesmen() {
     var bobotPG = parseInt((document.getElementById('builderBobotPG') || {}).value || 0);
     var bobotEssay = parseInt((document.getElementById('builderBobotEssay') || {}).value || 0);
     var totalPoin = (pgCount * bobotPG) + (essayCount * bobotEssay);
-    
+
     if (totalPoin !== 100) {
         showToast('Peringatan: Total bobot saat ini (' + totalPoin + '). Harap sesuaikan bobot x soal agar total menjadi 100 (misal: 50 soal PG x 2 = 100)! Anda tetap bisa menyimpannya ke Draft.', 'warning');
         return;
@@ -7720,16 +7845,16 @@ async function publishToCbtNative() {
 
     showGlobalLoader('Menerbitkan ke CBT Native...');
     try {
-        const { error } = await supabaseClient.from('asesmen').update({ 
-            status: 'terbit', 
+        const { error } = await supabaseClient.from('asesmen').update({
+            status: 'terbit',
             review_status: 'disetujui',
-            is_cbt_native: true, 
-            published_at: new Date().toISOString(), 
+            is_cbt_native: true,
+            published_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             ujian_sent_at: null,
             ujian_aktif: null
         }).eq('id', asesmenId);
-        
+
         if (error) throw error;
 
         // Auto-clone to draft as a backup
@@ -7740,7 +7865,7 @@ async function publishToCbtNative() {
         }
 
         showToast('Asesmen berhasil diterbitkan ke CBT Native!', 'success');
-        
+
         if (typeof closeAsesmenBuilder === 'function') closeAsesmenBuilder();
         if (typeof loadAsesmenList === 'function') loadAsesmenList();
         if (typeof showSection === 'function') showSection('sectionManajemenAsesmen');
