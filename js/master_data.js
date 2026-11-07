@@ -7341,9 +7341,11 @@ async function deleteAsesmen(id) {
             if (error) throw error;
             showToast('Asesmen dipindahkan ke Sampah. Pulihkan dalam 30 hari.', 'success');
             closeAsesmenBuilder();
-            loadAsesmenList();
+            if (typeof loadAsesmenList === 'function') loadAsesmenList();
             if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
-            loadSampahCount();
+            if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
+            if (typeof loadArsipAsesmen === 'function') loadArsipAsesmen();
+            if (typeof loadSampahCount === 'function') loadSampahCount();
         } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
     });
@@ -7443,7 +7445,11 @@ async function restoreAsesmen(id) {
             if (error) throw error;
             showToast('Asesmen berhasil dipulihkan ke Riwayat!', 'success');
             loadSampahAsesmen();
-            loadAsesmenList();
+            if (typeof loadAsesmenList === 'function') loadAsesmenList();
+            if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
+            if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
+            if (typeof loadArsipAsesmen === 'function') loadArsipAsesmen();
+            if (typeof loadSampahCount === 'function') loadSampahCount();
         } catch (e) { showToast('Gagal: ' + e.message, 'error'); }
         finally { hideGlobalLoader(); }
     });
