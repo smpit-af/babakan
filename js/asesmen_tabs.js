@@ -20,7 +20,7 @@ function switchAsesmenTab(tabId, btnElement) {
     if(!contentArea) return;
 
     // 2. Hide all related sections and move them to contentArea if not already
-    var sections = ['sectionDaftarUjianAktif', 'sectionReviewDraftSoal', 'sectionArsipAsesmen', 'sectionBankSoal', 'sectionSampahAsesmen'];
+    var sections = ['sectionDaftarUjianAktif', 'sectionReviewDraftSoal', 'sectionSalinanTerbit', 'sectionArsipAsesmen', 'sectionBankSoal', 'sectionSampahAsesmen'];
     sections.forEach(function(id) {
         var el = document.getElementById(id);
         if(el) {
@@ -39,6 +39,10 @@ function switchAsesmenTab(tabId, btnElement) {
     if(tabId === 'review') {
         activeEl = document.getElementById('sectionReviewDraftSoal');
         if(typeof loadReviewDraftList === 'function') loadReviewDraftList();
+    }
+    if(tabId === 'salinan') {
+        activeEl = document.getElementById('sectionSalinanTerbit');
+        if(typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
     }
     if(tabId === 'riwayat') {
         activeEl = document.getElementById('sectionArsipAsesmen');
