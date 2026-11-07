@@ -296,10 +296,18 @@ function closeApiKeyModal() {
     if (input) input.value = '';
 }
 
-function sanitizeGroqModel(model) {
-    if (!model || typeof model !== 'string') return 'qwen/qwen3.8-27b';
+function sanitizeGroqModel(model, provider) {
+    if (!model || typeof model !== 'string') {
+        return (provider === 'groq') ? 'qwen/qwen3.8-27b' : 'gemini-3.5-flash-lite';
+    }
     var clean = model.trim();
-    // Model yang tidak aktif / invalid / compound / llama-3 lama di Groq
+    if (clean.toLowerCase().includes('gemini')) {
+        // Auto-migrate model lama (1.5 / 2.5) ke 3.5 yang aktif
+        if (clean.includes('1.5') || clean.includes('2.5') || clean === 'gemini-flash-latest') {
+            return 'gemini-3.5-flash-lite';
+        }
+        return clean;
+    }
     if (
         clean.toLowerCase().includes('compound') ||
         clean.toLowerCase().includes('llama-3') ||
@@ -311,69 +319,111 @@ function sanitizeGroqModel(model) {
     ) {
         return 'qwen/qwen3.8-27b';
     }
-    if (!clean) return 'qwen/qwen3.8-27b';
+    if (!clean) return (provider === 'groq') ? 'qwen/qwen3.8-27b' : 'gemini-3.5-flash-lite';
     return clean;
+}
+
+function onAiProviderChange() {
+    var providerSelect = document.getElementById('aiProviderSelect');
+    var provider = providerSelect ? providerSelect.value : 'gemini';
+    var labelKey = document.getElementById('aiApiKeyLabel');
+    var inputKey = document.getElementById('aiApiKeyInput');
+    var inputModel = document.getElementById('aiModelInput');
+    var helpKey = document.getElementById('aiApiKeyHelp');
+
+    if (provider === 'gemini') {
+        if (labelKey) labelKey.innerHTML = 'Google Gemini API Key <span style="color:#ef4444">*</span>';
+        if (inputKey) inputKey.placeholder = 'AIzaSy...';
+        if (helpKey) helpKey.innerHTML = 'Dapatkan API Key gratis (Kuota 1 Juta Token/Menit) di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#8b5cf6;font-weight:600;text-decoration:underline;">aistudio.google.com/app/apikey</a>';
+        if (inputModel && (!inputModel.value || !inputModel.value.includes('gemini'))) {
+            inputModel.value = 'gemini-3.5-flash-lite';
+        }
+    } else {
+        if (labelKey) labelKey.innerHTML = 'Groq API Key (LLaMA & Qwen) <span style="color:#ef4444">*</span>';
+        if (inputKey) inputKey.placeholder = 'gsk_...';
+        if (helpKey) helpKey.innerHTML = 'Dapatkan API Key di <a href="https://console.groq.com/keys" target="_blank" style="color:#8b5cf6;font-weight:600;text-decoration:underline;">console.groq.com/keys</a>';
+        if (inputModel && (!inputModel.value || inputModel.value.includes('gemini'))) {
+            inputModel.value = 'qwen/qwen3.8-27b';
+        }
+    }
 }
 
 async function saveApiKeyBaru() {
     const inputKey = document.getElementById('aiApiKeyInput') || document.getElementById('inputApiKeyBaru');
     const inputModel = document.getElementById('aiModelInput');
+    const providerSelect = document.getElementById('aiProviderSelect');
     if (!inputKey) return;
     const newKey = inputKey.value.trim();
-    const rawModel = inputModel ? inputModel.value.trim() : 'qwen/qwen3.8-27b';
-    const newModel = sanitizeGroqModel(rawModel);
-    
-    if (newKey) {
-        if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan Konfigurasi AI...');
-        try {
-            if (supabaseClient) {
-                await supabaseClient.from('system_settings').upsert({ key: 'groq_api_key', value: newKey });
-                await supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: newModel });
-            }
-        } catch (e) { console.warn('Gagal menyimpan AI config ke DB:', e); }
-        if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
-
-        localStorage.setItem('GROQ_API_KEY', newKey);
-        localStorage.setItem('GROQ_MODEL', newModel);
-        if (inputModel) inputModel.value = newModel;
-        closeApiKeyModal(); // Keep if modal still used somewhere
-        if (typeof showToast === 'function') showToast("Konfigurasi AI (" + newModel + ") berhasil disimpan.", "success");
-        else alert("Konfigurasi AI (" + newModel + ") berhasil disimpan.");
-    } else {
+    if (!newKey) {
         if (typeof showToast === 'function') showToast("API Key tidak boleh kosong!", "error");
         else alert("API Key tidak boleh kosong!");
+        return;
     }
+
+    // Deteksi provider otomatis berdasarkan prefix key
+    let provider = providerSelect ? providerSelect.value : 'gemini';
+    if (newKey.startsWith('AIza') || newKey.startsWith('AQ.')) {
+        provider = 'gemini';
+        if (providerSelect) providerSelect.value = 'gemini';
+    } else if (newKey.startsWith('gsk_')) {
+        provider = 'groq';
+        if (providerSelect) providerSelect.value = 'groq';
+    }
+
+    const rawModel = inputModel ? inputModel.value.trim() : (provider === 'gemini' ? 'gemini-1.5-flash' : 'qwen/qwen3.8-27b');
+    const newModel = sanitizeGroqModel(rawModel, provider);
+
+    if (typeof showGlobalLoader === 'function') showGlobalLoader('Menyimpan Konfigurasi AI...');
+    try {
+        if (supabaseClient) {
+            await supabaseClient.from('system_settings').upsert({ key: 'ai_provider', value: provider });
+            await supabaseClient.from('system_settings').upsert({ key: 'groq_api_key', value: newKey });
+            await supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: newModel });
+            await supabaseClient.from('system_settings').upsert({ key: 'ai_api_key', value: newKey });
+            await supabaseClient.from('system_settings').upsert({ key: 'ai_model', value: newModel });
+        }
+    } catch (e) { console.warn('Gagal menyimpan AI config ke DB:', e); }
+    if (typeof hideGlobalLoader === 'function') hideGlobalLoader();
+
+    localStorage.setItem('AI_PROVIDER', provider);
+    localStorage.setItem('GROQ_API_KEY', newKey);
+    localStorage.setItem('GROQ_MODEL', newModel);
+    localStorage.setItem('AI_API_KEY', newKey);
+    localStorage.setItem('AI_MODEL', newModel);
+    if (inputModel) inputModel.value = newModel;
+    closeApiKeyModal();
+    var provName = (provider === 'gemini') ? 'Google Gemini' : 'Groq Cloud';
+    if (typeof showToast === 'function') showToast("Konfigurasi AI (" + provName + " - " + newModel + ") berhasil disimpan.", "success");
+    else alert("Konfigurasi AI (" + provName + " - " + newModel + ") berhasil disimpan.");
 }
 
 async function loadAIConfig() {
+    var providerSelect = document.getElementById('aiProviderSelect');
     var inputKey = document.getElementById('aiApiKeyInput');
     var inputModel = document.getElementById('aiModelInput');
     if (!inputKey) return;
     try {
         if (supabaseClient) {
+            const { data: dataProv } = await supabaseClient.from('system_settings').select('value').eq('key', 'ai_provider').maybeSingle();
             const { data: dataKey } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
-            if (dataKey && dataKey.value) {
-                inputKey.value = dataKey.value;
-            } else {
-                inputKey.value = localStorage.getItem('GROQ_API_KEY') || '';
-            }
-            
             const { data: dataModel } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
-            let rawModel = (dataModel && dataModel.value) ? dataModel.value : (localStorage.getItem('GROQ_MODEL') || 'qwen/qwen3.8-27b');
-            let cleanModel = sanitizeGroqModel(rawModel);
+            
+            let keyVal = (dataKey && dataKey.value) ? dataKey.value : (localStorage.getItem('GROQ_API_KEY') || '');
+            let rawModel = (dataModel && dataModel.value) ? dataModel.value : (localStorage.getItem('GROQ_MODEL') || 'gemini-3.5-flash-lite');
+            let provider = (dataProv && dataProv.value) ? dataProv.value : (localStorage.getItem('AI_PROVIDER') || ((keyVal.startsWith('AIza') || keyVal.startsWith('AQ.')) ? 'gemini' : (keyVal.startsWith('gsk_') ? 'groq' : 'gemini')));
 
-            // Auto-heal jika ada model compound atau model lama tidak aktif di database / local storage
-            if (rawModel !== cleanModel) {
-                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: cleanModel }).then(() => {});
-                localStorage.setItem('GROQ_MODEL', cleanModel);
-            }
-
+            if (providerSelect) providerSelect.value = provider;
+            inputKey.value = keyVal;
+            
+            let cleanModel = sanitizeGroqModel(rawModel, provider);
             if (inputModel) inputModel.value = cleanModel;
+            onAiProviderChange();
         }
     } catch (e) {
         console.warn('Gagal memuat Konfigurasi AI:', e);
     }
 }
+
 function hideGlobalLoader() {
     var loader = document.getElementById('globalLoader');
     if (loader) loader.classList.remove('active');
