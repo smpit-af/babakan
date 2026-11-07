@@ -1578,8 +1578,7 @@
             <div>
               <h3 style="font-size: 1.6rem; font-weight: 800; margin: 0; color: white; letter-spacing: -0.5px;">
                 Integrasi Artificial Intelligence</h3>
-              <p style="margin: 0.4rem 0 0 0; color: #ede9fe; font-size: 1rem; line-height:1.4;">Hubungkan model bahasa
-                besar (Groq LLaMA) untuk asisten pintar dan pembuatan soal otomatis.</p>
+              <p style="margin: 0.4rem 0 0 0; color: #ede9fe; font-size: 1rem; line-height:1.4;">Hubungkan kecerdasan buatan (Google Gemini / Groq) untuk pembuatan soal asesmen otomatis dan asisten pintar sekolah.</p>
             </div>
           </div>
         </div>
@@ -1588,9 +1587,24 @@
         <div style="padding: 3rem 2.5rem; background: #ffffff;">
           <div class="form-group" style="margin-bottom: 2.5rem;">
             <label class="form-label"
-              style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 1rem; display: block;">
-              Groq API Key (LLaMA Model) <span style="color: #ef4444">*</span>
+              style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.5rem; display: block;">
+              Penyedia AI (AI Provider) <span style="color: #ef4444">*</span>
             </label>
+            <div style="margin-bottom: 1.5rem;">
+              <select id="aiProviderSelect" class="form-select" onchange="onAiProviderChange()"
+                style="height: 54px; border-radius: 12px; font-weight: 600; font-size: 1rem; border: 2px solid #e2e8f0; width: 100%; padding: 0 16px; background:#f8fafc; cursor:pointer;">
+                <option value="gemini" selected>⭐ Google Gemini (Gratis 1 Juta Token/Menit — Sangat Direkomendasikan)</option>
+                <option value="groq">Groq Cloud (LLaMA & Qwen)</option>
+              </select>
+            </div>
+
+            <label class="form-label" id="aiApiKeyLabel"
+              style="font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 0.5rem; display: block;">
+              Google Gemini API Key <span style="color: #ef4444">*</span>
+            </label>
+            <div id="aiApiKeyHelp" style="font-size:0.85rem; color:#64748b; margin-bottom:0.75rem;">
+              Dapatkan API Key gratis di <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:#8b5cf6;font-weight:600;text-decoration:underline;">aistudio.google.com/app/apikey</a> (Kuota 1 Juta Token/Menit)
+            </div>
 
             <div style="position: relative; display: flex; align-items: center;">
               <div style="position: absolute; left: 18px; color: #94a3b8; display: flex;">
@@ -1639,6 +1653,12 @@
                 onfocus="this.style.borderColor='#8b5cf6'; this.style.boxShadow='0 0 0 4px rgba(139, 92, 246, 0.15)'"
                 onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'" />
               <datalist id="groqModelList">
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Google Gemini - Rekomendasi Utama, Super Ringan, Cepat & Anti-Overload)</option>
+                <option value="gemini-3.6-flash">gemini-3.6-flash (Google Gemini - Model Cepat & Handal)</option>
+                <option value="gemini-3.5-flash">gemini-3.5-flash (Google Gemini - Standar)</option>
+                <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite (Google Gemini - Ringan & Hemat)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (Google Gemini - Model Generasi Terbaru)</option>
+                <option value="gemini-1.5-pro">gemini-1.5-pro (Google Gemini - Penalaran Kompleks & Analisis Mendalam)</option>
                 <option value="qwen/qwen3.8-27b">qwen/qwen3.8-27b (Rekomendasi Utama - Sangat Cepat & Akurat untuk Soal Asesmen)</option>
                 <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Flagship 120B - Penalaran Mendalam & Cerdas)</option>
                 <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Ringan & Cepat)</option>
@@ -2995,6 +3015,10 @@
           <i data-lucide="clipboard-check" style="width:16px;height:16px;"></i> Review & Draft Soal
           <span id="tabBadgeReview" style="display:none; background:#f59e0b; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700;">0</span>
         </button>
+        <button class="asesmen-tab" onclick="switchAsesmenTab('salinan', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="copy" style="width:16px;height:16px;"></i> Salinan Terbit
+          <span id="tabBadgeSalinan" style="display:none; background:#6366f1; color:#fff; font-size:0.75rem; padding:2px 8px; border-radius:10px; font-weight:700;">0</span>
+        </button>
         <button class="asesmen-tab" onclick="switchAsesmenTab('riwayat', this)" style="padding:0.75rem 1rem; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--text-light); font-weight:600; font-size:1rem; cursor:pointer; white-space:nowrap; display:flex; align-items:center; gap:6px;">
           <i data-lucide="archive" style="width:16px;height:16px;"></i> Riwayat (Arsip)
         </button>
@@ -3724,6 +3748,52 @@
       </div>
     </section>
 
+
+
+    
+    <!-- ========== SECTION: SALINAN SOAL TERBIT (BACKUP CBT) ========== -->
+    <section id="sectionSalinanTerbit" class="dash-section" style="display:none;">
+      <div class="card"
+        style="border: none; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06); border-radius: 20px; overflow: hidden; padding: 0;">
+        <div
+          style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 1.5rem 2rem; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
+              <i data-lucide="copy" style="width:26px;height:26px; color: #fff;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: white;">Salinan Soal Terbit (Cadangan)</h3>
+              <p style="margin: 0.2rem 0 0 0; color: #e0e7ff; font-size: 0.88rem;" id="salinanSubtitle">
+                Arsip salinan otomatis dari soal yang telah diterbitkan ke CBT Native. Dapat diedit untuk ujian susulan atau angkatan baru.
+              </p>
+            </div>
+          </div>
+          <span style="font-size:.85rem; background:rgba(255,255,255,0.2); padding:4px 14px; border-radius:20px; font-weight:700;" id="salinanCountBadge">0 salinan</span>
+        </div>
+        <div style="padding: 1.5rem; overflow-x:auto;">
+          <table class="dash-table" id="salinanTable">
+            <thead>
+              <tr>
+                <th style="width:40px">No</th>
+                <th>Judul Asesmen Salinan</th>
+                <th>Mata Pelajaran</th>
+                <th>Kelas</th>
+                <th style="width:70px">Tipe</th>
+                <th>Guru Pembuat</th>
+                <th style="width:70px">Soal</th>
+                <th style="width:140px">Status</th>
+                <th style="width:140px;text-align:center;white-space:nowrap;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="salinanTableBody">
+              <tr>
+                <td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat salinan soal...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
 
     <!-- ========== SECTION: SOAL UJIAN ========== -->
@@ -7579,8 +7649,7 @@
         <div class="modal-logo" style="background:rgba(234,179,8,.12);color:#eab308;"><i data-lucide="key"
             style="width:26px;height:26px"></i></div>
         <h3>Perbarui API Key AI</h3>
-        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">API Key Llama-3
-          (Groq) tidak valid atau kedaluwarsa. Silakan masukkan API Key baru.</p>
+        <p style="color:var(--text-light); font-size:0.95rem; line-height:1.4; margin-top:0.5rem;">API Key AI (Google Gemini / Groq) tidak valid atau kedaluwarsa. Silakan masukkan API Key baru.</p>
       </div>
       <div class="modal-body" style="padding: 1.5rem;">
         <div class="form-group" style="margin:0;">
