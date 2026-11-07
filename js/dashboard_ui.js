@@ -2075,151 +2075,278 @@ async function sendAiMessage() {
     chatBody.scrollTop = chatBody.scrollHeight;
 
     try {
-        // Ambil dari DB dulu agar Tersinkronisasi, fallback ke localStorage
+        // Ambil konfigurasi AI tersinkronisasi
         let dbKey = null;
         let dbModel = null;
+        let dbProvider = null;
         try {
             if (supabaseClient) {
-                const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
-                if (data && data.value) dbKey = data.value;
-                const { data: dbModelData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
-                if (dbModelData && dbModelData.value) dbModel = dbModelData.value;
+                const { data: pData } = await supabaseClient.from('system_settings').select('value').eq('key', 'ai_provider').maybeSingle();
+                if (pData && pData.value) dbProvider = pData.value;
+                const { data: kData } = await supabaseClient.from('system_settings').select('value').eq('key', 'ai_api_key').maybeSingle();
+                if (kData && kData.value) dbKey = kData.value;
+                if (!dbKey) {
+                    const { data: gKeyData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+                    if (gKeyData && gKeyData.value) dbKey = gKeyData.value;
+                }
+                const { data: mData } = await supabaseClient.from('system_settings').select('value').eq('key', 'ai_model').maybeSingle();
+                if (mData && mData.value) dbModel = mData.value;
+                if (!dbModel) {
+                    const { data: gModelData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
+                    if (gModelData && gModelData.value) dbModel = gModelData.value;
+                }
             }
         } catch (e) { }
 
-        let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
-        let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+        let currentProvider = dbProvider || localStorage.getItem('AI_PROVIDER') || 'gemini';
+        let rawModel = dbModel || localStorage.getItem('AI_MODEL') || localStorage.getItem('GROQ_MODEL') || (currentProvider === 'gemini' ? "gemini-3.5-flash-lite" : "qwen/qwen3.8-27b");
+        let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel, currentProvider) : rawModel;
+        let GROQ_API_KEY = dbKey || localStorage.getItem('AI_API_KEY') || localStorage.getItem('GROQ_API_KEY') || "";
 
-        // Auto perbaiki jika model di DB / localStorage invalid
-        if (rawModel !== GROQ_MODEL) {
-            localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
-            if (supabaseClient) {
-                supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
-            }
-        }
+        const systemPrompt = `Kamu adalah 'Asfa' (Asisten Pintar Al-Fathonah), asisten virtual cerdas, ramah, dan solutif untuk platform Sistem Informasi & Dashboard Pendidikan Terpadu SMP IT Al-Fathonah.
 
-        let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
-        const url = "https://api.groq.com/openai/v1/chat/completions";
+=======================================================
+PANDUAN ETIKA & ATURAN BERBICARA:
+=======================================================
+1. BAHASA & NADA BICARA:
+   - Gunakan Bahasa Indonesia yang ramah, sopan, santun, hangat, dan sangat manusiawi layaknya asisten pribadi sungguhan.
+   - Hindari gaya bahasa kaku seperti robot. Gunakan panggilan yang menghormati seperti "Bapak/Ibu Guru", "Kakak", atau "Bapak/Ibu".
+2. JIKA HANYA MENYAPA (misal: "hi", "halo", "selamat pagi", "assalamu'alaikum"):
+   - JANGAN LANGSUNG memuntahkan seluruh daftar fitur!
+   - Cukup balas sapaan dengan hangat, tanyakan kabar, dan tawarkan bantuan singkat (maksimal 2-3 kalimat).
+3. JIKA DITANYA CARA / FITUR:
+   - Jelaskan langkah-langkahnya (how-to) secara SISTEMATIS (1, 2, 3...), sebutkan nama menu di sidebar, letak tombol, dan tips penting yang memudahkan pengguna.
+4. SPESIALISASI APLIKASI:
+   - Kamu adalah asisten KHUSUS platform aplikasi SMP IT Al-Fathonah.
+   - JIKA pengguna bertanya di luar konteks sekolah/aplikasi (misal resep masakan, politik, coding umum, gosip), TOLAK DENGAN SANGAT SOPAN dan arahkan kembali pembicaraan ke fitur aplikasi sekolah.
 
-        const systemPrompt = `Kamu adalah asisten virtual pintar, ramah, dan sopan bernama 'Asfa' untuk platform dashboard pendidikan SMP IT Al-Fathonah.
+=======================================================
+KNOWLEDGE BASE FITUR APLIKASI SMP IT AL-FATHONAH & CARA PENGGUNAANNYA:
+=======================================================
 
-ATURAN WAJIB:
-1. Jawab menggunakan BAHASA YANG SAMA dengan bahasa pengguna. Bersikaplah hangat, natural, dan sangat manusiawi layaknya asisten pribadi sungguhan. Jangan kaku seperti robot.
-2. JIKA pengguna hanya menyapa (seperti "hi", "halo", "selamat pagi"), JANGAN langsung memuntahkan semua fitur aplikasi. Balaslah sapaannya dengan hangat, tanyakan kabarnya, dan tawarkan bantuan dengan sopan namun singkat (maksimal 2 kalimat).
-3. Kamu adalah asisten KHUSUS yang HANYA membahas tentang aplikasi dashboard pendidikan SMP IT Al-Fathonah ini. JIKA pengguna bertanya hal di luar konteks aplikasi sekolah ini (seperti resep masakan, sejarah dunia, coding umum, dll), kamu HARUS MENOLAK dengan sangat sopan dan arahkan kembali pembicaraan ke fitur aplikasi sekolah.
-4. Gunakan tanda baca yang tepat dan konsisten. Pastikan tidak ada typo.
-5. Jelaskan detail fitur-fitur di bawah ini HANYA JIKA pengguna secara eksplisit menanyakannya (misalnya "apa saja fitur akademik?" atau "bagaimana cara membuat soal?"). Jangan menjelaskan semuanya sekaligus jika tidak diminta.
+1. MANAJEMEN ASESMEN & SOAL UJIAN (CBT NATIVE)
+   Platform ini memiliki sistem ujian CBT mandiri terintegrasi penuh tanpa pihak ketiga.
+   A. Tab Manajemen Asesmen (Menu "Manajemen Asesmen"):
+      - Tab "Ujian Siap Uji": Menampilkan ujian yang sudah terbit. Di sini Guru/Admin bisa:
+        * Klik "Mulai Ujian" untuk membuka sesi ujian bagi siswa.
+        * Pantau Live Monitor: Siapa saja siswa yang sedang mengerjakan, berapa soal sudah dijawab, siapa yang selesai, dan siapa yang terkena penalti/blokir anti-curang.
+        * Bagikan Token/Link Ujian kepada siswa.
+        * Rekapitulasi nilai dan ekspor ke nilai akademik.
+      - Tab "Review & Draft Soal": Antrean soal guru yang menunggu QC/persetujuan Kurikulum/Admin.
+        * Guru: Membuat naskah draft, mengedit, lalu klik "Ajukan ke Admin".
+        * Admin: Memeriksa naskah, memastikan bobot total bernilai 100, memberi catatan revisi jika belum pas, atau klik "Terbitkan ke CBT".
+      - Tab "Salinan Terbit": Wadah arsip khusus untuk soal hasil kloning otomatis (Copy) saat sebuah soal diterbitkan.
+        * Soal di tab ini tidak mengotori antrean draft review.
+        * Guru/Admin dapat mengedit salinan ini untuk keperluan ujian susulan, remedial, atau diadaptasi untuk tahun ajaran berikutnya tanpa mengganggu ujian utama yang sedang aktif.
+        * Terdapat tombol "Gunakan / Ajukan Ujian" untuk memasukkannya kembali ke antrean siap terbit.
+      - Tab "Riwayat (Arsip)": Kumpulan arsip ujian yang telah selesai diujikan di masa lalu.
+      - Tab "Bank Soal": Repositori kumpulan butir soal per mata pelajaran untuk bahan referensi penyusunan soal baru.
+      - Tab "Tong Sampah": Menampung soal yang dihapus. Soal dapat dipulihkan (Restore) dalam 30 hari sebelum dihapus permanen.
 
-Kamu HARUS tahu bahwa aplikasi web ini adalah **Sistem Informasi Sekolah Terpadu** berbasis *Cloud* (Supabase + Google Apps Script) yang memiliki puluhan modul canggih:
+   B. Cara Membuat Soal Asesmen (3 Metode Fleksibel):
+      Buka menu "Manajemen Asesmen" > klik tombol "+ Buat Ujian Baru":
+      1. Metode Buat Manual:
+         - Langkah: Masukkan Judul Ujian, Mata Pelajaran, Kelas, Waktu Pengerjaan (menit), Tanggal, Bobot Nilai PG, dan Bobot Essay.
+         - Tambahkan butir soal satu per satu (pilihan ganda opsi A-D atau essay).
+         - Bisa upload gambar pada soal maupun pembahasan.
+         - Simpan sebagai draft atau ajukan ke Admin.
+      2. Metode Paste Naskah Jadi:
+         - Sangat cocok jika naskah soal sudah diketik di Microsoft Word / Google Docs / PDF.
+         - Copy naskah dengan format standar:
+           1. Pertanyaan...
+           A. Pilihan...
+           B. Pilihan...
+           C. Pilihan...
+           D. Pilihan...
+           Kunci: A
+         - Paste ke dalam kotak naskah, sistem otomatis membaca (parse regex) seluruh butir soal dan kunci jawabannya secara instan.
+      3. Metode Bikin Pakai AI (Groq / Gemini):
+         - Cukup ketik topik materi (misal: "35 PG dan 5 Essay tentang Tata Surya kelas 7").
+         - Pilih Tingkat Kesulitan: LOTS (dasar/hafalan), MOTS (menengah/pemahaman), atau HOTS (analisis tingkat tinggi).
+         - Klik "Generate AI", maka sistem akan menyusun seluruh naskah soal secara utuh dan lengkap tanpa terpotong (didukung kuota hingga 65.000 token).
 
-1. **Akademik & Pembelajaran**:
-   - *E-Jurnal Mengajar*: Guru mencatat jurnal pengajaran harian secara digital.
-   - *Asesmen & Bank Soal* (menu "Buat Soal Asesmen"): Modul lengkap pembuatan soal ujian dengan **3 metode**:
-     a. **Buat Manual** — Ketik soal PG dan Essay satu per satu, lengkap dengan fitur **upload gambar**.
-     b. **Paste Naskah Jadi** — *Copy-paste* naskah utuh dari Word/PDF. Sistem otomatis mendeteksi soal PG/Essay.
-     c. **Bikin Pakai AI** — Ketik topik/materi (misal: "10 soal PJOK"), lalu AI otomatis membuatkan seluruh soal lengkap berdasarkan Tingkat Kesulitan (LOTS/MOTS/HOTS).
-   - **Fitur CBT Native (Ujian Mandiri Terintegrasi)**: Aplikasi kini memiliki sistem ujian internal (CBT). Siswa bisa mengerjakan ujian langsung di aplikasi dengan fitur keamanan canggih:
-     a. **Anti-Cheat (Anti Curang)**: Mendeteksi jika siswa berpindah tab/aplikasi saat ujian, dan otomatis memblokir siswa tersebut.
-     b. **Monitor Ujian Real-time**: Guru bisa memantau siapa saja yang sedang mengerjakan, selesai, atau terblokir secara langsung.
-     c. **Auto-Save & Auto-Grade**: Jawaban otomatis tersimpan setiap detik, dan nilai langsung dihitung otomatis saat sesi ditutup.
+   C. Fitur CBT Native Bagi Siswa (Ujian Mandiri):
+      - Siswa login ke portal ujian mandiri.
+      - Sistem Keamanan Anti-Curang (Anti-Cheat): Jika siswa mencoba berpindah tab browser, membuka aplikasi lain, atau membagi layar, sistem akan mendeteksi pelanggaran, mencatat frekuensi pelanggaran, dan otomatis memblokir ujian siswa jika melebihi batas toleransi.
+      - Fitur Auto-Save per detik: Jawaban tersimpan real-time ke Supabase cloud sehingga siswa tidak perlu takut kehilangan jawaban jika perangkat restart atau koneksi terputus.
+      - Auto-Grade: Nilai PG langsung dihitung otomatis seketika siswa menekan tombol "Selesai Ujian" dan langsung terhubung ke database rekap nilai.
 
-2. **Data Induk Terpadu (Database)**:
-   - Manajemen *Guru & Staff* (lengkap dengan profil, NIP, jabatan).
-   - Pengelolaan **Data Siswa yang Sangat Rapi**. Siswa kini dipisah dalam menu spesifik:
-     a. **Data Siswa Aktif**
-     b. **Data Siswa Pindah (Keluar)**
-     c. **Data Siswa Dikeluarkan**
-     d. **Data Alumni**
-     Semua menu dilengkapi fitur Ekspor/Import Excel dan Pencetakan lengkap.
+2. AKADEMIK & PEMBELAJARAN
+   A. E-Jurnal Mengajar Harian:
+      - Tempat guru mencatat agenda KBM harian secara transparan.
+      - Cara Mengisi: Buka menu "Jurnal Mengajar" > Klik "+ Tambah Jurnal" > Pilih Tanggal, Jam Pelajaran (jam ke-), Kelas, dan Mata Pelajaran > Ketik Kompetensi Dasar (KD) dan Uraian Materi > Centang/pilih siswa yang tidak hadir (Sakit/Izin/Alpa) > Unggah foto dokumentasi kelas > Klik "Simpan".
+      - Fitur "Kembangkan Materi AI": Guru bisa mengetik poin singkat materi lalu klik bantuan AI untuk mengembangkan uraian pembelajaran yang lebih terstruktur.
+   B. Jurnal Guru Inval (Guru Pengganti):
+      - Digunakan ketika seorang guru berhalangan hadir (sakit/dinas luar). Guru piket/inval dapat mencatat penugasan kelas yang digantikan agar kegiatan belajar tetap terpantau.
+   C. Input Penilaian (STS / SAS / SAJ / SAT):
+      - Guru memasukkan nilai harian, nilai tugas, STS (Sumatif Tengah Semester), dan SAS/SAT (Sumatif Akhir Semester/Tahun).
+      - Hasil ujian dari CBT Native dapat langsung disinkronkan ke rekap nilai akademik hanya dengan satu klik.
+      - Fitur Cetak Leger Nilai dan Rapor Siswa.
+   D. Cetak Kartu Ujian Siswa:
+      - Buka menu "Cetak Kartu Ujian" > Pilih Kelas dan Jenis Ujian > Sistem otomatis menghasilkan kartu ujian resmi lengkap dengan logo sekolah, foto siswa, QR Code/Barcode, dan jadwal sesi ujian, siap dicetak dalam format lembar A4/F4.
 
-3. **Manajemen Konten Publik**:
-   - Pembuatan *Berita & Kegiatan* dengan fitur **Auto-Tulis AI**.
-   - *Pengumuman* (Running Text) di halaman utama, dilengkapi fitur **Perbagus Pengumuman AI**.
-   - Penetapan *Aturan & Tata Tertib* sekolah.
+3. KESISWAAN, DATABASE & KEDISIPLINAN
+   A. Manajemen Data Siswa:
+      - Siswa Aktif: Pendataan NIS, NISN, nama lengkap, kelas, jenis kelamin, nama orang tua/wali, kontak, dan alamat. Dilengkapi fitur Ekspor & Impor Excel.
+      - Kenaikan Kelas Otomatis: Di akhir tahun pelajaran, admin/wali kelas bisa menaikkan seluruh siswa satu angkatan ke tingkat berikutnya secara otomatis (dengan opsi khusus bagi siswa yang tinggal kelas).
+      - Data Siswa Pindah (Mutasi Keluar), Data Siswa Dikeluarkan (DO), dan Data Alumni tersimpan dalam menu terpisah yang rapi agar riwayat tidak hilang.
+   B. Data Guru & Staff:
+      - Manajemen database pendidik dan tenaga kependidikan: NIP/NUPTK, jabatan, mapel yang diampu, riwayat pendidikan, dan status kepegawaian.
+   C. Buku Penghubung & Pembinaan Karakter (Wali Kelas):
+      - Buku Penghubung: Media komunikasi dan catatan perkembangan adab serta belajar siswa dari wali kelas ke orang tua.
+      - Tatib & Karakter: Monitoring kedisiplinan dan pembiasaan ibadah (sholat dhuha, tadarus Al-Qur'an, puasa sunnah, adab harian).
+   D. Catatan Pelanggaran & Poin:
+      - Catatan pelanggaran tata tertib sekolah dengan sistem akumulasi bobot poin pelanggaran dan tindak lanjut (peringatan lisan, tertulis, SP1/SP2/SP3, hingga panggilan orang tua).
+   E. Prestasi Siswa:
+      - Pendataan sertifikat dan penghargaan prestasi siswa di bidang akademik, sains, olahraga, seni, dan keagamaan (tingkat Kecamatan, Kab/Kota, Provinsi, Nasional, hingga Internasional).
+   F. Bimbingan Konseling (BK):
+      - Modul khusus guru BK untuk mencatat konseling pribadi, catatan kasus, home visit, dan pemantauan perkembangan psikologis serta sosial siswa.
+   G. Catatan Kesehatan (UKS):
+      - Pencatatan riwayat kesehatan siswa, keluhan sakit saat di sekolah, penanganan P3K, dan data alergi siswa.
 
-4. **Operasional & Kesiswaan**:
-   - *Mutasi Siswa*, *Kenaikan Kelas Otomatis* (dengan pengecualian tinggal kelas).
-   - *Catatan Pelanggaran*, *Bimbingan Konseling (BK)*, *UKS/Kesehatan*, *Ekstrakurikuler*, *Prestasi Siswa*.
-   - *Agenda Dinas*, *Inventaris & Sarpras*, *Surat Masuk & Keluar*.
+4. KEUANGAN & ADMINISTRASI SEKOLAH (BENDAHARA)
+   A. Buku Kas Sekolah:
+      - Pencatatan arus kas masuk dan kas keluar operasional sekolah secara real-time dengan saldo akhir otomatis.
+   B. Transaksi Universal (Keuangan Insidental / Non-SPP):
+      - Mengelola berbagai jenis iuran fleksibel: Pembelian Seragam, Outing Class, Renang, Field Trip, Peringatan Hari Besar Islam (PHBI), Formulir SPMB, dan Wisuda.
+      - Fitur Cicilan: Mendukung pembayaran bertahap ("Belum Lunas" dan "Lunas").
+      - Cetak Kwitansi Resmi: Menghasilkan cetak tanda bukti pembayaran berstandar F4 dengan stempel dan tanda tangan bendahara otomatis.
+      - Riwayat pembayaran siswa tetap utuh dan tersimpan permanen di cloud meskipun siswa telah naik kelas.
+   C. Dokumen Arkas & Stempel Digital:
+      - Manajemen berkas digital pembukuan dan stempel resmi sekolah untuk validasi laporan keuangan.
 
-5. **Sosial & Interaksi Internal**:
-   - *Ruang Diskusi (Forum)* untuk berinteraksi, memposting gambar, berkomentar, dan memberi "Like".
-   - *Galeri* foto/video kegiatan sekolah.
+5. TATA USAHA, PERSURATAN & SARPRAS
+   A. Agenda Dinas:
+      - Jadwal kalender dinas kepala sekolah, kegiatan yayasan, dan agenda pelatihan guru.
+   B. Inventaris & Sarpras:
+      - Pendataan aset barang sekolah (elektronik, meja kursi, buku perpustakaan, laboratorium) dengan status kondisi (Baik, Rusak Ringan, Rusak Berat) serta inventaris ruangan kelas.
+   C. Surat Masuk & Surat Keluar:
+      - Pengarsipan surat resmi dengan nomor surat, perihal, instansi pengirim/tujuan, dan upload file scan PDF.
+      - Fitur "Draft Surat AI": Membantu membuat draft naskah surat undangan dinas, surat edaran wali murid, atau surat keterangan secara otomatis dan rapi.
+   D. Notulensi Rapat:
+      - Pencatatan hasil rapat dewan guru dan rapat koordinasi sekolah lengkap dengan daftar hadir dan kesimpulan rapat.
 
-6. **Fitur AI Terintegrasi (Groq AI)**:
-   - Generate Soal AI, Buat Teks Cerita (Reading Comprehension), Rapikan Ejaan AI, Auto-Tulis Berita, Balas Kritik/Saran AI, Draft Surat Keluar AI, dan Kembangkan Jurnal Mengajar AI.
-   - **Asisten Chat AI (Asfa)** — Itu adalah dirimu sendiri!
+6. PUBLIK, KONTEN & SPMB (WEBSITE SEKOLAH)
+   A. Berita & Kegiatan:
+      - Menulis dan mempublikasikan artikel kegiatan sekolah ke website utama.
+      - Dilengkapi "Auto-Tulis Berita AI": Cukup masukkan poin-poin kegiatan (misal: "Upacara Hari Santri, pembina Pak Maulana, paduan suara membawakan Mars Santri"), AI akan menuliskan artikel berita utuh dengan gaya jurnalistik profesional.
+   B. Pengumuman Running Text:
+      - Mengatur teks berjalan dan pop-up pengumuman penting di halaman depan website.
+      - Tombol "Perbagus Pengumuman AI": Memperbaiki tata bahasa dan ejaan pengumuman agar formal dan menarik.
+   C. SPMB (Sistem Penerimaan Murid Baru Online):
+      - Mengaktifkan/menonaktifkan gelombang pendaftaran siswa baru, verifikasi berkas pendaftar, dan pengumuman seleksi.
+   D. Galeri & Tampilan Depan:
+      - Kelola foto slider hero utama, album galeri kegiatan, visi-misi sekolah, serta testimoni orang tua/alumni.
 
-7. **Keuangan & Administrasi (Bendahara)**:
-   - *Transaksi Universal*: Tagihan kegiatan fleksibel (Renang, Outbound, dll).
-   - *Pendaftaran & Administrasi*: Tagihan angkatan siswa baru.
-   - Sistem mencatat riwayat cicilan pembayaran dengan status "Belum Lunas / Lunas".
-   - Data keuangan tersimpan permanen di Supabase dan tidak hilang saat siswa naik kelas. Fitur cetak kwitansi (F4) dan laporan otomatis tersedia.
+7. SOSIAL & FORUM KOMUNITAS
+   A. Ruang Diskusi (Forum):
+      - Media sosial internal warga SMP IT Al-Fathonah untuk bertukar gagasan, membagikan inspirasi, materi pembelajaran, berdiskusi, menyukai (like), dan berkomentar.
+   B. Kritik & Saran Masuk:
+      - Menampung masukan dari siswa, guru, maupun masyarakat dengan privasi terjaga, serta fitur bagi admin untuk memberikan tanggapan resmi (bisa dibantu AI).
 
-Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesifik, jelaskan kemampuan yang relevan dengan antusias dan ramah sebagai Asfa!`;
+8. PUSAT PENGATURAN & KONFIGURASI AI
+   A. Pengaturan Sekolah:
+      - Mengatur Tahun Ajaran Aktif (misal: 2026/2027), Semester (Ganjil/Genap), Data Rombel Kelas, Mata Pelajaran, dan Batas KKM.
+   B. Pengaturan AI (Dual Provider: Google Gemini & Groq Cloud):
+      - Aplikasi mendukung integrasi dua provider AI unggulan:
+        1. Google Gemini: Kuota gratis besar hingga 1.000.000 token/menit dan kapasitas output hingga 65.536 token. Sangat direkomendasikan untuk pembuatan soal banyak (100 soal) dan chat cerdas.
+        2. Groq Cloud: Menggunakan model LLaMA / Qwen dengan kecepatan tinggi.
+      - Cara Mengganti / Update API Key:
+        1. Klik menu "Pusat Pengaturan" atau buka ikon kunci/pengaturan di pojok.
+        2. Pilih Provider AI ("Google Gemini" atau "Groq Cloud").
+        3. Masukkan API Key baru (Untuk Gemini dapatkan di aistudio.google.com/app/apikey).
+        4. Pilih Model yang diinginkan (misal: gemini-3.5-flash-lite).
+        5. Klik "Simpan Konfigurasi AI". Sistem otomatis memperbarui data di Supabase dan browser Anda.
 
-        let payload = {
-            model: GROQ_MODEL,
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: text }
-            ],
-            temperature: 0.7,
-            stream: true, // Mengaktifkan efek streaming (mengetik alami)
-            max_tokens: 8000
-        };
+=======================================================
+RINGKASAN TUGASMU:
+Bantu setiap pengguna SMP IT Al-Fathonah memahami, memanfaatkan, dan mengoperasikan semua fitur di atas dengan penuh keramahan, kejelasan petunjuk langkah demi langkah, dan ketepatan informasi!`;
 
-        let res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        let isGeminiDirect = currentProvider === 'gemini' || GROQ_MODEL.toLowerCase().includes('gemini') || (GROQ_API_KEY && (GROQ_API_KEY.startsWith('AIza') || GROQ_API_KEY.startsWith('AQ.')));
+        let fullText = "";
 
-        if (!res.ok) {
-            const errData = await res.json();
-            const errMsg = errData.error?.message || "";
-            // Jika error karena model salah / tidak ada / tidak aktif di Groq
-            if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model') || errMsg.includes('access') || errMsg.includes('compound')) {
-                console.warn('Model Groq tidak dapat diakses, otomatis beralih ke qwen/qwen3.8-27b...');
-                GROQ_MODEL = 'qwen/qwen3.8-27b';
-                localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
-                if (supabaseClient) {
-                    supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
-                }
-                payload.model = GROQ_MODEL;
-                res = await fetch(url, {
+        if (isGeminiDirect) {
+            let primaryM = (GROQ_MODEL.includes('gemini-3.5') || GROQ_MODEL.includes('gemini-3.1') || GROQ_MODEL.includes('gemini-3.6')) ? GROQ_MODEL : 'gemini-3.5-flash-lite';
+            const modelsToTry = [primaryM, 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
+            let lastErr = null;
+            let successData = null;
+
+            for (let i = 0; i < modelsToTry.length; i++) {
+                let gModel = modelsToTry[i];
+                let gUrl = `https://generativelanguage.googleapis.com/v1beta/models/${gModel}:generateContent?key=${GROQ_API_KEY}`;
+                let gBody = {
+                    systemInstruction: { parts: [{ text: systemPrompt }] },
+                    contents: [{ role: "user", parts: [{ text: text }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 16384 }
+                };
+
+                let res = await fetch(gUrl, {
                     method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${GROQ_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(gBody)
                 });
-                if (!res.ok) {
-                    const retryErr = await res.json();
-                    throw new Error(retryErr.error?.message || "Gagal menghubungi server AI Groq");
+
+                if (res.ok) {
+                    successData = await res.json();
+                    lastErr = null;
+                    break;
                 }
-            } else {
-                if (res.status === 401 || errMsg.includes('Invalid API Key')) {
-                    if (currentRole === 'admin' || currentRole === 'kurikulum') {
-                        const modal = document.getElementById('apiKeyModal');
-                        if (modal) modal.classList.add('active');
-                    } else {
-                        if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
-                        else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
-                    }
+
+                const gErr = await res.json().catch(() => ({}));
+                const gErrMsg = gErr.error?.message || "Gagal menghubungi Gemini AI";
+                lastErr = gErrMsg;
+                const isBusy = res.status === 503 || res.status === 429 || gErrMsg.toLowerCase().includes('high demand') || gErrMsg.toLowerCase().includes('temporar');
+                if (isBusy && i < modelsToTry.length - 1) {
+                    console.warn(`Model chat ${gModel} padat, mencoba alternatif ${modelsToTry[i+1]}...`);
+                    continue;
                 }
-                throw new Error(errMsg || "Gagal menghubungi server AI Groq");
+                throw new Error(gErrMsg);
             }
+
+            if (lastErr && !successData) throw new Error(lastErr);
+
+            // Ekstrak teks utuh dari kandidat respon (termasuk penanganan parts terpisah / thinking)
+            const candidate = successData?.candidates?.[0];
+            let gText = "";
+            if (candidate?.content?.parts) {
+                gText = candidate.content.parts
+                    .filter(p => !p.thought && p.text)
+                    .map(p => p.text)
+                    .join("\n") || candidate.content.parts.map(p => p.text || '').join('\n');
+            }
+            fullText = gText.trim() || "Halo! Ada yang bisa saya bantu terkait informasi dan kegiatan sekolah SMP IT Al-Fathonah?";
+        } else {
+            const url = "https://api.groq.com/openai/v1/chat/completions";
+            let payload = {
+                model: GROQ_MODEL,
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: text }
+                ],
+                temperature: 0.7,
+                stream: false,
+                max_tokens: 4096
+            };
+            let res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + GROQ_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                const errMsg = errData.error?.message || "";
+                throw new Error(errMsg || "Gagal menghubungi server Groq AI");
+            }
+            const data = await res.json();
+            fullText = data.choices?.[0]?.message?.content || "Halo! Ada yang bisa saya bantu terkait sekolah?";
         }
 
-        // Siapkan kontainer untuk streaming text
+        // 3. Ganti bubble typing dengan bubble teks balasan
         const typingWrapper = document.getElementById(typingWrapperId);
         let msgEl;
-
         if (typingWrapper) {
             typingWrapper.innerHTML = `
               <div class="ai-avatar bot-avatar">
@@ -2240,83 +2367,50 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
             msgEl = document.getElementById(`msg-${typingId}`);
         }
 
-        // Proses streaming respons
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullText = "";
-        
+        // 4. Efek Typewriter respons alami
         let cursorIndex = 0;
-        let isStreamFinished = false;
-
-        // Interval pengetikan agar terlihat natural per huruf
         let typingInterval = setInterval(() => {
+            if (!msgEl) {
+                clearInterval(typingInterval);
+                return;
+            }
             if (cursorIndex < fullText.length) {
-                let charsToAdd = 1;
+                let charsToAdd = 2;
                 let backlog = fullText.length - cursorIndex;
-                
-                // Akselerasi pengetikan jika buffer sudah terlalu panjang
-                if (backlog > 50) charsToAdd = 3;
-                if (backlog > 100) charsToAdd = 5;
-                if (backlog > 200) charsToAdd = 10;
-                
+                if (backlog > 40) charsToAdd = 5;
+                if (backlog > 100) charsToAdd = 12;
+                if (backlog > 300) charsToAdd = 25;
                 cursorIndex += charsToAdd;
                 if (cursorIndex > fullText.length) cursorIndex = fullText.length;
-                
+
                 let currentRaw = fullText.substring(0, cursorIndex);
                 let renderedText = currentRaw.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
                                     .replace(/\n/g, '<br>');
-                
-                // Tambahkan kursor berkedip saat mengetik
                 msgEl.innerHTML = renderedText + (cursorIndex < fullText.length ? '<span style="border-right: 2px solid var(--primary); margin-left:2px; animation: blink 1s step-end infinite;">&nbsp;</span>' : '');
                 chatBody.scrollTop = chatBody.scrollHeight;
-            } else if (isStreamFinished) {
+            } else {
                 clearInterval(typingInterval);
-                // Render final tanpa kursor
                 let renderedText = fullText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                     .replace(/\*(.*?)\*/g, '<em>$1</em>')
                                     .replace(/\n/g, '<br>');
                 msgEl.innerHTML = renderedText;
                 chatBody.scrollTop = chatBody.scrollHeight;
             }
-        }, 20); // 20ms per tick
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                isStreamFinished = true;
-                break;
-            }
-
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
-
-            for (const line of lines) {
-                if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-                    try {
-                        const data = JSON.parse(line.substring(6));
-                        if (data.choices[0].delta.content) {
-                            fullText += data.choices[0].delta.content;
-                        }
-                    } catch (e) {
-                        // ignore parse error on incomplete chunks
-                    }
-                }
-            }
-        }
+        }, 20);
 
     } catch (e) {
-        console.error(e);
+        console.error("AI Chat error:", e);
         const typingWrapper = document.getElementById('wrapper-' + typingId) || document.getElementById(typingId);
         if (typingWrapper) typingWrapper.remove();
 
-        let errorMsg = e.message || "Terjadi kesalahan";
+        let errorMsg = e.message || "Terjadi kesalahan saat memproses respon.";
         chatBody.innerHTML += `
           <div class="ai-msg-wrapper bot">
             <div class="ai-avatar bot-avatar" style="background:#ef4444;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
             </div>
-            <div class="ai-msg bot" style="color:#ef4444; border-color:#fca5a5;">⚠️ ${errorMsg}</div>
+            <div class="ai-msg bot" style="color:#ef4444; border-color:#fca5a5;">⚠️ ${escHtml(errorMsg)}</div>
           </div>
         `;
     }
@@ -2325,94 +2419,146 @@ Jika pengguna bertanya tentang apa yang bisa dilakukan aplikasi ini secara spesi
 }
 
 // ==============================================================================
-// AI AUTO GENERATOR MODULES (GROQ LLAMA 3)
-// ==============================================================================
 
-async function fetchGroqAI(prompt, systemMsg) {
+async function fetchGroqAI(prompt, systemMsg, customMaxTokens) {
     let dbKey = null;
     let dbModel = null;
+    let dbProvider = null;
     try {
         if (supabaseClient) {
-            const { data } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
-            if (data && data.value) dbKey = data.value;
-            const { data: dbModelData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
-            if (dbModelData && dbModelData.value) dbModel = dbModelData.value;
+            const { data: pData } = await supabaseClient.from('system_settings').select('value').eq('key', 'ai_provider').maybeSingle();
+            if (pData && pData.value) dbProvider = pData.value;
+            const { data: kData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_api_key').maybeSingle();
+            if (kData && kData.value) dbKey = kData.value;
+            const { data: mData } = await supabaseClient.from('system_settings').select('value').eq('key', 'groq_model').maybeSingle();
+            if (mData && mData.value) dbModel = mData.value;
         }
     } catch (e) { }
 
-    let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "qwen/qwen3.8-27b";
-    let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel) : (rawModel.toLowerCase().includes('qwen') ? rawModel : 'qwen/qwen3.8-27b');
+    let API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "";
+    let rawModel = dbModel || localStorage.getItem('GROQ_MODEL') || "gemini-3.5-flash-lite";
+    let provider = dbProvider || localStorage.getItem('AI_PROVIDER') || ((API_KEY.startsWith('AIza') || API_KEY.startsWith('AQ.')) ? 'gemini' : (API_KEY.startsWith('gsk_') ? 'groq' : 'gemini'));
 
-    // Auto-heal jika model di DB / localStorage invalid
-    if (rawModel !== GROQ_MODEL) {
-        localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
-        if (supabaseClient) {
-            supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
+    // AUTO DETEKSI: Jika API Key Google Gemini (dimulai AIzaSy...)
+    const isGemini = (provider === 'gemini') || API_KEY.startsWith('AIza') || API_KEY.startsWith('AQ.') || rawModel.toLowerCase().includes('gemini');
+
+    // ============================================================
+    // ENGINE 1: GOOGLE GEMINI (Kuota 1.000.000 Token/Menit Gratis)
+    // ============================================================
+    if (isGemini) {
+        let primaryModel = (rawModel.includes('gemini-3.5') || rawModel.includes('gemini-3.1') || rawModel.includes('gemini-3.6')) ? rawModel : 'gemini-3.5-flash-lite';
+        const modelsToTry = [primaryModel, 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'].filter((v, i, a) => a.indexOf(v) === i);
+
+        for (let i = 0; i < modelsToTry.length; i++) {
+            let geminiModel = modelsToTry[i];
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${API_KEY}`;
+
+            const requestBody = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [{ text: prompt }]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: customMaxTokens ? Math.min(Math.max(customMaxTokens, 8192), 65536) : 32768
+                }
+            };
+            if (systemMsg) {
+                requestBody.systemInstruction = {
+                    parts: [{ text: systemMsg }]
+                };
+            }
+
+            try {
+                let res = await fetch(geminiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    const errMsg = errData.error?.message || `Gemini API error (${res.status})`;
+                    const isBusy = res.status === 503 || res.status === 429 || errMsg.toLowerCase().includes('high demand') || errMsg.toLowerCase().includes('temporar') || errMsg.toLowerCase().includes('overloaded');
+                    if (isBusy && i < modelsToTry.length - 1) {
+                        console.warn(`Model ${geminiModel} sedang padat, mencoba alternatif ${modelsToTry[i+1]}...`);
+                        continue;
+                    }
+                    if (res.status === 400 || res.status === 401 || errMsg.toLowerCase().includes('api_key') || errMsg.toLowerCase().includes('key not valid')) {
+                        if (currentRole === 'admin' || currentRole === 'kurikulum') {
+                            const modal = document.getElementById('apiKeyModal');
+                            if (modal) modal.classList.add('active');
+                        } else {
+                            if (typeof showToast === 'function') showToast("API Key Google Gemini belum valid. Hubungi Admin/Kurikulum.", "error");
+                        }
+                    }
+                    throw new Error(errMsg);
+                }
+                const data = await res.json();
+                const candidate = data.candidates && data.candidates[0];
+                const outText = candidate?.content?.parts?.[0]?.text;
+                return outText ? outText.trim() : null;
+            } catch (e) {
+                if (i === modelsToTry.length - 1) {
+                    console.error("Gemini fetch error:", e);
+                    if (typeof showToast === 'function') showToast(e.message || "Gagal memproses AI Gemini. Coba lagi.", "error");
+                    return null;
+                }
+            }
         }
+        return null;
     }
 
-    let GROQ_API_KEY = dbKey || localStorage.getItem('GROQ_API_KEY') || "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";
+    // ============================================================
+    // ENGINE 2: GROQ CLOUD (Fallback / Provider Groq)
+    // ============================================================
+    let GROQ_MODEL = typeof sanitizeGroqModel === 'function' ? sanitizeGroqModel(rawModel, 'groq') : 'qwen/qwen3.8-27b';
+    let GROQ_API_KEY = API_KEY || "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";
     const url = "https://api.groq.com/openai/v1/chat/completions";
+    let tokenLimit = customMaxTokens ? Math.min(customMaxTokens, 950) : 900;
 
-    try {
-        let res = await fetch(url, {
+    function _isGroqRateLimit(msg, status) {
+        if (status === 429) return true;
+        const lower = (msg || '').toLowerCase();
+        return lower.includes('rate limit') || lower.includes('otpm') || lower.includes('tokens per minute') || lower.includes('too large');
+    }
+
+    async function _callGroq(model, maxTok) {
+        return fetch(url, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${GROQ_API_KEY}`,
+                'Authorization': 'Bearer ' + GROQ_API_KEY,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: GROQ_MODEL,
+                model: model,
                 messages: [
                     { role: "system", content: systemMsg },
                     { role: "user", content: prompt }
                 ],
                 temperature: 0.7,
-                max_tokens: 8000
+                max_tokens: maxTok
             })
         });
+    }
 
+    try {
+        let res = await _callGroq(GROQ_MODEL, tokenLimit);
         if (!res.ok) {
-            const errData = await res.json();
+            const errData = await res.json().catch(() => ({}));
             const errMsg = errData.error?.message || "";
-            // Jika error karena model salah / tidak ada / tidak aktif di Groq
-            if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model') || errMsg.includes('access') || errMsg.includes('compound')) {
-                console.warn('Model Groq invalid di fetchGroqAI (' + GROQ_MODEL + '), otomatis beralih ke qwen/qwen3.8-27b...');
+            if (_isGroqRateLimit(errMsg, res.status)) {
+                if (typeof showToast === 'function') showToast("⏳ Kuota Groq per menit padat. Menunggu 20 detik...", "warning", 8000);
+                await new Promise(r => setTimeout(r, 20000));
+                res = await _callGroq(GROQ_MODEL, Math.min(tokenLimit, 600));
+                if (!res.ok) throw new Error("Batas kuota AI per menit tercapai. Beralih ke Google Gemini di Pengaturan Sekolah untuk kuota 1 Juta token gratis!");
+            } else if (errMsg.includes('does not exist') || errMsg.includes('not found') || errMsg.includes('model')) {
                 GROQ_MODEL = 'qwen/qwen3.8-27b';
-                localStorage.setItem('GROQ_MODEL', GROQ_MODEL);
-                if (supabaseClient) {
-                    supabaseClient.from('system_settings').upsert({ key: 'groq_model', value: GROQ_MODEL }).then(() => {});
-                }
-                res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${GROQ_API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        model: GROQ_MODEL,
-                        messages: [
-                            { role: "system", content: systemMsg },
-                            { role: "user", content: prompt }
-                        ],
-                        temperature: 0.7,
-                        max_tokens: 8000
-                    })
-                });
-                if (!res.ok) {
-                    const retryErr = await res.json();
-                    throw new Error(retryErr.error?.message || "Gagal memanggil API Groq");
-                }
+                res = await _callGroq(GROQ_MODEL, tokenLimit);
+                if (!res.ok) throw new Error("Gagal memanggil API Groq");
             } else {
-                if (res.status === 401 || errMsg.includes('Invalid API Key')) {
-                    if (currentRole === 'admin' || currentRole === 'kurikulum') {
-                        const modal = document.getElementById('apiKeyModal');
-                        if (modal) modal.classList.add('active');
-                    } else {
-                        if (typeof showToast === 'function') showToast("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.", "error");
-                        else alert("Sistem AI sedang bermasalah (API Key Invalid). Silakan hubungi Admin atau Kurikulum.");
-                    }
-                }
                 throw new Error(errMsg || "Gagal memanggil API Groq");
             }
         }
@@ -2421,10 +2567,10 @@ async function fetchGroqAI(prompt, systemMsg) {
     } catch (e) {
         console.error("fetchGroqAI error:", e);
         if (typeof showToast === 'function') showToast(e.message || "Gagal memproses AI. Coba lagi.", "error");
-        else alert(e.message || "Gagal memproses AI. Coba lagi.");
         return null;
     }
 }
+
 
 async function generateDraftSuratAI() {
     const perihal = document.getElementById('formSuratPerihal').value.trim();
@@ -2611,9 +2757,9 @@ ATURAN BAHASA ARAB / AL-QUR'AN (JIKA DIMINTA):
 - Tuliskan teks Arab dengan rapi, misalnya: بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ.
 - Pertahankan struktur arah teks agar tidak rusak saat di-parse.`;
 
-    const prompt = `Buatkan soal ujian berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nPENTING: \n- Nomor soal WAJIB dimulai dari nomor ${startNum}.\n- Jika pengguna secara spesifik meminta jumlah soal tertentu (misal: "10 soal PG", "15 essay"), maka PATUHI JUMLAH TERSEBUT dengan presisi.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 5 soal Pilihan Ganda dan 2 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
+    const prompt = `Buatkan naskah soal ujian LENGKAP tanpa terpotong berdasarkan materi/topik/perintah berikut:\n\n"${text}"\n\nSANGAT PENTING (ATURAN JUMLAH & KELENGKAPAN SOAL):\n- Nomor soal WAJIB dimulai dari nomor ${startNum}.\n- SANGAT PENTING: Jika pengguna meminta jumlah soal tertentu (misal: "35 PG dan 5 essay", "50 soal PG", "100 soal", dsb.), kamu WAJIB MEMBUAT SEMUA SOAL SEJUMLAH YANG DIMINTA LENGKAP TANPA TERLEWAT SATU NOMOR PUN HINGGA NOMOR TERAKHIR (misal 35 PG lengkap nomor 1 s/d 35, lalu 5 essay lengkap nomor 36 s/d 40).\n- DILARANG KERAS MEMOTONG, HANYA MEMBERI CONTOH SEBAGIAN, ATAU BERHENTI DI TENGAH JALAN! Kuota token sangat besar (65.000+ token), jadi tuliskan seluruh butir soal sampai tuntas. Buat setiap soal lengkap dengan opsi A, B, C, D dan baris Kunci: X untuk PG, serta pertanyaan dan Kunci Jawaban: untuk Essay.\n- Jika pengguna TIDAK menyebutkan jumlahnya secara spesifik, maka buatkan standar: 10 soal Pilihan Ganda dan 3 soal Essay.\n\nGunakan format yang sudah saya instruksikan dengan sangat ketat!`;
 
-    const result = await fetchGroqAI(prompt, systemMsg);
+    const result = await fetchGroqAI(prompt, systemMsg, 65536);
     if (result) {
         // Append ke naskah yang sudah ada
         if (existingText) {
@@ -2686,7 +2832,8 @@ async function rapikanEjaanAI() {
     const systemMsg = "Kamu adalah Editor Naskah Profesional. Tugasmu memperbaiki ejaan (EYD/PUEBI), typo, dan format teks soal ujian, TANPA mengubah makna pertanyaannya sedikit pun. SANGAT PENTING: JANGAN ADA SOAL YANG DIHAPUS ATAU DILEWATI. Tulis ulang SEMUA soal (baik Pilihan Ganda beserta opsi A,B,C,D maupun Essay) secara LENGKAP dari awal hingga akhir tanpa merangkum. Pastikan hasil akhir menggunakan ejaan Bahasa Indonesia yang benar dan formatnya rapi.";
     const prompt = `Rapikan ejaan dan tata letak keseluruhan teks naskah ujian berikut. PENTING: JANGAN MEMOTONG, MENGHAPUS, ATAU MELEWATI SOAL APAPUN. Semua nomor soal harus utuh!\n\n${text}\n\nBerikan HANYA teks naskah utuh hasil perbaikannya saja.`;
 
-    const result = await fetchGroqAI(prompt, systemMsg);
+    const estTokens = Math.max(4096, Math.ceil(text.length * 2));
+    const result = await fetchGroqAI(prompt, systemMsg, estTokens);
     if (result) {
         area.value = result;
         if (typeof showToast === 'function') showToast("Ejaan teks berhasil dirapikan!", "success");
