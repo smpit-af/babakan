@@ -3444,12 +3444,14 @@ async function loadSiswaCetakKartu() {
 
         const { data: siswaData, error: siswaErr } = await supabaseClient
             .from('siswa')
-            .select('id, nama_lengkap, jenis_kelamin, nisn, foto, kelas_id, master_kelas(nama_kelas)')
-            .in('kelas_id', kelasIds)
-            .eq('status', 'Aktif');
+            .select('id, nama_lengkap, jenis_kelamin, nisn, foto, kelas_id, status, master_kelas(nama_kelas)')
+            .in('kelas_id', kelasIds);
         if (siswaErr) throw siswaErr;
 
-        listSiswa = siswaData || [];
+        listSiswa = (siswaData || []).filter(function (s) {
+            var st = (s.status || 'Aktif').trim();
+            return st !== 'Lulus' && st !== 'Pindah' && st !== 'Dikeluarkan' && st !== 'Tidak Aktif';
+        });
 
         // Sort by kelas first, then alphabetical within each kelas
         listSiswa.sort((a, b) => {
