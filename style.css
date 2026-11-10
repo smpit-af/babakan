@@ -6273,10 +6273,10 @@ body.dark-mode .toast-info {
   background: #64748b;
 }
 
-/* Table dimension and border model - Lebar 1860px tetap agar semua kolom lapang dan scroll horizontal bekerja mulus */
+/* Table dimension and border model - Lebar 1950px tetap agar semua kolom lapang dan scroll horizontal bekerja mulus */
 table.table-freeze-table {
-  min-width: 1860px !important;
-  width: 1860px !important;
+  min-width: 1950px !important;
+  width: 1950px !important;
   table-layout: fixed !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
@@ -6300,21 +6300,53 @@ table.table-freeze-table {
 }
 
 /* Atur lebar masing-masing kolom pada table-freeze */
-.table-freeze-table th:nth-child(1), .table-freeze-table td:nth-child(1) { width: 50px !important; }
-.table-freeze-table th:nth-child(2), .table-freeze-table td:nth-child(2) { width: 70px !important; }
-.table-freeze-table th:nth-child(3), .table-freeze-table td:nth-child(3) { width: 220px !important; }
-.table-freeze-table th:nth-child(4), .table-freeze-table td:nth-child(4) { width: 120px !important; }
-.table-freeze-table th:nth-child(5), .table-freeze-table td:nth-child(5) { width: 60px !important; }
-.table-freeze-table th:nth-child(6), .table-freeze-table td:nth-child(6) { width: 90px !important; }
-.table-freeze-table th:nth-child(7), .table-freeze-table td:nth-child(7) { width: 80px !important; }
-.table-freeze-table th:nth-child(8), .table-freeze-table td:nth-child(8) { width: 90px !important; }
-.table-freeze-table th:nth-child(9), .table-freeze-table td:nth-child(9) { width: 150px !important; }
-.table-freeze-table th:nth-child(10), .table-freeze-table td:nth-child(10) { width: 150px !important; }
-.table-freeze-table th:nth-child(11), .table-freeze-table td:nth-child(11) { width: 130px !important; }
-.table-freeze-table th:nth-child(12), .table-freeze-table td:nth-child(12) { width: 160px !important; }
-.table-freeze-table th:nth-child(13), .table-freeze-table td:nth-child(13) { width: 240px !important; }
-.table-freeze-table th:nth-child(14), .table-freeze-table td:nth-child(14) { width: 100px !important; }
-.table-freeze-table th:nth-child(15), .table-freeze-table td:nth-child(15) { width: 140px !important; }
+.table-freeze-table th:nth-child(1), .table-freeze-table td:nth-child(1) { width: 50px !important; min-width: 50px !important; max-width: 50px !important; }
+.table-freeze-table th:nth-child(2), .table-freeze-table td:nth-child(2) { width: 70px !important; min-width: 70px !important; max-width: 70px !important; }
+.table-freeze-table th:nth-child(3), .table-freeze-table td:nth-child(3) { width: 220px !important; min-width: 220px !important; max-width: 220px !important; }
+.table-freeze-table th:nth-child(4), .table-freeze-table td:nth-child(4) { width: 120px !important; min-width: 120px !important; max-width: 120px !important; }
+.table-freeze-table th:nth-child(5), .table-freeze-table td:nth-child(5) { width: 60px !important; min-width: 60px !important; max-width: 60px !important; }
+.table-freeze-table th:nth-child(6), .table-freeze-table td:nth-child(6) { width: 90px !important; min-width: 90px !important; max-width: 90px !important; }
+.table-freeze-table th:nth-child(7), .table-freeze-table td:nth-child(7) { width: 80px !important; min-width: 80px !important; max-width: 80px !important; }
+.table-freeze-table th:nth-child(8), .table-freeze-table td:nth-child(8) { width: 90px !important; min-width: 90px !important; max-width: 90px !important; }
+.table-freeze-table th:nth-child(9), .table-freeze-table td:nth-child(9) { width: 150px !important; min-width: 150px !important; max-width: 150px !important; }
+.table-freeze-table th:nth-child(10), .table-freeze-table td:nth-child(10) { width: 150px !important; min-width: 150px !important; max-width: 150px !important; }
+.table-freeze-table th:nth-child(11), .table-freeze-table td:nth-child(11) { width: 130px !important; min-width: 130px !important; max-width: 130px !important; }
+.table-freeze-table th:nth-child(12), .table-freeze-table td:nth-child(12) { width: 160px !important; min-width: 160px !important; max-width: 160px !important; }
+.table-freeze-table th:nth-child(13), .table-freeze-table td:nth-child(13) { width: 330px !important; min-width: 330px !important; max-width: 330px !important; }
+.table-freeze-table th:nth-child(14), .table-freeze-table td:nth-child(14) { width: 110px !important; min-width: 110px !important; max-width: 110px !important; }
+.table-freeze-table th:nth-child(15), .table-freeze-table td:nth-child(15) { width: 140px !important; min-width: 140px !important; max-width: 140px !important; }
+
+/* Isolasi sel td: teks panjang terpotong rapi dengan ellipsis (...), dilarang overflow menabrak kolom sebelah */
+.table-freeze-table td {
+  padding: 10px 14px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  vertical-align: middle !important;
+  max-width: 0 !important;
+}
+
+/* Kolom yang tidak boleh di-clip teks / isinya */
+.table-freeze-table td.col-freeze-no {
+  text-align: center !important;
+  overflow: visible !important;
+}
+.table-freeze-table td.col-freeze-foto {
+  text-align: center !important;
+  overflow: visible !important;
+}
+.table-freeze-table th:nth-child(14),
+.table-freeze-table td:nth-child(14) {
+  text-align: center !important;
+  overflow: visible !important;
+}
+.table-freeze-table th.col-freeze-aksi,
+.table-freeze-table td.col-freeze-aksi {
+  text-align: center !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
 
 /* Di layar PC (> 992px) */
 @media (min-width: 993px) {
@@ -6404,25 +6436,24 @@ table.table-freeze-table {
     color: #ffffff !important;
   }
 
-  /* Kolom Terakhir: Aksi */
+  /* Kolom Terakhir: Aksi (Tidak di-freeze / mengalir normal di akhir tabel) */
   .table-freeze-table th.col-freeze-aksi,
   .table-freeze-table td.col-freeze-aksi {
-    position: sticky;
-    right: 0 !important;
+    position: static !important;
     width: 140px !important;
     min-width: 140px !important;
     max-width: 140px !important;
     box-sizing: border-box !important;
-    z-index: 5;
-    background: #ffffff;
-    box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.12);
-    border-left: 2px solid #cbd5e1;
+    box-shadow: none !important;
+    border-left: none !important;
     text-align: center;
     white-space: nowrap;
     padding: 8px 6px !important;
   }
   .table-freeze-table thead th.col-freeze-aksi {
-    z-index: 25 !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
     background: #4338ca !important;
     color: #ffffff !important;
   }
@@ -6430,8 +6461,7 @@ table.table-freeze-table {
   /* Efek Hover Row untuk kolom sticky */
   .table-freeze-table tbody tr:hover td.col-freeze-no,
   .table-freeze-table tbody tr:hover td.col-freeze-foto,
-  .table-freeze-table tbody tr:hover td.col-freeze-nama,
-  .table-freeze-table tbody tr:hover td.col-freeze-aksi {
+  .table-freeze-table tbody tr:hover td.col-freeze-nama {
     background: #f1f5f9;
   }
 }
