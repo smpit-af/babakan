@@ -3572,6 +3572,7 @@ async function loadSiswaData() {
 }
 
 function filterSiswaTable() {
+    setTimeout(function() { if (typeof initTableScrollSync === 'function') initTableScrollSync('siswaTableContainer', 'siswaTableTopScroll', 'siswaTableTopScrollDummy'); }, 50);
     var search = (document.getElementById('filterSiswaSearch') ? document.getElementById('filterSiswaSearch').value : '').toLowerCase();
     var filterKelas = document.getElementById('filterSiswaKelas') ? document.getElementById('filterSiswaKelas').value : '';
     var filterStatus = document.getElementById('filterSiswaStatus') ? document.getElementById('filterSiswaStatus').value : '';
@@ -3607,11 +3608,27 @@ function filterSiswaTable() {
                         s.status === 'Lulus' ? '<span class="role-badge" style="background:rgba(124,58,237,.1);color:#7c3aed;">Lulus</span>' :
                             '<span class="role-badge" style="background:rgba(100,116,139,.1);color:#64748b;">' + (s.status || '-') + '</span>';
         var fotoTd = s.foto ? '<img src="' + s.foto + '" style="width:36px;height:45px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0;">' : '<div style="width:36px;height:45px;border-radius:4px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;border:1px dashed #cbd5e1;">-</div>';
-        return '<tr><td>' + (i + 1) + '</td><td style="text-align:center;">' + fotoTd + '</td><td>' + (s.nisn || '-') + '</td><td>' + (s.nama_lengkap || '-') + '</td><td>' + (s.jenis_kelamin || '-') + '</td><td>' + (s.agama || '-') + '</td><td>' + kelasNama + '</td><td>' + mondokBadge + '</td><td>' + (s.nama_ayah || '-') + '</td><td>' + (s.nama_ibu || '-') + '</td><td>' + (s.nomor_hp || '-') + '</td><td>' + (s.email || '-') + '</td><td>' + (s.alamat || '-') + '</td><td>' + statusBadge + '</td>' +
-            '<td style="text-align:center; white-space:nowrap;">' +
-            '<button class="btn btn-sm btn-outline" onclick="viewDetailSiswa(\'' + s.id + '\')" title="Detail" style="margin-right:2px;border-color:#3b82f6;color:#3b82f6;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button> ' +
-            '<button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit" style="margin-right:2px;"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
-            '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap || '').replace(/'/g, "\\'") + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button></td></tr>';
+        return '<tr>' +
+            '<td class="col-freeze-no">' + (i + 1) + '</td>' +
+            '<td class="col-freeze-foto" style="text-align:center;">' + fotoTd + '</td>' +
+            '<td class="col-freeze-nama">' + (typeof escHtml === 'function' ? escHtml(s.nama_lengkap || '-') : (s.nama_lengkap || '-')) + '</td>' +
+            '<td>' + (s.nisn || '-') + '</td>' +
+            '<td>' + (s.jenis_kelamin || '-') + '</td>' +
+            '<td>' + (s.agama || '-') + '</td>' +
+            '<td>' + kelasNama + '</td>' +
+            '<td>' + mondokBadge + '</td>' +
+            '<td>' + (s.nama_ayah || '-') + '</td>' +
+            '<td>' + (s.nama_ibu || '-') + '</td>' +
+            '<td>' + (s.nomor_hp || '-') + '</td>' +
+            '<td>' + (s.email || '-') + '</td>' +
+            '<td>' + (s.alamat || '-') + '</td>' +
+            '<td>' + statusBadge + '</td>' +
+            '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
+            '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
+            '<button class="btn btn-sm btn-outline" onclick="viewDetailSiswa(\'' + s.id + '\')" title="Detail" style="border-color:#3b82f6;color:#3b82f6;padding:4px 8px;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button> ' +
+            '<button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit" style="padding:4px 8px;"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
+            '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap || '').replace(/'/g, "\\'") + '\')" title="Hapus" style="padding:4px 8px;"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>' +
+            '</div></td></tr>';
     }).join('');
     if (window.lucide) lucide.createIcons();
 }
@@ -15093,12 +15110,14 @@ async function loadSiswaCetakKartu() {
 
         const { data: siswaData, error: siswaErr } = await supabaseClient
             .from('siswa')
-            .select('id, nama_lengkap, jenis_kelamin, nisn, foto, kelas_id, master_kelas(nama_kelas)')
-            .in('kelas_id', kelasIds)
-            .eq('status', 'Aktif');
+            .select('id, nama_lengkap, jenis_kelamin, nisn, foto, kelas_id, status, master_kelas(nama_kelas)')
+            .in('kelas_id', kelasIds);
         if (siswaErr) throw siswaErr;
 
-        listSiswa = siswaData || [];
+        listSiswa = (siswaData || []).filter(function (s) {
+            var st = (s.status || 'Aktif').trim();
+            return st !== 'Lulus' && st !== 'Pindah' && st !== 'Dikeluarkan' && st !== 'Tidak Aktif';
+        });
 
         // Sort by kelas first, then alphabetical within each kelas
         listSiswa.sort((a, b) => {
