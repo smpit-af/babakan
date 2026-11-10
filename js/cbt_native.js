@@ -360,7 +360,7 @@ async function refreshMonitorCbt(sesiId) {
 
         const { data: allSiswa } = await supabaseClient.from('siswa')
             .select('id, nama_lengkap, master_kelas(nama_kelas)')
-            .eq('status', 'Aktif');
+            .in('status', ['Aktif', 'Pindahan']);
 
         const { data: jawaban, error } = await supabaseClient.from('cbt_jawaban_siswa')
             .select('*')
