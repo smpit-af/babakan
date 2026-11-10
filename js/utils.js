@@ -1089,3 +1089,87 @@ async function loadSarprasPublic() {
 // ============================================================
 // ============================================================
 //
+
+// ============================================================
+// HELPER HORIZONTAL TABLE SCROLL & DUAL SYNC SCROLLBAR
+// ============================================================
+function scrollTableHorizontally(containerId, offset) {
+    var el = document.getElementById(containerId);
+    if (!el) {
+        el = document.querySelector('#' + containerId) || document.querySelector('.table-freeze-container');
+    }
+    if (!el) return;
+
+    var maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    
+    // Sinkronkan target scroll agar multi-klik tombol bergulir lancar
+    if (typeof el._targetScrollLeft !== 'number' || isNaN(el._targetScrollLeft)) {
+        el._targetScrollLeft = el.scrollLeft;
+    }
+    if (Math.abs(el._targetScrollLeft - el.scrollLeft) > Math.abs(offset) * 1.5) {
+        el._targetScrollLeft = el.scrollLeft;
+    }
+    
+    el._targetScrollLeft = Math.min(maxScroll, Math.max(0, el._targetScrollLeft + offset));
+
+    try {
+        el.scrollTo({ left: el._targetScrollLeft, behavior: 'smooth' });
+    } catch (e) {
+        el.scrollLeft = el._targetScrollLeft;
+    }
+}
+
+function initTableScrollSync(containerId, topScrollId, dummyId) {
+    var container = document.getElementById(containerId);
+    var topScroll = document.getElementById(topScrollId);
+    var dummy = document.getElementById(dummyId);
+    if (!container || !topScroll || !dummy) return;
+
+    var syncWidth = function () {
+        if (container.scrollWidth > container.clientWidth) {
+            dummy.style.width = container.scrollWidth + 'px';
+        } else {
+            dummy.style.width = '100%';
+        }
+    };
+
+    if (!container._scrollSyncInitialized) {
+        container._scrollSyncInitialized = true;
+        var activeScroller = null;
+        var resetTimer = null;
+
+        var onContainerScroll = function () {
+            if (activeScroller === 'top') return;
+            activeScroller = 'container';
+            var maxContainer = container.scrollWidth - container.clientWidth;
+            var maxTop = topScroll.scrollWidth - topScroll.clientWidth;
+            if (maxContainer > 0 && maxTop > 0) {
+                topScroll.scrollLeft = (container.scrollLeft / maxContainer) * maxTop;
+            } else {
+                topScroll.scrollLeft = container.scrollLeft;
+            }
+            clearTimeout(resetTimer);
+            resetTimer = setTimeout(function () { activeScroller = null; }, 120);
+        };
+
+        var onTopScroll = function () {
+            if (activeScroller === 'container') return;
+            activeScroller = 'top';
+            var maxContainer = container.scrollWidth - container.clientWidth;
+            var maxTop = topScroll.scrollWidth - topScroll.clientWidth;
+            if (maxContainer > 0 && maxTop > 0) {
+                container.scrollLeft = (topScroll.scrollLeft / maxTop) * maxContainer;
+            } else {
+                container.scrollLeft = topScroll.scrollLeft;
+            }
+            clearTimeout(resetTimer);
+            resetTimer = setTimeout(function () { activeScroller = null; }, 120);
+        };
+
+        container.addEventListener('scroll', onContainerScroll, { passive: true });
+        topScroll.addEventListener('scroll', onTopScroll, { passive: true });
+        window.addEventListener('resize', syncWidth);
+    }
+
+    syncWidth();
+}
