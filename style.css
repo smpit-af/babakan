@@ -6238,3 +6238,237 @@ body.dark-mode .toast-info {
 }
 
 
+
+
+/* ============================================================
+   STICKY & FREEZE TABLE UNTUK DATA SISWA & TABEL LEBAR (PC)
+   ============================================================ */
+.table-freeze-container {
+  position: relative;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  max-height: calc(100vh - 250px);
+  min-height: 380px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Scrollbar styling for table container */
+.table-freeze-container::-webkit-scrollbar {
+  width: 9px;
+  height: 12px;
+}
+.table-freeze-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+.table-freeze-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 6px;
+}
+.table-freeze-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Table dimension and border model - Lebar 1860px tetap agar semua kolom lapang dan scroll horizontal bekerja mulus */
+table.table-freeze-table {
+  min-width: 1860px !important;
+  width: 1860px !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  margin: 0 !important;
+}
+
+/* Sticky Header styling */
+.table-freeze-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #4338ca !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #3730a3 !important;
+  border-top: none !important;
+  white-space: nowrap;
+  font-weight: 700;
+  padding: 12px 14px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Atur lebar masing-masing kolom pada table-freeze */
+.table-freeze-table th:nth-child(1), .table-freeze-table td:nth-child(1) { width: 50px !important; }
+.table-freeze-table th:nth-child(2), .table-freeze-table td:nth-child(2) { width: 70px !important; }
+.table-freeze-table th:nth-child(3), .table-freeze-table td:nth-child(3) { width: 220px !important; }
+.table-freeze-table th:nth-child(4), .table-freeze-table td:nth-child(4) { width: 120px !important; }
+.table-freeze-table th:nth-child(5), .table-freeze-table td:nth-child(5) { width: 60px !important; }
+.table-freeze-table th:nth-child(6), .table-freeze-table td:nth-child(6) { width: 90px !important; }
+.table-freeze-table th:nth-child(7), .table-freeze-table td:nth-child(7) { width: 80px !important; }
+.table-freeze-table th:nth-child(8), .table-freeze-table td:nth-child(8) { width: 90px !important; }
+.table-freeze-table th:nth-child(9), .table-freeze-table td:nth-child(9) { width: 150px !important; }
+.table-freeze-table th:nth-child(10), .table-freeze-table td:nth-child(10) { width: 150px !important; }
+.table-freeze-table th:nth-child(11), .table-freeze-table td:nth-child(11) { width: 130px !important; }
+.table-freeze-table th:nth-child(12), .table-freeze-table td:nth-child(12) { width: 160px !important; }
+.table-freeze-table th:nth-child(13), .table-freeze-table td:nth-child(13) { width: 240px !important; }
+.table-freeze-table th:nth-child(14), .table-freeze-table td:nth-child(14) { width: 100px !important; }
+.table-freeze-table th:nth-child(15), .table-freeze-table td:nth-child(15) { width: 140px !important; }
+
+/* Di layar PC (> 992px) */
+@media (min-width: 993px) {
+  /* Kolom 1: No */
+  .table-freeze-table th.col-freeze-no,
+  .table-freeze-table td.col-freeze-no {
+    position: sticky;
+    left: 0 !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    box-sizing: border-box !important;
+    z-index: 5;
+    background: #ffffff;
+    text-align: center;
+    padding: 8px 4px !important;
+  }
+  .table-freeze-table thead th.col-freeze-no {
+    z-index: 25 !important;
+    background: #4338ca !important;
+    color: #ffffff !important;
+  }
+
+  /* Kolom 2: Foto (Lebar 70px, foto di tengah, tidak tertindih / tertekan) */
+  .table-freeze-table th.col-freeze-foto,
+  .table-freeze-table td.col-freeze-foto {
+    position: sticky;
+    left: 50px !important;
+    width: 70px !important;
+    min-width: 70px !important;
+    max-width: 70px !important;
+    box-sizing: border-box !important;
+    z-index: 5;
+    background: #ffffff;
+    text-align: center;
+    padding: 6px 4px !important;
+  }
+  .table-freeze-table thead th.col-freeze-foto {
+    z-index: 25 !important;
+    background: #4338ca !important;
+    color: #ffffff !important;
+  }
+
+  /* Foto image sizing */
+  .table-freeze-table td.col-freeze-foto img {
+    width: 40px !important;
+    height: 50px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+    border: 1px solid #cbd5e1;
+    display: block;
+    margin: 0 auto;
+  }
+  .table-freeze-table td.col-freeze-foto div {
+    width: 40px !important;
+    height: 50px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    border-radius: 6px !important;
+    margin: 0 auto;
+  }
+
+  /* Kolom 3: Nama Lengkap (left = 50px + 70px = 120px) */
+  .table-freeze-table th.col-freeze-nama,
+  .table-freeze-table td.col-freeze-nama {
+    position: sticky;
+    left: 120px !important;
+    width: 220px !important;
+    min-width: 220px !important;
+    max-width: 240px !important;
+    box-sizing: border-box !important;
+    z-index: 5;
+    background: #ffffff;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12);
+    border-right: 2px solid #cbd5e1;
+    font-weight: 600;
+    padding: 10px 14px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .table-freeze-table thead th.col-freeze-nama {
+    z-index: 25 !important;
+    background: #4338ca !important;
+    color: #ffffff !important;
+  }
+
+  /* Kolom Terakhir: Aksi */
+  .table-freeze-table th.col-freeze-aksi,
+  .table-freeze-table td.col-freeze-aksi {
+    position: sticky;
+    right: 0 !important;
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+    box-sizing: border-box !important;
+    z-index: 5;
+    background: #ffffff;
+    box-shadow: -4px 0 8px -2px rgba(0, 0, 0, 0.12);
+    border-left: 2px solid #cbd5e1;
+    text-align: center;
+    white-space: nowrap;
+    padding: 8px 6px !important;
+  }
+  .table-freeze-table thead th.col-freeze-aksi {
+    z-index: 25 !important;
+    background: #4338ca !important;
+    color: #ffffff !important;
+  }
+
+  /* Efek Hover Row untuk kolom sticky */
+  .table-freeze-table tbody tr:hover td.col-freeze-no,
+  .table-freeze-table tbody tr:hover td.col-freeze-foto,
+  .table-freeze-table tbody tr:hover td.col-freeze-nama,
+  .table-freeze-table tbody tr:hover td.col-freeze-aksi {
+    background: #f1f5f9;
+  }
+}
+
+/* Di layar mobile/tablet (<= 992px), nonaktifkan sticky horizontal agar scrolling sentuh alami */
+@media (max-width: 992px) {
+  table.table-freeze-table {
+    min-width: 1300px !important;
+    width: 1300px !important;
+  }
+  .table-freeze-table th.col-freeze-no,
+  .table-freeze-table td.col-freeze-no,
+  .table-freeze-table th.col-freeze-foto,
+  .table-freeze-table td.col-freeze-foto,
+  .table-freeze-table th.col-freeze-nama,
+  .table-freeze-table td.col-freeze-nama,
+  .table-freeze-table th.col-freeze-aksi,
+  .table-freeze-table td.col-freeze-aksi {
+    position: static !important;
+    box-shadow: none !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+}
+
+/* Top Scrollbar bar track */
+.table-top-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+.table-top-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.table-top-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+.table-top-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
