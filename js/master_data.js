@@ -827,7 +827,7 @@ function filterSiswaTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td>' + (s.alamat || '-') + '</td>' +
+            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
@@ -909,7 +909,7 @@ function filterSiswaPindahTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td>' + (s.alamat || '-') + '</td>' +
+            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
@@ -991,7 +991,7 @@ function filterSiswaDikeluarkanTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td>' + (s.alamat || '-') + '</td>' +
+            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
