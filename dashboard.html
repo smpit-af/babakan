@@ -1143,14 +1143,36 @@
         </div>
       </div>
       <div class="card">
-        <div style="overflow-x:auto;">
-          <table class="dash-table">
+        <!-- Toolbar Geser Cepat Tabel Siswa -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; background:#f8fafc; padding:8px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#475569; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="move-horizontal" style="width:15px;height:15px;color:#6366f1;"></i> Geser Tabel:
+            </span>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaTableContainer', -350)" title="Geser ke Kiri" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="chevron-left" style="width:14px;height:14px;"></i> Kiri
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaTableContainer', 350)" title="Geser ke Kanan" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              Kanan <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+            <span style="font-size:0.75rem; color:#94a3b8; margin-left:4px;" class="hide-mobile">(Nama siswa & tombol aksi tetap terkunci di layar saat tabel digeser)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:320px; justify-content:flex-end;">
+            <span style="font-size:0.75rem; color:#64748b; font-weight:600; white-space:nowrap;">Scroll Atas:</span>
+            <div id="siswaTableTopScroll" class="table-top-scroll" style="flex:1; max-width:220px; overflow-x:auto; overflow-y:hidden; height:12px; background:#e2e8f0; border-radius:6px;">
+              <div id="siswaTableTopScrollDummy" style="height:1px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="siswaTableContainer" class="table-freeze-container">
+          <table class="dash-table table-freeze-table">
             <thead>
               <tr>
-                <th>No</th>
-                <th>Foto</th>
+                <th class="col-freeze-no">No</th>
+                <th class="col-freeze-foto">Foto</th>
+                <th class="col-freeze-nama">Nama Lengkap</th>
                 <th>NISN</th>
-                <th>Nama</th>
                 <th>JK</th>
                 <th>Agama</th>
                 <th>Kelas</th>
@@ -1161,7 +1183,7 @@
                 <th>Email</th>
                 <th>Alamat</th>
                 <th>Status</th>
-                <th style="width:160px;text-align:center;">Aksi</th>
+                <th class="col-freeze-aksi">Aksi</th>
               </tr>
             </thead>
             <tbody id="siswaTableBody">
@@ -1203,11 +1225,47 @@
         </div>
       </div>
       <div class="card">
-        <div style="overflow-x:auto;">
-          <table class="dash-table">
+        <!-- Toolbar Geser Cepat Tabel Siswa Pindah -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; background:#f8fafc; padding:8px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#475569; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="move-horizontal" style="width:15px;height:15px;color:#6366f1;"></i> Geser Tabel:
+            </span>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaPindahTableContainer', -350)" title="Geser ke Kiri" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="chevron-left" style="width:14px;height:14px;"></i> Kiri
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaPindahTableContainer', 350)" title="Geser ke Kanan" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              Kanan <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+            <span style="font-size:0.75rem; color:#94a3b8; margin-left:4px;" class="hide-mobile">(Nama siswa & tombol aksi tetap terkunci saat digeser)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:320px; justify-content:flex-end;">
+            <span style="font-size:0.75rem; color:#64748b; font-weight:600; white-space:nowrap;">Scroll Atas:</span>
+            <div id="siswaPindahTableTopScroll" class="table-top-scroll" style="flex:1; max-width:220px; overflow-x:auto; overflow-y:hidden; height:12px; background:#e2e8f0; border-radius:6px;">
+              <div id="siswaPindahTableTopScrollDummy" style="height:1px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="siswaPindahTableContainer" class="table-freeze-container">
+          <table class="dash-table table-freeze-table">
             <thead>
               <tr>
-                <th>No</th><th>Foto</th><th>NISN</th><th>Nama</th><th>JK</th><th>Agama</th><th>Kelas</th><th>Mondok</th><th>Nama Ayah</th><th>Nama Ibu</th><th>No HP</th><th>Email</th><th>Alamat</th><th>Status</th><th style="width:160px;text-align:center;">Aksi</th>
+                <th class="col-freeze-no">No</th>
+                <th class="col-freeze-foto">Foto</th>
+                <th class="col-freeze-nama">Nama Lengkap</th>
+                <th>NISN</th>
+                <th>JK</th>
+                <th>Agama</th>
+                <th>Kelas</th>
+                <th>Mondok</th>
+                <th>Nama Ayah</th>
+                <th>Nama Ibu</th>
+                <th>No HP</th>
+                <th>Email</th>
+                <th>Alamat</th>
+                <th>Status</th>
+                <th class="col-freeze-aksi">Aksi</th>
               </tr>
             </thead>
             <tbody id="siswaPindahTableBody">
@@ -1247,11 +1305,47 @@
         </div>
       </div>
       <div class="card">
-        <div style="overflow-x:auto;">
-          <table class="dash-table">
+        <!-- Toolbar Geser Cepat Tabel Siswa Dikeluarkan -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; background:#f8fafc; padding:8px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.82rem; font-weight:700; color:#475569; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="move-horizontal" style="width:15px;height:15px;color:#6366f1;"></i> Geser Tabel:
+            </span>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaDikeluarkanTableContainer', -350)" title="Geser ke Kiri" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              <i data-lucide="chevron-left" style="width:14px;height:14px;"></i> Kiri
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="scrollTableHorizontally('siswaDikeluarkanTableContainer', 350)" title="Geser ke Kanan" style="padding:4px 10px; font-size:0.8rem; background:#fff; border-color:#cbd5e1; display:inline-flex; align-items:center; gap:4px;">
+              Kanan <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+            </button>
+            <span style="font-size:0.75rem; color:#94a3b8; margin-left:4px;" class="hide-mobile">(Nama siswa & tombol aksi tetap terkunci saat digeser)</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:320px; justify-content:flex-end;">
+            <span style="font-size:0.75rem; color:#64748b; font-weight:600; white-space:nowrap;">Scroll Atas:</span>
+            <div id="siswaDikeluarkanTableTopScroll" class="table-top-scroll" style="flex:1; max-width:220px; overflow-x:auto; overflow-y:hidden; height:12px; background:#e2e8f0; border-radius:6px;">
+              <div id="siswaDikeluarkanTableTopScrollDummy" style="height:1px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="siswaDikeluarkanTableContainer" class="table-freeze-container">
+          <table class="dash-table table-freeze-table">
             <thead>
               <tr>
-                <th>No</th><th>Foto</th><th>NISN</th><th>Nama</th><th>JK</th><th>Agama</th><th>Kelas</th><th>Mondok</th><th>Nama Ayah</th><th>Nama Ibu</th><th>No HP</th><th>Email</th><th>Alamat</th><th>Status</th><th style="width:160px;text-align:center;">Aksi</th>
+                <th class="col-freeze-no">No</th>
+                <th class="col-freeze-foto">Foto</th>
+                <th class="col-freeze-nama">Nama Lengkap</th>
+                <th>NISN</th>
+                <th>JK</th>
+                <th>Agama</th>
+                <th>Kelas</th>
+                <th>Mondok</th>
+                <th>Nama Ayah</th>
+                <th>Nama Ibu</th>
+                <th>No HP</th>
+                <th>Email</th>
+                <th>Alamat</th>
+                <th>Status</th>
+                <th class="col-freeze-aksi">Aksi</th>
               </tr>
             </thead>
             <tbody id="siswaDikeluarkanTableBody">
