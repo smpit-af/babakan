@@ -5662,6 +5662,13 @@ async function loadAsesmenList() {
         // Tab 1 hanya menampilkan yang sudah 'terbit' (siap uji)
         asesmenList = allNonArchived.filter(function (a) { return a.status === 'terbit'; });
 
+        // Auto-cleanup: bersihkan ujian_sent_at pada asesmen yang belum terbit agar tidak nyasar ke Menu Soal Ujian
+        if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+            try {
+                supabaseClient.from('asesmen').update({ ujian_sent_at: null }).neq('status', 'terbit').not('ujian_sent_at', 'is', null).then(function () {});
+            } catch (errClean) { }
+        }
+
         // Update badge tab
         var tabBadgeAktif = document.getElementById('tabBadgeAktif');
         if (tabBadgeAktif) {
@@ -6184,7 +6191,6 @@ async function submitDraftToAdmin(id) {
                 const { error } = await supabaseClient.from('asesmen').update({
                     review_status: 'menunggu_review',
                     catatan_revisi: null,
-                    ujian_sent_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 }).eq('id', id);
                 if (error) throw error;
@@ -6351,10 +6357,11 @@ async function loadSoalUjian() {
     tbodyNonaktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
 
     try {
-        // Ambil asesmen yang sudah dikirim ke ujian (ujian_sent_at IS NOT NULL dan belum diarsipkan)
+        // Ambil asesmen yang sudah dikirim ke ujian (HANYA status terbit / siap uji, ujian_sent_at IS NOT NULL dan belum diarsipkan)
         const { data, error } = await supabaseClient
             .from('asesmen')
             .select('*')
+            .eq('status', 'terbit')
             .not('ujian_sent_at', 'is', null)
             .is('deleted_at', null)
             .is('archived_at', null)
@@ -7864,7 +7871,6 @@ async function submitAsesmenForReview() {
         const { error } = await supabaseClient.from('asesmen').update({
             review_status: 'menunggu_review',
             catatan_revisi: null,
-            ujian_sent_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         }).eq('id', asesmenId);
 
