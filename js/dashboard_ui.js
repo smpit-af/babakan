@@ -409,6 +409,79 @@ window.showSection = function (sectionId, linkEl) {
             populateMapelIdDropdown('filterLaporanMapel', '');
         })();
     }
+
+    // ========================================== //
+    // KEUANGAN & TRANSAKSI
+    // ========================================== //
+    if (sectionId === 'sectionTransaksiOperasional') {
+        if (typeof switchOperasionalTab === 'function') switchOperasionalTab('pemasukan');
+        if (typeof fetchOperasionalData === 'function') fetchOperasionalData();
+    }
+    if (sectionId === 'sectionKeuanganInsidental') {
+        if (typeof tutupDetailTagihan === 'function') tutupDetailTagihan('universal');
+        if (typeof fetchKeuanganData === 'function') {
+            fetchKeuanganData().then(() => {
+                if (typeof fetchKasKeluar === 'function') fetchKasKeluar();
+                if (typeof renderMasterTagihanTable === 'function') renderMasterTagihanTable('universal');
+            });
+        }
+    }
+    if (sectionId === 'sectionKeuanganPendaftaran') {
+        if (typeof tutupDetailTagihan === 'function') tutupDetailTagihan('pendaftaran');
+        if (typeof fetchKeuanganData === 'function') {
+            fetchKeuanganData().then(() => {
+                if (typeof renderMasterTagihanTable === 'function') renderMasterTagihanTable('pendaftaran');
+                if (typeof loadActiveYear === 'function') loadActiveYear();
+            });
+        }
+    }
+    if (sectionId === 'sectionBukuKasBendahara') {
+        Promise.all([
+            typeof fetchKeuanganData === 'function' ? fetchKeuanganData() : Promise.resolve(),
+            typeof fetchKasKeluar === 'function' ? fetchKasKeluar() : Promise.resolve(),
+            typeof fetchPengeluaranDinas === 'function' ? fetchPengeluaranDinas() : Promise.resolve(),
+            typeof fetchOperasionalData === 'function' ? fetchOperasionalData() : Promise.resolve()
+        ]).then(() => {
+            if (typeof switchBukuKasTab === 'function') switchBukuKasTab('kas_global');
+            if (typeof renderBukuKas === 'function') renderBukuKas();
+        });
+    }
+    if (sectionId === 'sectionPengeluaranDinas') {
+        if (typeof fetchPengeluaranDinas === 'function') {
+            fetchPengeluaranDinas().then(() => {
+                if (typeof renderPengeluaranDinasTable === 'function') renderPengeluaranDinasTable();
+            });
+        }
+    }
+    if (sectionId === 'sectionKasSekolah') {
+        Promise.all([
+            typeof fetchKeuanganData === 'function' ? fetchKeuanganData() : Promise.resolve(),
+            typeof fetchKasKeluar === 'function' ? fetchKasKeluar() : Promise.resolve(),
+            typeof fetchPengeluaranDinas === 'function' ? fetchPengeluaranDinas() : Promise.resolve()
+        ]).then(() => {
+            if (typeof renderKasSekolahTable === 'function') renderKasSekolahTable();
+        });
+    }
+    if (sectionId === 'sectionArsipTransaksi') {
+        Promise.all([
+            typeof fetchKeuanganData === 'function' ? fetchKeuanganData() : Promise.resolve(),
+            typeof fetchKasKeluar === 'function' ? fetchKasKeluar() : Promise.resolve(),
+            typeof fetchPengeluaranDinas === 'function' ? fetchPengeluaranDinas() : Promise.resolve()
+        ]).then(() => {
+            if (typeof renderArsipTransaksi === 'function') renderArsipTransaksi();
+        });
+    }
+    if (sectionId === 'sectionLaporanKeuangan') {
+        Promise.all([
+            typeof fetchKeuanganData === 'function' ? fetchKeuanganData() : Promise.resolve(),
+            typeof fetchPengeluaranDinas === 'function' ? fetchPengeluaranDinas() : Promise.resolve()
+        ]).then(() => {
+            if (typeof switchLaporanTab === 'function') switchLaporanTab('universal');
+        });
+    }
+    if (sectionId === 'sectionPusatPengaturan') {
+        if (typeof switchPusatPengaturanTab === 'function') switchPusatPengaturanTab('umum');
+    }
 };
 
 // ============================================================
@@ -2887,6 +2960,10 @@ async function fetchKeuanganData() {
             });
             dPembayaranSiswa = Object.values(grouped);
         }
+        if (typeof renderMasterTagihanTable === 'function') {
+            renderMasterTagihanTable('universal');
+            renderMasterTagihanTable('pendaftaran');
+        }
     } catch (e) {
         console.error('Failed to fetch keuangan data:', e);
     }
@@ -2901,7 +2978,7 @@ function getSiswaForKeuangan(filterKelas = '') {
     if (typeof siswaList === 'undefined') return [];
 
     // Convert DB structure to what the financial module expects
-    let list = siswaList.filter(s => s.status === 'Aktif').map(s => {
+    let list = siswaList.filter(s => s.status === 'Aktif' || s.status === 'Pindahan').map(s => {
         return {
             id: s.id,
             namaLengkap: s.nama_lengkap || '-',
