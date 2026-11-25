@@ -5716,6 +5716,7 @@ async function loadAsesmenList() {
             if (canManage) {
                 // Soal yang sudah siap uji (terbit) tidak dapat diedit kembali
                 var cbtBtn = '<button class="btn-icon" style="background:rgba(59,130,246,.1);color:#3b82f6;" onclick="openMonitorCbt(\'' + a.id + '\')" title="Monitor CBT & Token"><i data-lucide="radio" style="width:14px;height:14px"></i></button>';
+                var analisisBtn = '<button class="btn-icon" style="background:rgba(99,102,241,.12);color:#6366f1;" onclick="openAnalisisButirSoalCbt(\'' + a.id + '\')" title="Analisis Butir Soal (P & D)"><i data-lucide="bar-chart-2" style="width:14px;height:14px"></i></button>';
 
                 var sendBtn = '';
                 if (isAdminKurikulum) {
@@ -5727,7 +5728,7 @@ async function loadAsesmenList() {
                 }
 
                 aksiHtml = '<button class="btn-icon btn-icon-blue" onclick="previewAsesmen(\'' + a.id + '\')" title="Detail/Preview"><i data-lucide="eye" style="width:14px;height:14px"></i></button>' +
-                    cbtBtn + sendBtn +
+                    cbtBtn + analisisBtn + sendBtn +
                     '<button class="btn-icon btn-icon-amber" onclick="archiveAsesmen(\'' + a.id + '\')" title="Arsipkan"><i data-lucide="archive" style="width:14px;height:14px"></i></button>' +
                     '<button class="btn-icon btn-icon-red" onclick="deleteAsesmen(\'' + a.id + '\')" title="Hapus"><i data-lucide="trash-2" style="width:14px;height:14px"></i></button>';
             } else {
@@ -6646,6 +6647,7 @@ async function loadSoalUjian() {
                 }
                 if (isAdmin) {
                     aksiHtml += '<button class="btn btn-sm" onclick="openMonitorCbt(\'' + a.id + '\')" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;margin-right:.3rem;" title="Cek & pantau jawaban peserta ujian ini"><i data-lucide="file-check" style="width:11px;height:11px"></i> Cek Jawaban</button>';
+                    aksiHtml += '<button class="btn btn-sm" onclick="openAnalisisButirSoalCbt(\'' + a.id + '\')" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;margin-right:.3rem;" title="Analisis Tingkat Kesukaran & Daya Pembeda"><i data-lucide="bar-chart-2" style="width:11px;height:11px"></i> Analisis Butir</button>';
                 }
                 if (currentRole !== 'siswa') {
                     aksiHtml += '<button class="btn btn-sm" onclick="lihatPesertaUjian(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;"><i data-lucide="users" style="width:11px;height:11px"></i> Peserta</button>';
