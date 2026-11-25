@@ -6738,3 +6738,436 @@ async function prosesStempelDokumen() {
     }
 }
 
+
+
+// ============================================================
+// FEATURE 4: KIRIM BUKTI BAYAR / NOTA VIA WHATSAPP
+// ============================================================
+function kirimBuktiBayarWASatuan() {
+    var idSiswa = document.getElementById('formPembayaranIdSiswa') ? document.getElementById('formPembayaranIdSiswa').value : '';
+    var jenis = document.getElementById('formPembayaranIdTransaksi') ? document.getElementById('formPembayaranIdTransaksi').value : '';
+
+    if (!idSiswa || !jenis) return showToast('Data siswa atau tagihan tidak ditemukan.', 'error');
+
+    var s = null;
+    if (typeof siswaList !== 'undefined') {
+        s = siswaList.find(function (x) { return x.id == idSiswa; });
+    }
+    if (!s && typeof getSiswaForKeuangan === 'function') {
+        var sk = getSiswaForKeuangan().find(function (x) { return x.id == idSiswa; });
+        if (sk) s = { nama_lengkap: sk.namaLengkap, master_kelas: { nama_kelas: sk.kelas }, nomor_hp: '' };
+    }
+    if (!s) return showToast('Data siswa tidak ditemukan.', 'error');
+
+    var nama = s.nama_lengkap || '-';
+    var kelas = s.master_kelas ? s.master_kelas.nama_kelas : (s.kelas || '-');
+    var nisn = s.nisn || '-';
+
+    var tagihan = hitungTotalTagihan(jenis);
+    var terbayar = hitungTotalTerbayar(idSiswa, jenis);
+    var sisa = Math.max(0, tagihan - terbayar);
+
+    // Cari nama tagihan
+    var namaTagihan = jenis;
+    if (jenis.startsWith('insidental_') || jenis.startsWith('pendaftaran_')) {
+        var parts = jenis.split('_');
+        var idKat = parts.slice(1).join('_');
+        var cat = (typeof dKeuanganInsidental !== 'undefined' ? dKeuanganInsidental : []).find(function (c) { return c.id == idKat; });
+        namaTagihan = cat ? cat.nama : jenis;
+    }
+
+    var phone = (s.nomor_hp || '').replace(/[^0-9]/g, '');
+    if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+    var todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    var statusTeks = sisa <= 0 ? '✅ *LUNAS*' : '⚠️ *BELUM LUNAS*';
+
+    var msg = '🏫 *SMPIT AL-FATHONAH*' + '\n'
+        + '📋 *BUKTI PEMBAYARAN RESMI*' + '\n'
+        + '━━━━━━━━━━━━━━━━━━━━━━━━━' + '\n'
+        + '📅 *Tanggal:* ' + todayStr + '\n\n'
+        + '👤 *Nama Siswa:* ' + nama + '\n'
+        + '🎓 *Kelas:* ' + kelas + '\n'
+        + '🔢 *NISN:* ' + nisn + '\n'
+        + '📌 *Tagihan:* ' + namaTagihan + '\n\n'
+        + '💵 *Total Tagihan:* Rp ' + formatRupiah(tagihan) + '\n'
+        + '✅ *Total Terbayar:* Rp ' + formatRupiah(terbayar) + '\n'
+        + '🔻 *Sisa Tunggakan:* Rp ' + formatRupiah(sisa) + '\n'
+        + '📊 *Status:* ' + statusTeks + '\n\n'
+        + '━━━━━━━━━━━━━━━━━━━━━━━━━' + '\n'
+        + 'Jazakumullah khairan katsiran atas pembayaran yang telah dilakukan. Semoga ananda selalu diberi kemudahan dalam menuntut ilmu di SMPIT Al-Fathonah. 🙏' + '\n\n'
+        + '_Bendahara SMPIT AL-FATHONAH_';
+
+    var url = 'https://api.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+}
+
+function kirimBuktiBayarWA(idSiswa, jenis, idPembayaran) {
+    var s = (typeof siswaList !== 'undefined' ? siswaList : []).find(function (x) { return x.id == idSiswa; });
+    if (!s && typeof getSiswaForKeuangan === 'function') {
+        var sk = getSiswaForKeuangan().find(function (x) { return x.id == idSiswa; });
+        if (sk) s = { nama_lengkap: sk.namaLengkap, master_kelas: { nama_kelas: sk.kelas }, nomor_hp: '' };
+    }
+    if (!s) return showToast('Data siswa tidak ditemukan.', 'error');
+
+    var rec = (typeof dPembayaranSiswa !== 'undefined' ? dPembayaranSiswa : []).find(function (p) { return p.idSiswa == idSiswa && p.jenis == jenis; });
+    var r = rec ? rec.riwayat.find(function (x) { return x.id_pembayaran == idPembayaran; }) : null;
+    if (!r && rec && rec.riwayat.length > 0) r = rec.riwayat[rec.riwayat.length - 1]; // fallback last payment
+
+    var nominal = r ? parseInt(r.nominal, 10) : 0;
+    var tglBayar = r && r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    var namaTagihan = jenis;
+    if (jenis.startsWith('insidental_') || jenis.startsWith('pendaftaran_')) {
+        var parts = jenis.split('_');
+        var idKat = parts.slice(1).join('_');
+        var cat = (typeof dKeuanganInsidental !== 'undefined' ? dKeuanganInsidental : []).find(function (c) { return c.id == idKat; });
+        namaTagihan = cat ? cat.nama : jenis;
+    }
+
+    var tagihan = hitungTotalTagihan(jenis);
+    var terbayar = hitungTotalTerbayar(idSiswa, jenis);
+    var sisa = Math.max(0, tagihan - terbayar);
+
+    var phone = (s.nomor_hp || '').replace(/[^0-9]/g, '');
+    if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+    var msg = '🏫 *SMPIT AL-FATHONAH*' + '\n'
+        + '🧾 *KWITANSI PEMBAYARAN RESMI*' + '\n'
+        + '━━━━━━━━━━━━━━━━━━━━━━━━━' + '\n'
+        + '👤 *Nama Siswa:* ' + (s.nama_lengkap || '-') + '\n'
+        + '🎓 *Kelas:* ' + (s.master_kelas ? s.master_kelas.nama_kelas : (s.kelas || '-')) + '\n'
+        + '📌 *Untuk Tagihan:* ' + namaTagihan + '\n'
+        + '📅 *Tanggal Bayar:* ' + tglBayar + '\n\n'
+        + '💰 *JUMLAH BAYAR:* Rp ' + formatRupiah(nominal) + '\n'
+        + '━━━━━━━━━━━━━━━━━━━━━━━━━' + '\n'
+        + '📊 *Total Telah Disetor:* Rp ' + formatRupiah(terbayar) + ' / Rp ' + formatRupiah(tagihan) + '\n'
+        + (sisa > 0 ? '⚠️ *Sisa Tagihan:* Rp ' + formatRupiah(sisa) + '\n' : '✅ *STATUS: LUNAS*\n')
+        + '\nTerima kasih atas pembayarannya. Jazakumullah khairan. 🙏' + '\n'
+        + '_Bendahara SMPIT AL-FATHONAH_';
+
+    var url = 'https://api.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(msg);
+    window.open(url, '_blank');
+}
+
+// ============================================================
+// FEATURE 5: LAPORAN REKAPITULASI TUNGGAKAN PER KELAS
+// ============================================================
+function openModalRekapTunggakan() {
+    var modal = document.getElementById('modalRekapTunggakan');
+    if (!modal) return showToast('Modal Rekap Tunggakan tidak ditemukan.', 'error');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    // Populate filter jenis tagihan
+    var select = document.getElementById('filterRekapTagihanJenis');
+    if (select) {
+        select.innerHTML = '<option value="all">Semua Tagihan Universal Aktif</option>';
+        (typeof dKeuanganInsidental !== 'undefined' ? dKeuanganInsidental : []).filter(function (k) { return !k.is_archived; }).forEach(function (k) {
+            select.innerHTML += '<option value="' + k.id + '">' + k.nama + ' (Rp ' + formatRupiah(k.nominal) + ') — ' + k.kelas + '</option>';
+        });
+    }
+
+    // Sembunyikan panel detail drilldown awal
+    var panel = document.getElementById('panelDetailTunggakanSiswa');
+    if (panel) panel.style.display = 'none';
+
+    renderTabelRekapTunggakan();
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeModalRekapTunggakan() {
+    var modal = document.getElementById('modalRekapTunggakan');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+function renderTabelRekapTunggakan() {
+    var filterTagihanId = document.getElementById('filterRekapTagihanJenis') ? document.getElementById('filterRekapTagihanJenis').value : 'all';
+    var tbody = document.getElementById('tbodyRekapTunggakanKelas');
+    var summaryEl = document.getElementById('rekapTunggakanSummaryCards');
+
+    if (!tbody) return;
+
+    var targetTagihanList = (typeof dKeuanganInsidental !== 'undefined' ? dKeuanganInsidental : []).filter(function (k) {
+        if (k.is_archived) return false;
+        if (filterTagihanId !== 'all' && k.id != filterTagihanId) return false;
+        return true;
+    });
+
+    if (targetTagihanList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">Tidak ada data tagihan yang aktif.</td></tr>';
+        if (summaryEl) summaryEl.innerHTML = '';
+        return;
+    }
+
+    var listKelas = typeof masterKelasList !== 'undefined' && masterKelasList.length > 0
+        ? masterKelasList
+        : [{ id: 'all', nama_kelas: 'Semua Kelas' }];
+
+    var allSiswa = typeof siswaList !== 'undefined' ? siswaList : [];
+
+    var grandTotalTagihan = 0;
+    var grandTotalTerbayar = 0;
+    var grandTotalTunggakan = 0;
+    var totalSiswaLunas = 0;
+    var totalSiswaBelumLunas = 0;
+
+    var rowsHtml = '';
+    var rowIdx = 0;
+
+    listKelas.forEach(function (k) {
+        var siswaDiKelas = allSiswa.filter(function (s) {
+            return s.kelas_id === k.id && s.status !== 'Lulus' && s.status !== 'Pindah' && s.status !== 'Dikeluarkan';
+        });
+
+        if (siswaDiKelas.length === 0) return; // Skip kelas tanpa siswa aktif
+
+        rowIdx++;
+        var tagihanKelas = 0;
+        var terbayarKelas = 0;
+        var lunasCount = 0;
+        var belumLunasCount = 0;
+
+        siswaDiKelas.forEach(function (sw) {
+            var tagihanSiswa = 0;
+            var terbayarSiswa = 0;
+
+            targetTagihanList.forEach(function (tag) {
+                // Cek apakah tagihan ini berlaku untuk kelas ini
+                if (tag.kelas === 'Semua Kelas' || tag.kelas === k.nama_kelas) {
+                    var kodeTag = (tag.jenis_tagihan === 'pendaftaran' ? 'pendaftaran_' : 'insidental_') + tag.id;
+                    tagihanSiswa += tag.nominal;
+                    terbayarSiswa += hitungTotalTerbayar(sw.id, kodeTag);
+                }
+            });
+
+            tagihanKelas += tagihanSiswa;
+            terbayarKelas += terbayarSiswa;
+
+            if (tagihanSiswa > 0 && terbayarSiswa >= tagihanSiswa) {
+                lunasCount++;
+            } else if (tagihanSiswa > 0) {
+                belumLunasCount++;
+            }
+        });
+
+        var tunggakanKelas = Math.max(0, tagihanKelas - terbayarKelas);
+        var persenLunas = tagihanKelas > 0 ? Math.round((terbayarKelas / tagihanKelas) * 100) : 100;
+
+        grandTotalTagihan += tagihanKelas;
+        grandTotalTerbayar += terbayarKelas;
+        grandTotalTunggakan += tunggakanKelas;
+        totalSiswaLunas += lunasCount;
+        totalSiswaBelumLunas += belumLunasCount;
+
+        var pctColor = persenLunas >= 85 ? '#059669' : (persenLunas >= 50 ? '#d97706' : '#dc2626');
+        var pctBg = persenLunas >= 85 ? '#d1fae5' : (persenLunas >= 50 ? '#fef3c7' : '#fee2e2');
+
+        rowsHtml += '<tr>' +
+            '<td style="text-align:center; padding:10px 6px; border-bottom:1px solid #e2e8f0; color:#64748b;">' + rowIdx + '</td>' +
+            '<td style="padding:10px 12px; border-bottom:1px solid #e2e8f0; font-weight:700; color:#1e293b;">' + k.nama_kelas + '</td>' +
+            '<td style="text-align:center; padding:10px; border-bottom:1px solid #e2e8f0; font-weight:600;">' + siswaDiKelas.length + ' siswa</td>' +
+            '<td style="text-align:right; padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#334155;">Rp ' + formatRupiah(tagihanKelas) + '</td>' +
+            '<td style="text-align:right; padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#059669; font-weight:600;">Rp ' + formatRupiah(terbayarKelas) + '</td>' +
+            '<td style="text-align:right; padding:10px 12px; border-bottom:1px solid #e2e8f0; color:#dc2626; font-weight:700;">Rp ' + formatRupiah(tunggakanKelas) + '</td>' +
+            '<td style="text-align:center; padding:10px; border-bottom:1px solid #e2e8f0;">' +
+            '<div style="display:flex; align-items:center; justify-content:center; gap:6px;">' +
+            '<span style="background:' + pctBg + '; color:' + pctColor + '; font-weight:700; font-size:0.75rem; padding:2px 7px; border-radius:6px;">' + persenLunas + '%</span>' +
+            '<span style="font-size:0.75rem; color:#64748b;">(' + lunasCount + '/' + (lunasCount + belumLunasCount) + ')</span>' +
+            '</div></td>' +
+            '<td style="text-align:center; padding:10px 6px; border-bottom:1px solid #e2e8f0;">' +
+            '<button type="button" class="btn btn-sm btn-outline" onclick="showDetailTunggakanKelas(\'' + k.id + '\', \'' + k.nama_kelas + '\')" style="padding:4px 9px; font-size:0.78rem; border-color:#e2e8f0; display:inline-flex; align-items:center; gap:4px;" title="Lihat daftar siswa menunggak di kelas ini">' +
+            '<i data-lucide="users" style="width:13px;height:13px;"></i> Rincian' +
+            '</button></td>' +
+            '</tr>';
+    });
+
+    if (rowIdx === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:#94a3b8;">Tidak ada data tunggakan untuk kelas yang terdaftar.</td></tr>';
+        if (summaryEl) summaryEl.innerHTML = '';
+        return;
+    }
+
+    // Grand total footer row
+    var grandPersen = grandTotalTagihan > 0 ? Math.round((grandTotalTerbayar / grandTotalTagihan) * 100) : 100;
+    rowsHtml += '<tr style="background:#f8fafc; font-weight:800; border-top:2px solid #cbd5e1;">' +
+        '<td colspan="3" style="text-align:right; padding:12px 14px; color:#1e293b;">TOTAL KESELURUHAN:</td>' +
+        '<td style="text-align:right; padding:12px; color:#1e293b;">Rp ' + formatRupiah(grandTotalTagihan) + '</td>' +
+        '<td style="text-align:right; padding:12px; color:#059669;">Rp ' + formatRupiah(grandTotalTerbayar) + '</td>' +
+        '<td style="text-align:right; padding:12px; color:#dc2626;">Rp ' + formatRupiah(grandTotalTunggakan) + '</td>' +
+        '<td style="text-align:center; padding:12px;"><span style="background:#e0e7ff; color:#3730a3; padding:3px 8px; border-radius:6px; font-size:0.82rem;">' + grandPersen + '% Lunas</span></td>' +
+        '<td style="text-align:center; padding:12px; font-size:0.78rem; color:#64748b;">' + totalSiswaLunas + ' lunas, ' + totalSiswaBelumLunas + ' belum</td>' +
+        '</tr>';
+
+    tbody.innerHTML = rowsHtml;
+
+    // Render 4 metric summary cards
+    if (summaryEl) {
+        summaryEl.innerHTML = `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">Total Tagihan Sekolah</span>
+              <span style="font-size:1.25rem; font-weight:800; color:#1e293b;">Rp ${formatRupiah(grandTotalTagihan)}</span>
+              <span style="font-size:0.72rem; color:#94a3b8;">Seluruh siswa aktif</span>
+            </div>
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.75rem; color:#166534; font-weight:600; text-transform:uppercase;">Total Pembayaran Masuk</span>
+              <span style="font-size:1.25rem; font-weight:800; color:#15803d;">Rp ${formatRupiah(grandTotalTerbayar)}</span>
+              <span style="font-size:0.72rem; color:#16a34a;">${totalSiswaLunas} siswa lunas</span>
+            </div>
+            <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.75rem; color:#991b1b; font-weight:600; text-transform:uppercase;">Total Sisa Tunggakan</span>
+              <span style="font-size:1.25rem; font-weight:800; color:#dc2626;">Rp ${formatRupiah(grandTotalTunggakan)}</span>
+              <span style="font-size:0.72rem; color:#ef4444;">${totalSiswaBelumLunas} siswa belum lunas</span>
+            </div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:4px;">
+              <span style="font-size:0.75rem; color:#1e40af; font-weight:600; text-transform:uppercase;">Tingkat Kelunasan</span>
+              <span style="font-size:1.25rem; font-weight:800; color:#2563eb;">${grandPersen}%</span>
+              <span style="font-size:0.72rem; color:#3b82f6;">Target sekolah 100%</span>
+            </div>`;
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function showDetailTunggakanKelas(kelasId, namaKelas) {
+    var panel = document.getElementById('panelDetailTunggakanSiswa');
+    var titleEl = document.getElementById('titleDetailTunggakanKelas');
+    var tbody = document.getElementById('tbodyDetailTunggakanSiswa');
+    if (!panel || !tbody) return;
+
+    var filterTagihanId = document.getElementById('filterRekapTagihanJenis') ? document.getElementById('filterRekapTagihanJenis').value : 'all';
+    var targetTagihanList = (typeof dKeuanganInsidental !== 'undefined' ? dKeuanganInsidental : []).filter(function (k) {
+        if (k.is_archived) return false;
+        if (filterTagihanId !== 'all' && k.id != filterTagihanId) return false;
+        return true;
+    });
+
+    var allSiswa = typeof siswaList !== 'undefined' ? siswaList : [];
+    var siswaDiKelas = allSiswa.filter(function (s) {
+        return s.kelas_id === kelasId && s.status !== 'Lulus' && s.status !== 'Pindah' && s.status !== 'Dikeluarkan';
+    });
+
+    titleEl.textContent = 'Rincian Siswa Menunggak — Kelas ' + namaKelas;
+    panel.style.display = 'block';
+
+    var menunggakList = [];
+    siswaDiKelas.forEach(function (sw) {
+        var tagihanSiswa = 0;
+        var terbayarSiswa = 0;
+
+        targetTagihanList.forEach(function (tag) {
+            if (tag.kelas === 'Semua Kelas' || tag.kelas === namaKelas) {
+                var kodeTag = (tag.jenis_tagihan === 'pendaftaran' ? 'pendaftaran_' : 'insidental_') + tag.id;
+                tagihanSiswa += tag.nominal;
+                terbayarSiswa += hitungTotalTerbayar(sw.id, kodeTag);
+            }
+        });
+
+        var sisa = Math.max(0, tagihanSiswa - terbayarSiswa);
+        if (sisa > 0) {
+            menunggakList.push({
+                siswa: sw,
+                tagihan: tagihanSiswa,
+                terbayar: terbayarSiswa,
+                sisa: sisa
+            });
+        }
+    });
+
+    if (menunggakList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.25rem; color:#15803d; font-weight:600;">Alhamdulillah! Semua siswa di Kelas ' + namaKelas + ' telah lunas. 🎉</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = menunggakList.map(function (item, idx) {
+        var phone = (item.siswa.nomor_hp || '').replace(/[^0-9]/g, '');
+        if (phone.startsWith('0')) phone = '62' + phone.substring(1);
+
+        var waMsg = 'Assalamu\'alaikum Wr. Wb. Bapak/Ibu Orang Tua dari ananda *' + (item.siswa.nama_lengkap || '-') + '* (Kelas ' + namaKelas + '). Mengingatkan perihal sisa administrasi sekolah sebesar *Rp ' + formatRupiah(item.sisa) + '*. Mohon konfirmasi atau melakukan pelunasan ke Bendahara SMPIT Al-Fathonah. Terima kasih. 🙏';
+        var waUrl = 'https://api.whatsapp.com/send?phone=' + phone + '&text=' + encodeURIComponent(waMsg);
+
+        return '<tr>' +
+            '<td style="text-align:center; padding:8px 6px;">' + (idx + 1) + '</td>' +
+            '<td style="padding:8px 10px; font-weight:600; color:#1e293b;">' + (item.siswa.nama_lengkap || '-') + '</td>' +
+            '<td style="text-align:right; padding:8px 10px; color:#059669;">Rp ' + formatRupiah(item.terbayar) + '</td>' +
+            '<td style="text-align:right; padding:8px 10px; color:#dc2626; font-weight:700;">Rp ' + formatRupiah(item.sisa) + '</td>' +
+            '<td style="text-align:center; padding:8px 6px;">' +
+            '<a href="' + waUrl + '" target="_blank" class="btn btn-sm" style="background:#16a34a; color:#fff; padding:3px 8px; font-size:0.75rem; border-radius:6px; display:inline-flex; align-items:center; gap:4px; text-decoration:none;" title="Kirim Pengingat Tagihan via WhatsApp">' +
+            '<i data-lucide="message-circle" style="width:12px;height:12px;"></i> Tagih WA</a>' +
+            '</td></tr>';
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function cetakRekapTunggakanPrint() {
+    var table = document.getElementById('tabelRekapTunggakanKelas');
+    if (!table) return showToast('Tabel rekap tidak ditemukan.', 'error');
+
+    var filterSelect = document.getElementById('filterRekapTagihanJenis');
+    var tagihanText = filterSelect ? filterSelect.options[filterSelect.selectedIndex].text : 'Semua Tagihan';
+    var todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    var printWin = window.open('', '_blank', 'width=950,height=750');
+    if (!printWin) return showToast('Popup browser diblokir.', 'warning');
+
+    printWin.document.write(`<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>Laporan Rekapitulasi Tunggakan per Kelas</title>
+<style>
+@page { size: A4 portrait; margin: 12mm 15mm; }
+body { font-family: Arial, sans-serif; font-size: 9.5pt; margin: 0; padding: 4mm; color: #000; }
+.kop { text-align: center; margin-bottom: 4mm; border-bottom: 2px solid #000; padding-bottom: 3mm; }
+.kop img { max-width: 100%; max-height: 25mm; }
+h3 { text-align: center; font-size: 12pt; margin: 2mm 0 1mm; text-transform: uppercase; font-weight: 800; }
+.sub { text-align: center; font-size: 9pt; color: #333; margin-bottom: 4mm; }
+table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+th, td { border: 1px solid #000; padding: 5px 6px; font-size: 8.5pt; }
+th { background: #e5e7eb !important; font-weight: bold; text-align: center; }
+td:nth-child(2) { font-weight: bold; }
+td:nth-child(8) { display: none; } /* Sembunyikan kolom aksi saat print */
+th:nth-child(8) { display: none; }
+.footer { display: flex; justify-content: space-between; margin-top: 10mm; page-break-inside: avoid; }
+.ttd-box { width: 45%; text-align: center; font-size: 9.5pt; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head><body>
+<div class="kop"><img src="img/kop-surat.png?v=20260503" onerror="this.src='img/kop-surat.jpg?v=20260503'" alt="Kop SMPIT" /></div>
+<h3>LAPORAN REKAPITULASI TUNGGAKAN & KELUNASAN PER KELAS</h3>
+<div class="sub">Filter Tagihan: <strong>${tagihanText}</strong> &nbsp;|&nbsp; Tanggal Cetak: ${todayStr}</div>
+${table.outerHTML}
+<div class="footer">
+  <div class="ttd-box">
+    <div>Mengetahui,</div>
+    <div>Kepala SMPIT AL-FATHONAH</div>
+    <div style="height:18mm;"></div>
+    <div style="font-weight:bold; text-decoration:underline;">H. Ahmad Maulana, M.Pd.</div>
+  </div>
+  <div class="ttd-box">
+    <div>Babakan, ${todayStr}</div>
+    <div>Bendahara Sekolah</div>
+    <div style="height:18mm;"></div>
+    <div style="font-weight:bold; text-decoration:underline;">Hj. Siti Rohmah, S.E.</div>
+  </div>
+</div>
+</body></html>`);
+
+    printWin.document.close();
+    printWin.onload = function () { setTimeout(function () { printWin.print(); }, 400); };
+}
+
+function exportRekapTunggakanExcel() {
+    var table = document.getElementById('tabelRekapTunggakanKelas');
+    if (!table) return showToast('Tabel tidak ditemukan.', 'error');
+    if (typeof XLSX === 'undefined') return showToast('Library XLSX belum termuat.', 'error');
+
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.table_to_sheet(table, { raw: true });
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Tunggakan Kelas');
+    var filename = 'Rekap_Tunggakan_Kelas_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+    XLSX.writeFile(wb, filename);
+    showToast('File Excel berhasil diunduh!', 'success');
+}
