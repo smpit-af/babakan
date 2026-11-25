@@ -701,6 +701,31 @@ async function submitTambahWaktuCbt(jawabanId, sesiId, existingExtra) {
         var newTotalExtra = currentTotalExtra + tambahan;
         var jwbJson = curr.jawaban_json || {};
 
+        var stMulai = curr.waktu_mulai_mengerjakan ? new Date(curr.waktu_mulai_mengerjakan).getTime() : Date.now();
+        var baseLimitMs = stMulai + ((parseInt(window.cbtWaktuMenit) || 60) * 60 * 1000);
+
+        if (window._cbtAsmCurrent && window._cbtAsmCurrent.waktu_selesai_ujian) {
+            var tSelesai = new Date(window._cbtAsmCurrent.waktu_selesai_ujian).getTime();
+            if (!isNaN(tSelesai)) baseLimitMs = Math.min(baseLimitMs, tSelesai);
+        }
+
+        // Cek target deadline sebelumnya
+        var existingTargetMs = jwbJson._target_deadline ? new Date(jwbJson._target_deadline).getTime() : 0;
+        var targetDeadlineMs;
+
+        if (existingTargetMs && existingTargetMs > Date.now()) {
+            // Masih ada sisa waktu berjalan, tambahkan kompensasi ke deadline saat ini
+            targetDeadlineMs = existingTargetMs + (tambahan * 60 * 1000);
+        } else if (baseLimitMs > Date.now()) {
+            // Waktu normal pengerjaan masih berlangsung
+            targetDeadlineMs = baseLimitMs + (newTotalExtra * 60 * 1000);
+        } else {
+            // Waktu normal sudah habis, kompensasi kendala teknis dihitung mulai dari saat tombol ditekan
+            targetDeadlineMs = Date.now() + (tambahan * 60 * 1000);
+        }
+
+        jwbJson._target_deadline = new Date(targetDeadlineMs).toISOString();
+
         if (doReset) {
             delete jwbJson._is_cheat_submitted;
             if (jwbJson._tabSwitchCount) jwbJson._tabSwitchCount = 0;
@@ -709,13 +734,13 @@ async function submitTambahWaktuCbt(jawabanId, sesiId, existingExtra) {
         var updatePayload = {
             status: 'mengerjakan',
             tambahan_waktu_menit: newTotalExtra,
+            jawaban_json: jwbJson,
             updated_at: new Date().toISOString()
         };
 
         if (doReset) {
             updatePayload.tab_switch_count = 0;
             updatePayload.waktu_kumpul = null;
-            updatePayload.jawaban_json = jwbJson;
             updatePayload.is_cheat_submitted = false;
         }
 
@@ -758,16 +783,25 @@ async function izinkanLanjutUjianCbt(jawabanId, sesiId) {
                     waktu_kumpul: null
                 };
 
-                // Bersihkan flag pelanggaran dari jawaban_json
+                // Bersihkan flag pelanggaran dari jawaban_json & pastikan _target_deadline aktif
                 try {
                     const { data: curJwb } = await supabaseClient.from('cbt_jawaban_siswa')
-                        .select('jawaban_json').eq('id', jawabanId).single();
-                    if (curJwb && curJwb.jawaban_json) {
-                        var cleanedJwb = Object.assign({}, curJwb.jawaban_json);
-                        delete cleanedJwb._is_cheat_submitted;
-                        delete cleanedJwb._tabSwitchCount;
-                        updatePayload.jawaban_json = cleanedJwb;
+                        .select('jawaban_json, tambahan_waktu_menit, waktu_mulai_mengerjakan').eq('id', jawabanId).single();
+                    var cleanedJwb = (curJwb && curJwb.jawaban_json) ? Object.assign({}, curJwb.jawaban_json) : {};
+                    delete cleanedJwb._is_cheat_submitted;
+                    delete cleanedJwb._tabSwitchCount;
+
+                    var curExt = (curJwb && curJwb.tambahan_waktu_menit) ? parseInt(curJwb.tambahan_waktu_menit) : 0;
+                    var prevTargetMs = cleanedJwb._target_deadline ? new Date(cleanedJwb._target_deadline).getTime() : 0;
+
+                    // Jika siswa memiliki tambahan kompensasi waktu tetapi waktu target sudah kedaluwarsa saat terkunci:
+                    // perbarui _target_deadline agar siswa dapat menghabiskan sisa menit kompensasinya dari waktu sekarang
+                    if (curExt > 0 && (!prevTargetMs || prevTargetMs <= Date.now())) {
+                        var newDeadlineMs = Date.now() + (curExt * 60 * 1000);
+                        cleanedJwb._target_deadline = new Date(newDeadlineMs).toISOString();
                     }
+
+                    updatePayload.jawaban_json = cleanedJwb;
                 } catch (eJson) {
                     console.warn('Gagal membaca jawaban_json:', eJson);
                 }
@@ -1265,7 +1299,15 @@ async function verifikasiTokenCbt(asesmenId) {
 }
 
 // Helper hitung deadline absolut secara deterministik
-function calculateCbtDeadlineMs(mulaiVal, waktuMenitVal, selesaiUjianStr, tambahanMenitVal) {
+function calculateCbtDeadlineMs(mulaiVal, waktuMenitVal, selesaiUjianStr, tambahanMenitVal, jwbJson, updatedAtVal) {
+    // 1. Jika ada target deadline spesifik yang sudah pernah ditetapkan dan disimpan di jawaban_json, gunakan itu
+    if (jwbJson && jwbJson._target_deadline) {
+        var savedTarget = new Date(jwbJson._target_deadline).getTime();
+        if (!isNaN(savedTarget) && savedTarget > 0) {
+            return savedTarget;
+        }
+    }
+
     var stMulai = mulaiVal ? new Date(mulaiVal) : new Date();
     var baseLimitMs = stMulai.getTime() + ((parseInt(waktuMenitVal) || 60) * 60 * 1000);
     if (selesaiUjianStr) {
@@ -1275,12 +1317,17 @@ function calculateCbtDeadlineMs(mulaiVal, waktuMenitVal, selesaiUjianStr, tambah
         }
     }
     var extraMs = (parseInt(tambahanMenitVal) || 0) * 60 * 1000;
-    var targetMs = baseLimitMs + extraMs;
-    // Jika waktu dasar sudah lewat, kompensasi kendala teknis harus memberi waktu terhitung dari sekarang
+
+    // Jika ada kompensasi kendala teknis dan waktu dasar sudah terlampaui saat kompensasi diberikan,
+    // patok deadline secara tetap terhadap waktu update terakhir (updatedAtVal) atau stMulai, BUKAN Date.now() dinamis
     if (extraMs > 0 && baseLimitMs < Date.now()) {
-        targetMs = Math.max(targetMs, Date.now() + extraMs);
+        var anchorMs = updatedAtVal ? new Date(updatedAtVal).getTime() : stMulai.getTime();
+        if (!isNaN(anchorMs) && anchorMs > 0) {
+            return anchorMs + extraMs;
+        }
     }
-    return targetMs;
+
+    return baseLimitMs + extraMs;
 }
 
 async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
@@ -1367,12 +1414,29 @@ async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
 
         // Hitung deadline dari waktu mulai mengerjakan & kompensasi teknis
         const { data: myJawaban } = await supabaseClient.from('cbt_jawaban_siswa')
-            .select('waktu_mulai_mengerjakan, tambahan_waktu_menit').eq('id', jawabanId).single();
+            .select('waktu_mulai_mengerjakan, tambahan_waktu_menit, jawaban_json, updated_at').eq('id', jawabanId).single();
         var mulaiVal = (myJawaban && myJawaban.waktu_mulai_mengerjakan) ? myJawaban.waktu_mulai_mengerjakan : new Date().toISOString();
         var tambahanVal = (myJawaban && myJawaban.tambahan_waktu_menit) ? parseInt(myJawaban.tambahan_waktu_menit) : 0;
-        
-        var targetDeadlineMs = calculateCbtDeadlineMs(mulaiVal, cbtWaktuMenit, asm.waktu_selesai_ujian, tambahanVal);
+        var jwbJson = (myJawaban && myJawaban.jawaban_json) ? myJawaban.jawaban_json : (existingJawaban || {});
+
+        var targetDeadlineMs = calculateCbtDeadlineMs(mulaiVal, cbtWaktuMenit, asm.waktu_selesai_ujian, tambahanVal, jwbJson, myJawaban ? myJawaban.updated_at : null);
+
+        // Jika waktu pengerjaan normal sudah habis tetapi ada tambahan_waktu_menit dan targetDeadlineMs di masa lalu:
+        if (tambahanVal > 0 && targetDeadlineMs <= Date.now()) {
+            targetDeadlineMs = Date.now() + (tambahanVal * 60 * 1000);
+            jwbJson._target_deadline = new Date(targetDeadlineMs).toISOString();
+            cbtJawabanMap._target_deadline = jwbJson._target_deadline;
+            triggerCbtImmediateSave(150);
+        } else if (targetDeadlineMs > Date.now()) {
+            if (!jwbJson._target_deadline) {
+                jwbJson._target_deadline = new Date(targetDeadlineMs).toISOString();
+            }
+            cbtJawabanMap._target_deadline = jwbJson._target_deadline;
+        }
+
         cbtDeadline = new Date(targetDeadlineMs);
+        window._cbtLastAppliedExtraMenit = tambahanVal;
+        window._cbtLastAppliedDeadlineMs = targetDeadlineMs;
 
         // Cek apakah waktu sudah habis
         if (new Date() >= cbtDeadline) {
@@ -1701,24 +1765,52 @@ function startCbtTimer(jawabanId) {
         try {
             const { data: curJwb } = await supabaseClient
                 .from('cbt_jawaban_siswa')
-                .select('tambahan_waktu_menit, waktu_mulai_mengerjakan, status')
+                .select('tambahan_waktu_menit, jawaban_json, waktu_mulai_mengerjakan, status')
                 .eq('id', jawabanId)
                 .maybeSingle();
 
             if (curJwb) {
                 var curExt = parseInt(curJwb.tambahan_waktu_menit) || 0;
-                var selesaiUjian = (window._cbtAsmCurrent && window._cbtAsmCurrent.waktu_selesai_ujian) ? window._cbtAsmCurrent.waktu_selesai_ujian : null;
-                var expectedMs = calculateCbtDeadlineMs(curJwb.waktu_mulai_mengerjakan, cbtWaktuMenit, selesaiUjian, curExt);
+                var curJwbJson = curJwb.jawaban_json || {};
+                var serverTargetMs = curJwbJson._target_deadline ? new Date(curJwbJson._target_deadline).getTime() : 0;
 
-                if (!cbtDeadline || Math.abs(expectedMs - cbtDeadline.getTime()) >= 2000) {
-                    var prevTime = cbtDeadline ? cbtDeadline.getTime() : Date.now();
-                    cbtDeadline = new Date(expectedMs);
-                    tickTimer(); // Segera render angka baru di layar!
-                    if (expectedMs > prevTime) {
-                        var addedMin = Math.round((expectedMs - prevTime) / 60000);
-                        if (addedMin > 0 && typeof showToast === 'function') {
-                            showToast('⏰ Pengawas menambahkan kompensasi waktu +' + addedMin + ' menit!', 'success');
+                if (typeof window._cbtLastAppliedExtraMenit === 'undefined') {
+                    window._cbtLastAppliedExtraMenit = curExt;
+                }
+
+                // Skenario A: Pengawas menambah kompensasi menit baru via tombol '+ Waktu'
+                if (curExt > window._cbtLastAppliedExtraMenit) {
+                    var addedMin = curExt - window._cbtLastAppliedExtraMenit;
+                    window._cbtLastAppliedExtraMenit = curExt;
+                    var addedMs = addedMin * 60 * 1000;
+
+                    if (!cbtDeadline || cbtDeadline.getTime() < Date.now()) {
+                        cbtDeadline = new Date(Date.now() + addedMs);
+                    } else {
+                        cbtDeadline = new Date(cbtDeadline.getTime() + addedMs);
+                    }
+
+                    window._cbtLastAppliedDeadlineMs = cbtDeadline.getTime();
+                    if (cbtJawabanMap) {
+                        cbtJawabanMap._target_deadline = cbtDeadline.toISOString();
+                    }
+                    tickTimer();
+                    if (typeof showToast === 'function') {
+                        showToast('⏰ Pengawas menambahkan kompensasi waktu +' + addedMin + ' menit!', 'success');
+                    }
+                    triggerCbtImmediateSave(200);
+                }
+                // Skenario B: Target deadline diperbarui secara eksplisit di database (misal admin klik izinkan lanjut)
+                else if (serverTargetMs && serverTargetMs > Date.now()) {
+                    var curDeadlineMs = cbtDeadline ? cbtDeadline.getTime() : 0;
+                    if (Math.abs(serverTargetMs - curDeadlineMs) >= 4000 && Math.abs(serverTargetMs - (window._cbtLastAppliedDeadlineMs || 0)) >= 4000) {
+                        window._cbtLastAppliedDeadlineMs = serverTargetMs;
+                        window._cbtLastAppliedExtraMenit = curExt;
+                        cbtDeadline = new Date(serverTargetMs);
+                        if (cbtJawabanMap) {
+                            cbtJawabanMap._target_deadline = curJwbJson._target_deadline;
                         }
+                        tickTimer();
                     }
                 }
             }
@@ -1810,20 +1902,36 @@ async function saveCbtJawabanToDb(jawabanId, silent) {
         try {
             const { data: curJwb } = await supabaseClient
                 .from('cbt_jawaban_siswa')
-                .select('waktu_mulai_mengerjakan, tambahan_waktu_menit')
+                .select('tambahan_waktu_menit, jawaban_json')
                 .eq('id', jawabanId)
                 .maybeSingle();
 
             if (curJwb) {
                 var curExt = parseInt(curJwb.tambahan_waktu_menit) || 0;
-                var selesaiUjian = (window._cbtAsmCurrent && window._cbtAsmCurrent.waktu_selesai_ujian) ? window._cbtAsmCurrent.waktu_selesai_ujian : null;
-                var targetDeadlineMs = calculateCbtDeadlineMs(curJwb.waktu_mulai_mengerjakan, cbtWaktuMenit, selesaiUjian, curExt);
+                var curJwbJson = curJwb.jawaban_json || {};
+                var serverTargetMs = curJwbJson._target_deadline ? new Date(curJwbJson._target_deadline).getTime() : 0;
 
-                if (!cbtDeadline || Math.abs(targetDeadlineMs - cbtDeadline.getTime()) >= 2000) {
-                    var diffM = cbtDeadline ? Math.round((targetDeadlineMs - cbtDeadline.getTime()) / 60000) : 0;
-                    cbtDeadline = new Date(targetDeadlineMs);
-                    if (diffM > 0 && typeof showToast === 'function') {
+                if (typeof window._cbtLastAppliedExtraMenit !== 'undefined' && curExt > window._cbtLastAppliedExtraMenit) {
+                    var diffM = curExt - window._cbtLastAppliedExtraMenit;
+                    window._cbtLastAppliedExtraMenit = curExt;
+                    var addedMs = diffM * 60 * 1000;
+                    if (!cbtDeadline || cbtDeadline.getTime() < Date.now()) {
+                        cbtDeadline = new Date(Date.now() + addedMs);
+                    } else {
+                        cbtDeadline = new Date(cbtDeadline.getTime() + addedMs);
+                    }
+                    window._cbtLastAppliedDeadlineMs = cbtDeadline.getTime();
+                    if (cbtJawabanMap) cbtJawabanMap._target_deadline = cbtDeadline.toISOString();
+                    if (typeof showToast === 'function') {
                         showToast('⏰ Anda mendapatkan kompensasi waktu +' + diffM + ' menit dari pengawas!', 'success');
+                    }
+                } else if (serverTargetMs && serverTargetMs > Date.now()) {
+                    var curDeadlineMs = cbtDeadline ? cbtDeadline.getTime() : 0;
+                    if (Math.abs(serverTargetMs - curDeadlineMs) >= 4000 && Math.abs(serverTargetMs - (window._cbtLastAppliedDeadlineMs || 0)) >= 4000) {
+                        window._cbtLastAppliedDeadlineMs = serverTargetMs;
+                        window._cbtLastAppliedExtraMenit = curExt;
+                        cbtDeadline = new Date(serverTargetMs);
+                        if (cbtJawabanMap) cbtJawabanMap._target_deadline = curJwbJson._target_deadline;
                     }
                 }
             }
