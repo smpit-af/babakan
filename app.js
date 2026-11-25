@@ -3621,7 +3621,7 @@ function filterSiswaTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
+            '<td class="col-alamat" title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '"><div style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</div></td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
@@ -8471,10 +8471,11 @@ async function loadSoalUjian() {
     tbodyNonaktif.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
 
     try {
-        // Ambil asesmen yang sudah dikirim ke ujian (ujian_sent_at IS NOT NULL)
+        // Ambil asesmen yang sudah dikirim ke ujian (HANYA status terbit / siap uji dan ujian_sent_at IS NOT NULL)
         const { data, error } = await supabaseClient
             .from('asesmen')
             .select('*')
+            .eq('status', 'terbit')
             .not('ujian_sent_at', 'is', null)
             .is('deleted_at', null)
             .order('ujian_sent_at', { ascending: false });
@@ -11629,7 +11630,7 @@ function getSiswaForKeuangan(filterKelas = '') {
     if (typeof siswaList === 'undefined') return [];
 
     // Convert DB structure to what the financial module expects
-    let list = siswaList.filter(s => s.status === 'Aktif').map(s => {
+    let list = siswaList.filter(s => s.status === 'Aktif' || s.status === 'Pindahan').map(s => {
         return {
             id: s.id,
             namaLengkap: s.nama_lengkap || '-',
