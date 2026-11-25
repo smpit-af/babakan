@@ -113,6 +113,7 @@ async function openMonitorCbt(asesmenId) {
             '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.75rem;">' +
             '<div><h4 style="margin:0; font-size:1.05rem; font-weight:700; color:#1e293b;">Daftar Peserta & Progres Pengerjaan</h4><p style="margin:0.2rem 0 0; font-size:0.8rem; color:#64748b;">Pantau live status pengerjaan, deteksi kecurangan (pindah tab), dan skor siswa</p></div>' +
             '<div style="display:flex; gap:.5rem; flex-wrap:wrap;">' +
+            '<button class="btn btn-sm" onclick="openAnalisisButirSoalCbt(\'' + asesmenId + '\')" style="font-size:.82rem; padding:.4rem .9rem; border-radius:8px; background:linear-gradient(135deg,#6366f1,#4f46e5); color:white; border:none; font-weight:700; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 6px rgba(99,102,241,.25);"><i data-lucide="bar-chart-2" style="width:14px;height:14px"></i> Analisis Butir Soal</button>' +
             '<button class="btn btn-sm btn-outline" onclick="refreshMonitorCbt(\'' + latestSesiId + '\')" style="font-size:.82rem; padding:.4rem .8rem; border-radius:8px;"><i data-lucide="refresh-cw" style="width:14px;height:14px"></i> Refresh Data</button>' +
             '<button class="btn btn-sm" onclick="kirimSemuaNilaiCbt(\'' + asesmenId + '\',\'' + latestSesiId + '\')" style="font-size:.82rem; padding:.4rem 1rem; border-radius:8px; background:#059669; color:white; border:none; font-weight:600;"><i data-lucide="send" style="width:14px;height:14px"></i> Kirim Semua Nilai</button>' +
             '</div></div>' +
@@ -1295,7 +1296,60 @@ async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
             .select('*').eq('id', asesmenId).single();
         if (asmErr) throw asmErr;
 
-        cbtSoalListCache = soalList || [];
+        // ================= PENGACAKAN NOMOR SOAL KHUSUS PG =================
+        // Pisahkan soal PG dan Non-PG (Essay)
+        var allSoalRaw = (soalList || []).slice();
+        var pgSoal = allSoalRaw.filter(function (s) { return s.tipe_soal === 'pg'; });
+        var nonPgSoal = allSoalRaw.filter(function (s) { return s.tipe_soal !== 'pg'; });
+
+        var finalSoalList = [];
+        var savedOrder = (existingJawaban && Array.isArray(existingJawaban._soal_order)) ? existingJawaban._soal_order : null;
+
+        // Periksa juga di localStorage jika ada sesi aktif tersimpan
+        if (!savedOrder) {
+            try {
+                var localSes = JSON.parse(localStorage.getItem('cbt_active_session') || '{}');
+                if (localSes && localSes.jawabanId === jawabanId && Array.isArray(localSes.soalOrder)) {
+                    savedOrder = localSes.soalOrder;
+                }
+            } catch (eSes) { }
+        }
+
+        if (savedOrder && savedOrder.length > 0) {
+            // Pulihkan urutan acak yang sudah ditetapkan untuk siswa ini agar nomor soal tidak berubah saat refresh/resume
+            var posMap = {};
+            savedOrder.forEach(function (nomor, idx) { posMap[nomor] = idx; });
+            finalSoalList = allSoalRaw.sort(function (a, b) {
+                var posA = posMap[a.nomor_soal] !== undefined ? posMap[a.nomor_soal] : 9999;
+                var posB = posMap[b.nomor_soal] !== undefined ? posMap[b.nomor_soal] : 9999;
+                return posA - posB;
+            });
+        } else {
+            // Acak urutan nomor soal khusus PG menggunakan Fisher-Yates shuffle
+            var shuffledPg = pgSoal.slice();
+            for (var i = shuffledPg.length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var temp = shuffledPg[i];
+                shuffledPg[i] = shuffledPg[j];
+                shuffledPg[j] = temp;
+            }
+            // Gabungkan: Soal PG yang telah diacak di bagian depan, lalu Essay tersusun teratur di belakang
+            finalSoalList = shuffledPg.concat(nonPgSoal);
+
+            // Simpan urutan nomor soal agar persisten selama pengerjaan
+            var newOrder = finalSoalList.map(function (s) { return s.nomor_soal; });
+            if (!existingJawaban) existingJawaban = {};
+            existingJawaban._soal_order = newOrder;
+
+            // Simpan ke localStorage sesi aktif
+            try {
+                var curSess = JSON.parse(localStorage.getItem('cbt_active_session') || '{}');
+                curSess.soalOrder = newOrder;
+                localStorage.setItem('cbt_active_session', JSON.stringify(curSess));
+            } catch (eSav) { }
+        }
+
+        cbtSoalListCache = finalSoalList;
         cbtJawabanMap = existingJawaban || {};
         cbtCurrentSoalIndex = 0;
         cbtSesiId = sesiId;
@@ -1303,6 +1357,11 @@ async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
         cbtJawabanId = jawabanId;
         cbtWaktuMenit = parseInt(asm.waktu_menit) || 60;
         cbtTabSwitchCount = 0;
+
+        // Simpan urutan soal ke DB jika belum ada
+        if (!savedOrder && cbtJawabanMap._soal_order) {
+            triggerCbtImmediateSave(150);
+        }
 
         window._cbtAsmCurrent = asm;
 
@@ -2679,3 +2738,572 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 2500); // Delay 2.5 detik agar dashboard sudah fully loaded
 });
+
+// ============================================================
+// FITUR ANALISIS BUTIR SOAL OTOMATIS (ITEM ANALYSIS)
+// Khusus Guru / Admin / Pengawas (Dilarang untuk Role Siswa)
+// ============================================================
+
+function closeAnalisisButirSoalModal() {
+    var m = document.getElementById('modalAnalisisButirSoal');
+    if (m) {
+        m.style.display = 'none';
+        m.classList.remove('active');
+    }
+}
+
+async function openAnalisisButirSoalCbt(asesmenId) {
+    if (typeof currentRole !== 'undefined' && currentRole === 'siswa') {
+        showToast('Akses ditolak: Fitur Analisis Butir Soal hanya untuk Guru dan Administrator.', 'error');
+        return;
+    }
+
+    if (!asesmenId) {
+        showToast('ID Asesmen tidak valid.', 'warning');
+        return;
+    }
+
+    showGlobalLoader('Menganalisis butir soal...');
+    try {
+        // 1. Ambil data asesmen
+        const { data: asm, error: errAsm } = await supabaseClient.from('asesmen')
+            .select('*').eq('id', asesmenId).single();
+        if (errAsm || !asm) throw new Error('Data asesmen tidak ditemukan.');
+
+        // 2. Ambil seluruh butir soal
+        const { data: soalList, error: errSoal } = await supabaseClient.from('asesmen_soal')
+            .select('*').eq('asesmen_id', asesmenId).order('nomor_soal', { ascending: true });
+        if (errSoal) throw errSoal;
+        if (!soalList || soalList.length === 0) {
+            throw new Error('Asesmen ini belum memiliki data butir soal.');
+        }
+
+        // 3. Ambil seluruh sesi ujian untuk asesmen ini
+        const { data: sesiList, error: errSesi } = await supabaseClient.from('cbt_sesi_ujian')
+            .select('id, token, status').eq('asesmen_id', asesmenId);
+        if (errSesi) throw errSesi;
+
+        var sesiIds = (sesiList || []).map(function(s) { return s.id; });
+        var rawSubmissions = [];
+        if (sesiIds.length > 0) {
+            const { data: jwbData, error: errJwb } = await supabaseClient.from('cbt_jawaban_siswa')
+                .select('id, siswa_id, status, nilai, jawaban_json, waktu_mulai_mengerjakan, waktu_kumpul, siswa:siswa_id(nama_lengkap, nisn)')
+                .in('sesi_id', sesiIds);
+            if (errJwb) throw errJwb;
+            rawSubmissions = jwbData || [];
+        }
+
+        // Saring siswa yang benar-benar mengerjakan (ada jawaban_json atau status selesai)
+        var validSubmissions = rawSubmissions.filter(function(sub) {
+            var jwb = sub.jawaban_json || {};
+            var keys = Object.keys(jwb).filter(function(k) { return !k.startsWith('_'); });
+            return keys.length > 0 || sub.status === 'selesai' || sub.nilai != null;
+        });
+
+        var modal = document.getElementById('modalAnalisisButirSoal');
+        var body = document.getElementById('analisisModalBody');
+        if (!modal || !body) {
+            throw new Error('Elemen modal analisis tidak ditemukan.');
+        }
+
+        if (validSubmissions.length === 0) {
+            body.innerHTML = '<div style="text-align:center;padding:3.5rem 1.5rem;color:#64748b;">' +
+                '<div style="width:64px;height:64px;border-radius:50%;background:#e0e7ff;color:#4f46e5;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.8rem;">📊</div>' +
+                '<h3 style="margin:0 0 .5rem 0;font-size:1.2rem;color:#1e293b;font-weight:700;">Belum Ada Data Peserta</h3>' +
+                '<p style="max-width:520px;margin:0 auto 1.5rem;line-height:1.5;font-size:.9rem;">Analisis butir soal (Tingkat Kesukaran P, Daya Pembeda D, dan Efektivitas Pengecoh) akan dihitung otomatis setelah ada siswa yang mengerjakan atau mengumpulkan ujian ini.</p>' +
+                '<button onclick="closeAnalisisButirSoalModal()" class="btn btn-outline" style="min-height:44px;padding:.5rem 2rem;border-radius:10px;">Tutup</button>' +
+                '</div>';
+            modal.style.display = 'flex';
+            modal.classList.add('active');
+            if (window.lucide) lucide.createIcons();
+            hideGlobalLoader();
+            return;
+        }
+
+        // 4. Hitung Skor Tiap Siswa jika belum terisi
+        validSubmissions.forEach(function(sub) {
+            if (sub.nilai == null && typeof hitungNilaiCbt === 'function') {
+                sub.nilai = hitungNilaiCbt(sub.jawaban_json || {}, soalList, asm);
+            }
+        });
+
+        // Urutkan siswa dari nilai tertinggi ke terendah
+        validSubmissions.sort(function(a, b) {
+            return (b.nilai || 0) - (a.nilai || 0);
+        });
+
+        var N = validSubmissions.length;
+        var scores = validSubmissions.map(function(s) { return s.nilai || 0; });
+        var sumScore = scores.reduce(function(a, b) { return a + b; }, 0);
+        var avgScore = Math.round((sumScore / N) * 10) / 10;
+        var maxScore = Math.max.apply(null, scores);
+        var minScore = Math.min.apply(null, scores);
+
+        // Tentukan Kelompok Atas (Upper Group) dan Kelompok Bawah (Lower Group)
+        // Standar psikometrik pendidikan: 27% teratas dan 27% terbawah (atau separuh jika peserta sedikit)
+        var groupSize = N >= 6 ? Math.max(1, Math.round(N * 0.27)) : Math.max(1, Math.floor(N / 2));
+        var upperGroup = validSubmissions.slice(0, groupSize);
+        var lowerGroup = validSubmissions.slice(validSubmissions.length - groupSize);
+
+        // 5. Analisis Per Butir Soal
+        var statsList = [];
+        var countMudah = 0, countSedang = 0, countSukar = 0;
+        var countBaik = 0, countRevisi = 0;
+
+        soalList.forEach(function(s, idx) {
+            var key = 'soal_' + s.nomor_soal;
+            var kunciRaw = String(s.kunci_jawaban || '').trim().toUpperCase();
+            var kunciChar = kunciRaw ? kunciRaw.charAt(0) : '';
+
+            var dist = { A: 0, B: 0, C: 0, D: 0, E: 0, kosong: 0 };
+            var correctTotal = 0;
+            var correctUpper = 0;
+            var correctLower = 0;
+
+            // Total hitung
+            validSubmissions.forEach(function(sub) {
+                var jwbVal = String((sub.jawaban_json && sub.jawaban_json[key]) || '').trim().toUpperCase();
+                var charAns = jwbVal ? jwbVal.charAt(0) : '';
+                if (s.tipe_soal === 'pg') {
+                    if (['A', 'B', 'C', 'D', 'E'].indexOf(charAns) !== -1) {
+                        dist[charAns]++;
+                    } else {
+                        dist.kosong++;
+                    }
+                    if (charAns && charAns === kunciChar) {
+                        correctTotal++;
+                    }
+                } else {
+                    // Essay: jika diisi
+                    if (jwbVal.length > 0) correctTotal++;
+                }
+            });
+
+            // Upper group
+            upperGroup.forEach(function(sub) {
+                var jwbVal = String((sub.jawaban_json && sub.jawaban_json[key]) || '').trim().toUpperCase();
+                var charAns = jwbVal ? jwbVal.charAt(0) : '';
+                if (charAns && charAns === kunciChar) correctUpper++;
+            });
+
+            // Lower group
+            lowerGroup.forEach(function(sub) {
+                var jwbVal = String((sub.jawaban_json && sub.jawaban_json[key]) || '').trim().toUpperCase();
+                var charAns = jwbVal ? jwbVal.charAt(0) : '';
+                if (charAns && charAns === kunciChar) correctLower++;
+            });
+
+            // Tingkat Kesukaran (P = Correct / Total)
+            var P = Math.round((correctTotal / N) * 100) / 100;
+            var katP = 'Sedang';
+            var katColorP = '#0369a1';
+            var katBgP = '#e0f2fe';
+            if (P > 0.70) {
+                katP = 'Mudah';
+                katColorP = '#15803d';
+                katBgP = '#dcfce7';
+                countMudah++;
+            } else if (P < 0.30) {
+                katP = 'Sukar';
+                katColorP = '#b45309';
+                katBgP = '#fef3c7';
+                countSukar++;
+            } else {
+                countSedang++;
+            }
+
+            // Daya Pembeda (D = (BA/JA) - (BB/JB))
+            var pUpper = groupSize > 0 ? (correctUpper / groupSize) : 0;
+            var pLower = groupSize > 0 ? (correctLower / groupSize) : 0;
+            var D = Math.round((pUpper - pLower) * 100) / 100;
+
+            var katD = 'Baik';
+            var katColorD = '#0369a1';
+            var katBgD = '#e0f2fe';
+            var isRevisi = false;
+
+            if (D >= 0.40) {
+                katD = 'Sangat Baik';
+                katColorD = '#15803d';
+                katBgD = '#dcfce7';
+                countBaik++;
+            } else if (D >= 0.30) {
+                katD = 'Baik';
+                katColorD = '#0369a1';
+                katBgD = '#e0f2fe';
+                countBaik++;
+            } else if (D >= 0.20) {
+                katD = 'Cukup';
+                katColorD = '#b45309';
+                katBgD = '#fef3c7';
+                countBaik++;
+            } else if (D >= 0) {
+                katD = 'Kurang';
+                katColorD = '#c2410c';
+                katBgD = '#ffedd5';
+                countRevisi++;
+                isRevisi = true;
+            } else {
+                katD = 'Negatif';
+                katColorD = '#dc2626';
+                katBgD = '#fee2e2';
+                countRevisi++;
+                isRevisi = true;
+            }
+
+            // Status Rekomendasi
+            var rekomendasi = '';
+            var statusBadge = '';
+            if (D >= 0.30 && P >= 0.25 && P <= 0.75) {
+                rekomendasi = 'Soal ideal & bermutu tinggi (Diterima)';
+                statusBadge = '<span style="background:#dcfce7;color:#15803d;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">✓ Diterima</span>';
+            } else if (D < 0) {
+                rekomendasi = 'Kunci jawaban atau soal membingungkan siswa pintar (Revisi Total)';
+                statusBadge = '<span style="background:#fee2e2;color:#dc2626;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">✕ Revisi Kunci</span>';
+            } else if (P > 0.85) {
+                rekomendasi = 'Terlalu mudah; perbaiki opsi pengecoh agar lebih mengecoh';
+                statusBadge = '<span style="background:#fef3c7;color:#b45309;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">⚠️ Terlalu Mudah</span>';
+            } else if (P < 0.15) {
+                rekomendasi = 'Terlalu sukar; periksa redaksi kalimat atau materi pembelajaran';
+                statusBadge = '<span style="background:#fef3c7;color:#b45309;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">⚠️ Terlalu Sukar</span>';
+            } else if (D < 0.20) {
+                rekomendasi = 'Daya pembeda rendah; perbaiki pengecoh atau redaksi soal';
+                statusBadge = '<span style="background:#ffedd5;color:#c2410c;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">⚠️ Daya Pembeda Rendah</span>';
+            } else {
+                rekomendasi = 'Soal cukup baik (Diterima dengan revisi minor)';
+                statusBadge = '<span style="background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">✓ Cukup Baik</span>';
+            }
+
+            statsList.push({
+                soal: s,
+                nomor: s.nomor_soal,
+                indexDisplay: idx + 1,
+                tipe: s.tipe_soal,
+                kunci: kunciChar || s.kunci_jawaban || '-',
+                dist: dist,
+                correctTotal: correctTotal,
+                P: P,
+                katP: katP,
+                katColorP: katColorP,
+                katBgP: katBgP,
+                D: D,
+                katD: katD,
+                katColorD: katColorD,
+                katBgD: katBgD,
+                isRevisi: isRevisi,
+                statusBadge: statusBadge,
+                rekomendasi: rekomendasi
+            });
+        });
+
+        // Simpan cache hasil untuk Cetak / Ekspor
+        window._lastAnalisisCbt = {
+            asm: asm,
+            statsList: statsList,
+            totalPeserta: N,
+            avgScore: avgScore,
+            maxScore: maxScore,
+            minScore: minScore,
+            groupSize: groupSize
+        };
+
+        // Render UI Modal
+        var infoCardHtml = '<div style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);border:1px solid #c7d2fe;border-radius:14px;padding:1.1rem 1.4rem;margin-bottom:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">' +
+            '<div>' +
+            '  <h4 style="margin:0 0 .25rem 0;font-size:1.15rem;font-weight:800;color:#312e81;">' + escHtml(asm.judul || '-') + '</h4>' +
+            '  <div style="font-size:.85rem;color:#4338ca;display:flex;gap:1rem;flex-wrap:wrap;">' +
+            '    <span>Mapel: <strong>' + escHtml(asm.mata_pelajaran || '-') + '</strong></span>' +
+            '    <span>Kelas: <strong>' + escHtml(asm.kelas || '-') + '</strong></span>' +
+            '    <span>Durasi: <strong>' + (asm.waktu_menit || 60) + ' Menit</strong></span>' +
+            '    <span>Total Soal: <strong>' + soalList.length + ' Butir</strong></span>' +
+            '  </div>' +
+            '</div>' +
+            '<div style="display:flex;gap:.5rem;flex-wrap:wrap;">' +
+            '  <button onclick="cetakLaporanAnalisisButir()" class="btn btn-sm btn-outline" style="min-height:38px;padding:.35rem .9rem;font-size:.82rem;display:inline-flex;align-items:center;gap:4px;border-color:#6366f1;color:#4338ca;"><i data-lucide="printer" style="width:14px;height:14px;"></i> Cetak Laporan</button>' +
+            '  <button onclick="eksporCsvAnalisisButir()" class="btn btn-sm" style="min-height:38px;padding:.35rem .9rem;font-size:.82rem;background:#4338ca;color:white;border:none;display:inline-flex;align-items:center;gap:4px;"><i data-lucide="download" style="width:14px;height:14px;"></i> Unduh CSV</button>' +
+            '</div>' +
+            '</div>';
+
+        // KPI Grid Cards (Stack 1 kolom di layar mobile <= 992px)
+        var kpiHtml = '<div class="analisis-kpi-grid">' +
+            '<div class="analisis-kpi-card blue">' +
+            '  <div class="analisis-kpi-lbl">Total Peserta</div>' +
+            '  <div class="analisis-kpi-val">' + N + ' Siswa</div>' +
+            '  <div class="analisis-kpi-sub">Kelompok Uji: ' + groupSize + ' atas / ' + groupSize + ' bawah</div>' +
+            '</div>' +
+            '<div class="analisis-kpi-card indigo">' +
+            '  <div class="analisis-kpi-lbl">Rata-Rata Nilai</div>' +
+            '  <div class="analisis-kpi-val">' + avgScore + '</div>' +
+            '  <div class="analisis-kpi-sub">Tertinggi: ' + maxScore + ' • Terendah: ' + minScore + '</div>' +
+            '</div>' +
+            '<div class="analisis-kpi-card green">' +
+            '  <div class="analisis-kpi-lbl">Kategori Kesukaran</div>' +
+            '  <div class="analisis-kpi-val" style="font-size:1.2rem;">' + countSedang + ' <span style="font-size:.8rem;font-weight:600;color:#0369a1;">Sedang</span> • ' + countMudah + ' <span style="font-size:.8rem;font-weight:600;color:#15803d;">Mudah</span></div>' +
+            '  <div class="analisis-kpi-sub">' + countSukar + ' butir kategori sukar</div>' +
+            '</div>' +
+            '<div class="analisis-kpi-card ' + (countRevisi > 0 ? 'amber' : 'green') + '">' +
+            '  <div class="analisis-kpi-lbl">Kualitas Butir Soal</div>' +
+            '  <div class="analisis-kpi-val" style="font-size:1.2rem;">' + countBaik + ' <span style="font-size:.8rem;font-weight:600;color:#15803d;">Diterima</span> • ' + countRevisi + ' <span style="font-size:.8rem;font-weight:600;color:#dc2626;">Revisi</span></div>' +
+            '  <div class="analisis-kpi-sub">' + (countRevisi > 0 ? '⚠️ Ada soal dengan daya pembeda rendah' : '✓ Seluruh butir soal memenuhi standar') + '</div>' +
+            '</div>' +
+            '</div>';
+
+        // Filter Bar
+        var filterBarHtml = '<div class="analisis-filter-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.75rem;">' +
+            '<div style="display:flex;gap:.4rem;flex-wrap:wrap;">' +
+            '  <button type="button" class="btn btn-sm btn-filter-analisis active" onclick="filterAnalisisButirTable(\'all\', this)" style="background:#4338ca;color:white;border:none;padding:.35rem .8rem;border-radius:8px;font-size:.8rem;font-weight:600;">Semua Soal (' + statsList.length + ')</button>' +
+            '  <button type="button" class="btn btn-sm btn-filter-analisis" onclick="filterAnalisisButirTable(\'revisi\', this)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:.35rem .8rem;border-radius:8px;font-size:.8rem;font-weight:600;">⚠️ Perlu Revisi (' + countRevisi + ')</button>' +
+            '  <button type="button" class="btn btn-sm btn-filter-analisis" onclick="filterAnalisisButirTable(\'sukar\', this)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:.35rem .8rem;border-radius:8px;font-size:.8rem;font-weight:600;">Sukar (' + countSukar + ')</button>' +
+            '  <button type="button" class="btn btn-sm btn-filter-analisis" onclick="filterAnalisisButirTable(\'sedang\', this)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:.35rem .8rem;border-radius:8px;font-size:.8rem;font-weight:600;">Sedang (' + countSedang + ')</button>' +
+            '  <button type="button" class="btn btn-sm btn-filter-analisis" onclick="filterAnalisisButirTable(\'mudah\', this)" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:.35rem .8rem;border-radius:8px;font-size:.8rem;font-weight:600;">Mudah (' + countMudah + ')</button>' +
+            '</div>' +
+            '<div style="font-size:.8rem;color:#64748b;">' +
+            '  Standar Evaluasi: <strong>P</strong> (Tingkat Kesukaran) & <strong>D</strong> (Daya Pembeda)' +
+            '</div>' +
+            '</div>';
+
+        // Table Rows
+        var rowsHtml = statsList.map(function(st) {
+            var rowFilterClass = 'analisis-row';
+            if (st.isRevisi) rowFilterClass += ' filter-revisi';
+            if (st.katP === 'Sukar') rowFilterClass += ' filter-sukar';
+            if (st.katP === 'Sedang') rowFilterClass += ' filter-sedang';
+            if (st.katP === 'Mudah') rowFilterClass += ' filter-mudah';
+
+            // Distribusi Pilihan Ganda (A, B, C, D)
+            var distHtml = '-';
+            if (st.tipe === 'pg') {
+                distHtml = '<div style="display:flex;gap:4px;justify-content:center;font-size:.78rem;font-family:monospace;">';
+                ['A', 'B', 'C', 'D'].forEach(function(huruf) {
+                    var isKunci = huruf === st.kunci;
+                    var count = st.dist[huruf] || 0;
+                    var pct = N > 0 ? Math.round((count / N) * 100) : 0;
+                    var styleBg = isKunci ? 'background:#dcfce7;color:#15803d;border:1px solid #86efac;font-weight:800;' : 'background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;';
+                    distHtml += '<span title="' + huruf + ': ' + count + ' siswa (' + pct + '%)' + (isKunci ? ' [KUNCI]' : '') + '" style="padding:2px 5px;border-radius:4px;' + styleBg + '">' + huruf + ':' + count + '</span>';
+                });
+                distHtml += '</div>';
+            }
+
+            var dSign = st.D >= 0 ? '+' : '';
+
+            return '<tr class="' + rowFilterClass + '" style="' + (st.isRevisi ? 'background:rgba(254,242,242,0.5);' : '') + '">' +
+                '<td style="text-align:center;font-weight:700;">' + st.nomor + '</td>' +
+                '<td style="text-align:center;"><span style="font-size:.75rem;font-weight:600;padding:2px 6px;border-radius:4px;background:#f1f5f9;color:#475569;">' + (st.tipe === 'pg' ? 'PG' : 'Essay') + '</span></td>' +
+                '<td style="text-align:center;"><strong style="color:#15803d;font-size:.95rem;">' + escHtml(st.kunci) + '</strong></td>' +
+                '<td style="text-align:center;">' + distHtml + '</td>' +
+                '<td style="text-align:center;">' +
+                '  <div style="font-weight:800;color:' + st.katColorP + ';font-size:.95rem;">' + st.P.toFixed(2) + '</div>' +
+                '  <span style="background:' + st.katBgP + ';color:' + st.katColorP + ';padding:1px 6px;border-radius:4px;font-size:.7rem;font-weight:700;">' + st.katP + '</span>' +
+                '</td>' +
+                '<td style="text-align:center;">' +
+                '  <div style="font-weight:800;color:' + st.katColorD + ';font-size:.95rem;">' + dSign + st.D.toFixed(2) + '</div>' +
+                '  <span style="background:' + st.katBgD + ';color:' + st.katColorD + ';padding:1px 6px;border-radius:4px;font-size:.7rem;font-weight:700;">' + st.katD + '</span>' +
+                '</td>' +
+                '<td>' +
+                '  <div style="margin-bottom:2px;">' + st.statusBadge + '</div>' +
+                '  <div style="font-size:.76rem;color:#475569;line-height:1.3;">' + st.rekomendasi + '</div>' +
+                '</td>' +
+                '<td style="text-align:center;">' +
+                '  <button onclick="toggleDetailNaskahSoalAnalisis(' + st.nomor + ')" class="btn btn-sm btn-outline" style="font-size:.72rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;border-radius:6px;" title="Lihat naskah butir soal"><i data-lucide="eye" style="width:12px;height:12px;"></i> Naskah</button>' +
+                '</td>' +
+                '</tr>' +
+                '<tr id="naskahRow_' + st.nomor + '" style="display:none;background:#f8fafc;">' +
+                '<td colspan="8" style="padding:1rem 1.5rem;border-left:4px solid #6366f1;">' +
+                '  <div style="font-weight:700;margin-bottom:.4rem;color:#1e293b;font-size:.9rem;">Naskah Soal Nomor ' + st.nomor + ':</div>' +
+                '  <div style="font-size:.88rem;color:#334155;line-height:1.6;margin-bottom:.8rem;">' + (st.soal.naskah_soal || '').replace(/\n/g, '<br>') + '</div>' +
+                '  <div style="font-size:.82rem;color:#64748b;display:flex;gap:1.5rem;flex-wrap:wrap;background:white;padding:.6rem 1rem;border-radius:8px;border:1px solid #e2e8f0;">' +
+                '    <span>Kunci Jawaban: <strong style="color:#15803d;">' + escHtml(st.soal.kunci_jawaban || '-') + '</strong></span>' +
+                '    <span>Benar Menjawab: <strong>' + st.correctTotal + ' dari ' + N + ' Siswa (' + Math.round(st.P * 100) + '%)</strong></span>' +
+                '  </div>' +
+                '</td>' +
+                '</tr>';
+        }).join('');
+
+        var tableHtml = '<div class="analisis-table-wrapper" style="border:1px solid #e2e8f0;border-radius:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+            '<table id="tabelAnalisisButirSoal" class="dash-table" style="width:100%;margin:0;">' +
+            '<thead><tr>' +
+            '  <th style="width:45px;text-align:center;">No</th>' +
+            '  <th style="width:65px;text-align:center;">Tipe</th>' +
+            '  <th style="width:65px;text-align:center;">Kunci</th>' +
+            '  <th style="width:180px;text-align:center;">Distribusi Jawaban</th>' +
+            '  <th style="width:130px;text-align:center;">Tingkat Kesukaran (P)</th>' +
+            '  <th style="width:130px;text-align:center;">Daya Pembeda (D)</th>' +
+            '  <th>Evaluasi & Rekomendasi Guru</th>' +
+            '  <th style="width:90px;text-align:center;">Aksi</th>' +
+            '</tr></thead>' +
+            '<tbody>' + rowsHtml + '</tbody>' +
+            '</table>' +
+            '</div>';
+
+        // Panduan Interpretasi Singkat
+        var guideHtml = '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:1rem 1.25rem;font-size:.8rem;color:#475569;line-height:1.5;margin-bottom:1.5rem;">' +
+            '<div style="font-weight:700;color:#1e293b;margin-bottom:.4rem;display:flex;align-items:center;gap:6px;"><i data-lucide="info" style="width:14px;height:14px;color:#6366f1;"></i> Panduan Parameter Standar Evaluasi Pendidikan:</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem;">' +
+            '  <div><strong>Tingkat Kesukaran (P):</strong><br>• P &gt; 0.70 : Kategori Mudah<br>• 0.30 ≤ P ≤ 0.70 : Kategori Sedang (Ideal)<br>• P &lt; 0.30 : Kategori Sukar</div>' +
+            '  <div><strong>Daya Pembeda (D):</strong><br>• D ≥ 0.40 : Sangat Baik<br>• 0.30 ≤ D &lt; 0.40 : Baik<br>• 0.20 ≤ D &lt; 0.30 : Cukup<br>• D &lt; 0.20 : Kurang / Revisi (Pengecoh Kurang Berfungsi)</div>' +
+            '</div>' +
+            '</div>';
+
+        // Footer buttons
+        var footerHtml = '<div style="display:flex;justify-content:flex-end;gap:.75rem;padding-top:1rem;border-top:1px solid #e2e8f0;">' +
+            '<button onclick="closeAnalisisButirSoalModal()" class="btn btn-primary" style="padding:.6rem 2rem;border-radius:10px;min-height:44px;font-weight:700;">Tutup</button>' +
+            '</div>';
+
+        body.innerHTML = infoCardHtml + kpiHtml + filterBarHtml + tableHtml + guideHtml + footerHtml;
+
+        modal.style.display = 'flex';
+        modal.classList.add('active');
+        if (window.lucide) lucide.createIcons();
+
+    } catch (e) {
+        showToast('Gagal memuat analisis: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+function toggleDetailNaskahSoalAnalisis(nomor) {
+    var row = document.getElementById('naskahRow_' + nomor);
+    if (!row) return;
+    if (row.style.display === 'none' || !row.style.display) {
+        row.style.display = 'table-row';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+function filterAnalisisButirTable(kategori, btn) {
+    var btns = document.querySelectorAll('.btn-filter-analisis');
+    btns.forEach(function(b) {
+        b.style.background = '#f1f5f9';
+        b.style.color = '#334155';
+        b.style.border = '1px solid #cbd5e1';
+    });
+    if (btn) {
+        btn.style.background = '#4338ca';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+    }
+
+    var rows = document.querySelectorAll('.analisis-row');
+    rows.forEach(function(r) {
+        if (kategori === 'all') {
+            r.style.display = 'table-row';
+        } else if (kategori === 'revisi') {
+            r.style.display = r.classList.contains('filter-revisi') ? 'table-row' : 'none';
+        } else if (kategori === 'sukar') {
+            r.style.display = r.classList.contains('filter-sukar') ? 'table-row' : 'none';
+        } else if (kategori === 'sedang') {
+            r.style.display = r.classList.contains('filter-sedang') ? 'table-row' : 'none';
+        } else if (kategori === 'mudah') {
+            r.style.display = r.classList.contains('filter-mudah') ? 'table-row' : 'none';
+        }
+    });
+}
+
+function cetakLaporanAnalisisButir() {
+    var data = window._lastAnalisisCbt;
+    if (!data) {
+        showToast('Data analisis belum siap dicetak.', 'warning');
+        return;
+    }
+
+    var asm = data.asm;
+    var stats = data.statsList;
+    var printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showToast('Popup terblokir oleh browser. Izinkan popup untuk mencetak.', 'error');
+        return;
+    }
+
+    var tableRows = stats.map(function(st) {
+        var dSign = st.D >= 0 ? '+' : '';
+        return '<tr>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;">' + st.nomor + '</td>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;">' + (st.tipe === 'pg' ? 'PG' : 'Essay') + '</td>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;font-weight:bold;">' + st.kunci + '</td>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;">A:' + (st.dist.A||0) + ' B:' + (st.dist.B||0) + ' C:' + (st.dist.C||0) + ' D:' + (st.dist.D||0) + '</td>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;">' + st.P.toFixed(2) + ' (' + st.katP + ')</td>' +
+            '<td style="text-align:center;padding:6px;border:1px solid #000;">' + dSign + st.D.toFixed(2) + ' (' + st.katD + ')</td>' +
+            '<td style="padding:6px;border:1px solid #000;">' + st.rekomendasi + '</td>' +
+            '</tr>';
+    }).join('');
+
+    var html = '<!DOCTYPE html><html><head><title>Laporan Analisis Butir Soal - ' + escHtml(asm.judul) + '</title>' +
+        '<style>' +
+        '@page { size: A4 landscape; margin: 15mm; }' +
+        'body { font-family: "Times New Roman", Times, serif; font-size: 11pt; color: #000; margin: 0; padding: 15px; }' +
+        'h2, h3, h4 { margin: 2px 0; text-align: center; }' +
+        'table { width: 100%; border-collapse: collapse; margin-top: 15px; }' +
+        'th { background: #e2e8f0; font-weight: bold; border: 1px solid #000; padding: 6px; }' +
+        '.meta-table { width: 100%; border: none; margin-bottom: 10px; }' +
+        '.meta-table td { border: none; padding: 3px 0; }' +
+        '</style></head><body>' +
+        '<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:15px;">' +
+        '  <h2>SMPIT AL-FATHONAH</h2>' +
+        '  <h3>LAPORAN ANALISIS BUTIR SOAL CBT</h3>' +
+        '</div>' +
+        '<table class="meta-table">' +
+        '  <tr><td style="width:160px;"><strong>Judul Asesmen</strong></td><td>: ' + escHtml(asm.judul) + '</td><td style="width:160px;"><strong>Total Peserta Uji</strong></td><td>: ' + data.totalPeserta + ' Siswa</td></tr>' +
+        '  <tr><td><strong>Mata Pelajaran</strong></td><td>: ' + escHtml(asm.mata_pelajaran || '-') + '</td><td><strong>Rata-Rata Nilai</strong></td><td>: ' + data.avgScore + ' (Max: ' + data.maxScore + ', Min: ' + data.minScore + ')</td></tr>' +
+        '  <tr><td><strong>Kelas / Tingkat</strong></td><td>: ' + escHtml(asm.kelas || '-') + '</td><td><strong>Tanggal Analisis</strong></td><td>: ' + new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + '</td></tr>' +
+        '</table>' +
+        '<table>' +
+        '  <thead><tr>' +
+        '    <th style="width:40px;">No</th><th style="width:60px;">Tipe</th><th style="width:60px;">Kunci</th><th>Distribusi Opsi (A/B/C/D)</th><th style="width:140px;">Tingkat Kesukaran (P)</th><th style="width:140px;">Daya Pembeda (D)</th><th>Rekomendasi / Evaluasi</th>' +
+        '  </tr></thead>' +
+        '  <tbody>' + tableRows + '</tbody>' +
+        '</table>' +
+        '<div style="margin-top:30px;display:flex;justify-content:space-between;page-break-inside:avoid;">' +
+        '  <div style="text-align:center;width:200px;">Mengetahui,<br>Kepala SMPIT AL-FATHONAH<br><br><br><br><strong>........................................</strong></div>' +
+        '  <div style="text-align:center;width:200px;">Guru Mata Pelajaran,<br><br><br><br><br><strong>........................................</strong></div>' +
+        '</div>' +
+        '</body></html>';
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(function() {
+        printWindow.focus();
+        printWindow.print();
+    }, 400);
+}
+
+function eksporCsvAnalisisButir() {
+    var data = window._lastAnalisisCbt;
+    if (!data) {
+        showToast('Data analisis belum tersedia.', 'warning');
+        return;
+    }
+
+    var lines = ['No,Tipe,Kunci,A,B,C,D,Kosong,Tingkat_Kesukaran_P,Kategori_Kesukaran,Daya_Pembeda_D,Kategori_Pembeda,Rekomendasi'];
+    data.statsList.forEach(function(st) {
+        var row = [
+            st.nomor,
+            st.tipe,
+            st.kunci,
+            st.dist.A || 0,
+            st.dist.B || 0,
+            st.dist.C || 0,
+            st.dist.D || 0,
+            st.dist.kosong || 0,
+            st.P.toFixed(2),
+            st.katP,
+            st.D.toFixed(2),
+            st.katD,
+            '"' + st.rekomendasi.replace(/"/g, '""') + '"'
+        ];
+        lines.push(row.join(','));
+    });
+
+    var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var filename = 'Analisis_Butir_Soal_' + (data.asm.judul || 'CBT').replace(/[^a-zA-Z0-9]/g, '_') + '.csv';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('File CSV analisis berhasil diunduh.', 'success');
+}
