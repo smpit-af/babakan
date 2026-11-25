@@ -6312,7 +6312,25 @@ table.table-freeze-table {
 .table-freeze-table th:nth-child(10), .table-freeze-table td:nth-child(10) { width: 150px !important; min-width: 150px !important; max-width: 150px !important; }
 .table-freeze-table th:nth-child(11), .table-freeze-table td:nth-child(11) { width: 130px !important; min-width: 130px !important; max-width: 130px !important; }
 .table-freeze-table th:nth-child(12), .table-freeze-table td:nth-child(12) { width: 160px !important; min-width: 160px !important; max-width: 160px !important; }
-.table-freeze-table th:nth-child(13), .table-freeze-table td:nth-child(13) { width: 330px !important; min-width: 330px !important; max-width: 330px !important; }
+.table-freeze-table th:nth-child(13), .table-freeze-table td:nth-child(13),
+.table-freeze-table th.col-alamat, .table-freeze-table td.col-alamat {
+  width: 330px !important;
+  min-width: 330px !important;
+  max-width: 330px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.table-freeze-table td.col-alamat > div,
+.table-freeze-table td:nth-child(13) > div {
+  max-width: 300px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  display: block !important;
+}
+
 .table-freeze-table th:nth-child(14), .table-freeze-table td:nth-child(14) { width: 110px !important; min-width: 110px !important; max-width: 110px !important; }
 .table-freeze-table th:nth-child(15), .table-freeze-table td:nth-child(15) { width: 140px !important; min-width: 140px !important; max-width: 140px !important; }
 
@@ -6324,7 +6342,7 @@ table.table-freeze-table {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   vertical-align: middle !important;
-  max-width: 0 !important;
+  background: #ffffff;
 }
 
 /* Kolom yang tidak boleh di-clip teks / isinya */
@@ -6340,12 +6358,14 @@ table.table-freeze-table {
 .table-freeze-table td:nth-child(14) {
   text-align: center !important;
   overflow: visible !important;
+  background: #ffffff !important;
 }
 .table-freeze-table th.col-freeze-aksi,
 .table-freeze-table td.col-freeze-aksi {
   text-align: center !important;
   overflow: visible !important;
   white-space: nowrap !important;
+  background: #ffffff !important;
 }
 
 /* Di layar PC (> 992px) */
@@ -6458,11 +6478,13 @@ table.table-freeze-table {
     color: #ffffff !important;
   }
 
-  /* Efek Hover Row untuk kolom sticky */
+  /* Efek Hover Row untuk kolom sticky & kolom aksi */
   .table-freeze-table tbody tr:hover td.col-freeze-no,
   .table-freeze-table tbody tr:hover td.col-freeze-foto,
-  .table-freeze-table tbody tr:hover td.col-freeze-nama {
-    background: #f1f5f9;
+  .table-freeze-table tbody tr:hover td.col-freeze-nama,
+  .table-freeze-table tbody tr:hover td:nth-child(14),
+  .table-freeze-table tbody tr:hover td.col-freeze-aksi {
+    background: #f8fafc !important;
   }
 }
 
@@ -6501,4 +6523,283 @@ table.table-freeze-table {
 }
 .table-top-scroll::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+
+
+/* ============================================================
+   RESPONSIVE: Modal Luluskan Massal, Rekap Tunggakan, Rekap Absensi
+   Strict compliance with AGENTS.md (Layar <= 992px)
+   ============================================================ */
+@media (max-width: 992px) {
+  /* Modals: width, padding, safe margins */
+  #modalLuluskanMassal,
+  #modalRekapTunggakan,
+  #modalRekapAbsensiBulanan,
+  #pembayaranSiswaModal,
+  #detailSiswaModal {
+    padding: 0.5rem !important;
+    align-items: flex-start !important;
+  }
+
+  #modalLuluskanMassal .card,
+  #modalRekapTunggakan .card,
+  #modalRekapAbsensiBulanan .card,
+  #pembayaranSiswaModal .modal,
+  #detailSiswaModal .modal {
+    max-width: 96vw !important;
+    width: 96vw !important;
+    margin: 0.5rem auto !important;
+    padding: 1rem 0.85rem !important;
+    max-height: 92vh !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+    overflow-y: auto !important;
+  }
+
+  /* All mobile-stack and grid-responsive elements stack into 1 full column */
+  #modalLuluskanMassal .mobile-stack,
+  #modalRekapTunggakan .mobile-stack,
+  #modalRekapAbsensiBulanan .mobile-stack,
+  #pembayaranSiswaModal .grid-responsive,
+  #detailSiswaModal .grid-responsive {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+  }
+
+  /* Summary cards stack into 1 column on mobile */
+  #rekapTunggakanSummaryCards {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+
+  /* Form groups full width */
+  #modalLuluskanMassal .form-group,
+  #modalRekapTunggakan .form-group,
+  #modalRekapAbsensiBulanan .form-group,
+  #pembayaranSiswaModal .form-group {
+    width: 100% !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Inputs, selects, and text fields: touch-friendly min-height 44px-48px, text-align left, full width */
+  #modalLuluskanMassal input,
+  #modalLuluskanMassal select,
+  #modalRekapTunggakan input,
+  #modalRekapTunggakan select,
+  #modalRekapAbsensiBulanan input,
+  #modalRekapAbsensiBulanan select,
+  #pembayaranSiswaModal input,
+  #pembayaranSiswaModal select {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 15px !important;
+    padding: 0.6rem 0.85rem !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+  }
+
+  /* Button footers stack vertically on mobile */
+  #modalLuluskanMassal > .card > div:last-child,
+  #pembayaranSiswaModal .modal-footer,
+  #detailSiswaModal .modal-footer {
+    display: flex !important;
+    flex-direction: column-reverse !important;
+    width: 100% !important;
+    gap: 0.6rem !important;
+  }
+
+  #modalLuluskanMassal > .card > div:last-child button,
+  #pembayaranSiswaModal .modal-footer button,
+  #detailSiswaModal .modal-footer button {
+    width: 100% !important;
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  /* Filter bars and toolbars stack cleanly */
+  #modalRekapTunggakan > .card > div:nth-child(2),
+  #modalRekapAbsensiBulanan > .card > div:nth-child(2) {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.6rem !important;
+  }
+
+  #modalRekapTunggakan > .card > div:nth-child(2) > div:last-child,
+  #modalRekapAbsensiBulanan > .card > div:nth-child(2) > div:last-child {
+    margin-left: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+  }
+
+  #modalRekapTunggakan > .card > div:nth-child(2) > div:last-child button,
+  #modalRekapAbsensiBulanan > .card > div:nth-child(2) > div:last-child button {
+    flex: 1 !important;
+    min-height: 42px !important;
+    justify-content: center !important;
+  }
+
+  /* Table horizontal scroll wrapper on touch screens */
+  #matriksAbsenScrollContainer,
+  #modalRekapTunggakan table,
+  #modalLuluskanMassal table {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  #tabelRekapTunggakanKelas {
+    min-width: 680px !important;
+  }
+
+  #tabelMatriksAbsensi {
+    min-width: 950px !important;
+  }
+
+  /* Ujian Aktif Cards: Wajib 1 Kolom Penuh di Layar Mobile & Tablet (<= 992px) */
+  .ujian-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+  }
+
+  .ujian-card-btn {
+    width: 100% !important;
+    min-height: 48px !important;
+    font-size: 0.95rem !important;
+  }
+}
+
+/* ============================================
+   KARTU UJIAN AKTIF (MODERN & RESPONSIVE)
+   ============================================ */
+.ujian-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+  box-sizing: border-box;
+}
+
+.ujian-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.3rem 1.4rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ujian-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  border-color: #cbd5e1;
+}
+
+.ujian-card-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.ujian-card-accent.susulan {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.ujian-card-accent.locked {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.ujian-card-accent.done {
+  background: linear-gradient(90deg, #64748b, #475569);
+}
+
+.ujian-card-badge-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ujian-card-mapel {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ujian-card-title {
+  font-size: 1.12rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.85rem 0;
+  line-height: 1.35;
+}
+
+.ujian-card-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: #475569;
+  background: #f8fafc;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #edf2f7;
+}
+
+.ujian-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ujian-card-meta-item i {
+  width: 15px;
+  height: 15px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ujian-card-btn {
+  width: 100% !important;
+  min-height: 46px !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.18) !important;
+  text-align: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.ujian-card-btn:active {
+  transform: scale(0.98);
 }
