@@ -38,10 +38,34 @@ async function openMonitorCbt(asesmenId) {
         window._cbtMonitorSesi = sesi;
 
         // Jika sesi masih berstatus 'berjalan' tapi waktu_selesai_ujian sudah lewat, otomatis akhiri langsung
+        // KECUALI jika masih ada siswa yang sedang mengerjakan dan memiliki tambahan waktu (kompensasi teknis)
         if (sesi && sesi.status === 'berjalan' && asm && asm.waktu_selesai_ujian) {
             if (new Date() >= new Date(asm.waktu_selesai_ujian)) {
-                await cbtAutoEndSesiImmediate(sesi.id, asesmenId);
-                sesi.status = 'selesai';
+                var hasActiveCompensated = false;
+                try {
+                    const { data: actJwb } = await supabaseClient.from('cbt_jawaban_siswa')
+                        .select('id, tambahan_waktu_menit, waktu_mulai_mengerjakan')
+                        .eq('sesi_id', sesi.id)
+                        .eq('status', 'mengerjakan')
+                        .gt('tambahan_waktu_menit', 0);
+                    if (actJwb && actJwb.length > 0) {
+                        var nowT = Date.now();
+                        for (var aj of actJwb) {
+                            var extMs = (parseInt(aj.tambahan_waktu_menit) || 0) * 60000;
+                            var sMulai = aj.waktu_mulai_mengerjakan ? new Date(aj.waktu_mulai_mengerjakan).getTime() : new Date(asm.waktu_selesai_ujian).getTime();
+                            var baseLim = Math.min(sMulai + (parseInt(asm.waktu_menit || 60) * 60000), new Date(asm.waktu_selesai_ujian).getTime());
+                            if (nowT < (baseLim + extMs)) {
+                                hasActiveCompensated = true;
+                                break;
+                            }
+                        }
+                    }
+                } catch (eCek) { }
+
+                if (!hasActiveCompensated) {
+                    await cbtAutoEndSesiImmediate(sesi.id, asesmenId);
+                    sesi.status = 'selesai';
+                }
             }
         }
 
@@ -440,6 +464,9 @@ async function refreshMonitorCbt(sesiId) {
                 if (studentDate !== sesiDate) isSusulan = true;
             }
             var susulanBadge = isSusulan ? ' <span style="background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:4px;">SUSULAN</span>' : '';
+            var extraTimeBadge = (d.tambahan_waktu_menit && d.tambahan_waktu_menit > 0)
+                ? ' <span style="background:#fef9c3;color:#854d0e;border:1px solid #fde047;font-size:.65rem;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px;" title="Mendapat kompensasi waktu kendala teknis ' + d.tambahan_waktu_menit + ' menit">⏱️ +' + d.tambahan_waktu_menit + 'm</span>'
+                : '';
             var nilaiSyncBadge = d.nilai_synced ? ' <span style="background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-size:.65rem;font-weight:700;">✓ Buku Nilai</span>' : '';
 
             var stat, nilaiHtml, aksiHtml;
@@ -467,8 +494,9 @@ async function refreshMonitorCbt(sesiId) {
                 } else {
                     stat = '<span style="background:rgba(245,158,11,.1);color:#f59e0b;padding:3px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Mengerjakan</span>';
                     nilaiHtml = '<span style="color:var(--text-light);">-</span>';
-                    aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;">' +
+                    aksiHtml = '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;">' +
                         '<button onclick="showDetailJawabanSiswaCbt(\'' + d.id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="eye" style="width:12px;height:12px;"></i> Intip</button>' +
+                        '<button onclick="tambahWaktuSiswaCbt(\'' + d.id + '\', \'' + sesiId + '\')" class="btn btn-sm" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;background:#eab308;color:white;border:none;" title="Kompensasi kendala teknis (tambah waktu)"><i data-lucide="clock" style="width:12px;height:12px;"></i> +Waktu</button>' +
                         '</div>';
                 }
             } else if (d.status === 'diblokir') {
@@ -484,7 +512,7 @@ async function refreshMonitorCbt(sesiId) {
                     '<button onclick="blokirSiswaCbt(\'' + sesiId + '\', \'' + d.siswa_id + '\')" class="btn btn-sm btn-outline" style="font-size:.7rem;padding:.2rem .5rem;display:inline-flex;align-items:center;gap:3px;color:#dc2626;border-color:#dc2626;"><i data-lucide="lock" style="width:12px;height:12px;"></i> Blokir</button>' +
                     '</div>';
             }
-            return '<tr><td style="text-align:center;">' + (idx + 1) + '</td><td style="font-weight:600;">' + nama + susulanBadge + '</td><td>' + mulai + '</td><td>' + stat + '</td><td style="text-align:center;">' + pelanggaran + '</td><td style="text-align:center;">' + nilaiHtml + '</td><td style="text-align:center;">' + aksiHtml + '</td></tr>';
+            return '<tr><td style="text-align:center;">' + (idx + 1) + '</td><td style="font-weight:600;">' + nama + susulanBadge + extraTimeBadge + '</td><td>' + mulai + '</td><td>' + stat + '</td><td style="text-align:center;">' + pelanggaran + '</td><td style="text-align:center;">' + nilaiHtml + '</td><td style="text-align:center;">' + aksiHtml + '</td></tr>';
         }).join('');
         if (window.lucide) lucide.createIcons();
 
@@ -530,34 +558,188 @@ async function bukaBlokirSiswaCbt(jawabanId, sesiId) {
     } finally { hideGlobalLoader(); }
 }
 
-async function tambahWaktuSiswaCbt(jawabanId, sesiId) {
-    var min = prompt("Berapa menit tambahan waktu untuk siswa ini?", "15");
-    if(min === null) return;
-    var tambahan = parseInt(min);
-    if(isNaN(tambahan) || tambahan <= 0) {
-        showToast("Masukkan angka menit yang valid.", "warning");
+// ================= MODAL TAMBAH WAKTU CBT (KOMPENSASI KENDALA TEKNIS) =================
+function tambahWaktuSiswaCbt(jawabanId, sesiId) {
+    openModalTambahWaktuCbt(jawabanId, sesiId);
+}
+
+async function openModalTambahWaktuCbt(jawabanId, sesiId) {
+    if (!jawabanId) return;
+    showGlobalLoader('Memuat data peserta...');
+    try {
+        const { data: curr, error: errC } = await supabaseClient.from('cbt_jawaban_siswa')
+            .select('id, tambahan_waktu_menit, status, tab_switch_count, siswa:siswa_id(nama_lengkap, nisn)')
+            .eq('id', jawabanId).single();
+        if (errC) throw errC;
+
+        var existingExtra = parseInt(curr.tambahan_waktu_menit) || 0;
+        var namaSiswa = (curr.siswa && curr.siswa.nama_lengkap) ? curr.siswa.nama_lengkap : 'Siswa';
+        var nisn = (curr.siswa && curr.siswa.nisn) ? ' (NISN: ' + curr.siswa.nisn + ')' : '';
+
+        // Tutup modal lama jika ada
+        var old = document.getElementById('modalTambahWaktuCbt');
+        if (old) old.remove();
+
+        var modalHtml = '<div id="modalTambahWaktuCbt" style="position:fixed;inset:0;background:rgba(15,23,42,0.65);z-index:9999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);padding:1rem;animation:fadeIn .2s ease;">' +
+            '<div style="background:white;border-radius:18px;width:100%;max-width:520px;box-shadow:0 25px 60px rgba(0,0,0,.25);overflow:hidden;border:1px solid #e2e8f0;animation:slideUp .25s ease;">' +
+            '  <!-- Header -->' +
+            '  <div style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);color:white;padding:1.25rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">' +
+            '    <div style="display:flex;align-items:center;gap:.75rem;">' +
+            '      <div style="background:rgba(255,255,255,.2);width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;">⏱️</div>' +
+            '      <div>' +
+            '        <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:white;">Tambah Waktu Ujian</h3>' +
+            '        <p style="margin:2px 0 0;font-size:.8rem;color:#fef3c7;">Kompensasi kendala teknis / jaringan</p>' +
+            '      </div>' +
+            '    </div>' +
+            '    <button onclick="document.getElementById(\'modalTambahWaktuCbt\').remove()" style="background:transparent;border:none;color:white;cursor:pointer;font-size:1.3rem;padding:.2rem .4rem;line-height:1;border-radius:6px;">✕</button>' +
+            '  </div>' +
+            '  <!-- Body -->' +
+            '  <div style="padding:1.5rem;">' +
+            '    <!-- Info Siswa -->' +
+            '    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:.9rem 1.1rem;margin-bottom:1.25rem;">' +
+            '      <div style="font-size:.82rem;color:#64748b;margin-bottom:.2rem;">Peserta Ujian:</div>' +
+            '      <div style="font-size:1rem;font-weight:700;color:#0f172a;">' + namaSiswa + '<span style="font-size:.85rem;font-weight:400;color:#64748b;">' + nisn + '</span></div>' +
+            '      <div style="margin-top:.4rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-size:.8rem;">' +
+            '        <span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:6px;font-weight:600;">Status: ' + curr.status.toUpperCase() + '</span>' +
+            '        <span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:6px;font-weight:600;">Kompensasi Berjalan: +' + existingExtra + ' Menit</span>' +
+            '      </div>' +
+            '    </div>' +
+            '    <!-- Preset Buttons -->' +
+            '    <div style="margin-bottom:1rem;">' +
+            '      <label style="display:block;font-size:.85rem;font-weight:700;color:#334155;margin-bottom:.5rem;">Pilih Cepat Tambahan Waktu:</label>' +
+            '      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;">' +
+            '        <button type="button" class="btn-preset-waktu" onclick="setPresetTambahWaktu(5)" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:.6rem .3rem;border-radius:8px;font-weight:700;color:#334155;cursor:pointer;font-size:.85rem;transition:all .15s;">+5 Menit</button>' +
+            '        <button type="button" class="btn-preset-waktu" onclick="setPresetTambahWaktu(10)" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:.6rem .3rem;border-radius:8px;font-weight:700;color:#334155;cursor:pointer;font-size:.85rem;transition:all .15s;">+10 Menit</button>' +
+            '        <button type="button" class="btn-preset-waktu" onclick="setPresetTambahWaktu(15)" style="background:#fef3c7;border:1px solid #f59e0b;color:#b45309;padding:.6rem .3rem;border-radius:8px;font-weight:800;cursor:pointer;font-size:.85rem;transition:all .15s;">+15 Menit</button>' +
+            '        <button type="button" class="btn-preset-waktu" onclick="setPresetTambahWaktu(30)" style="background:#f1f5f9;border:1px solid #cbd5e1;padding:.6rem .3rem;border-radius:8px;font-weight:700;color:#334155;cursor:pointer;font-size:.85rem;transition:all .15s;">+30 Menit</button>' +
+            '      </div>' +
+            '    </div>' +
+            '    <!-- Input Manual -->' +
+            '    <div style="margin-bottom:1.25rem;">' +
+            '      <label for="inputTambahWaktuMenit" style="display:block;font-size:.85rem;font-weight:700;color:#334155;margin-bottom:.4rem;">Atau Masukkan Jumlah Menit:</label>' +
+            '      <div style="display:flex;align-items:center;gap:.6rem;">' +
+            '        <input id="inputTambahWaktuMenit" type="number" min="1" max="180" value="15" style="width:100%;height:46px;padding:.5rem 1rem;border:2px solid #cbd5e1;border-radius:10px;font-size:1.1rem;font-weight:700;color:#0f172a;outline:none;" oninput="updatePresetHighlight(this.value)" />' +
+            '        <span style="font-weight:700;color:#64748b;font-size:1rem;white-space:nowrap;">Menit</span>' +
+            '      </div>' +
+            '    </div>' +
+            '    <!-- Auto-unlock Option -->' +
+            '    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:.85rem 1rem;margin-bottom:1.25rem;">' +
+            '      <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;margin:0;">' +
+            '        <input id="checkResetLockCbt" type="checkbox" checked style="width:18px;height:18px;margin-top:2px;accent-color:#10b981;cursor:pointer;" />' +
+            '        <span style="font-size:.82rem;color:#065f46;line-height:1.4;">' +
+            '          <strong>Reset pelanggaran & buka akses ujian</strong> jika siswa sebelumnya terkunci akibat indikasi kecurangan / waktu habis.' +
+            '        </span>' +
+            '      </label>' +
+            '    </div>' +
+            '    <div style="font-size:.78rem;color:#64748b;line-height:1.4;margin-bottom:1.5rem;background:#f8fafc;padding:.7rem;border-radius:8px;">' +
+            '      💡 <strong>Live-Sync:</strong> Tambahan waktu akan langsung disinkronkan ke layar HP/laptop siswa secara otomatis dalam 1–3 detik tanpa perlu login ulang.' +
+            '    </div>' +
+            '    <!-- Action Buttons -->' +
+            '    <div style="display:flex;gap:.75rem;justify-content:flex-end;">' +
+            '      <button type="button" class="btn btn-outline" onclick="document.getElementById(\'modalTambahWaktuCbt\').remove()" style="padding:.65rem 1.4rem;border-radius:10px;font-weight:600;min-height:44px;">Batal</button>' +
+            '      <button type="button" class="btn btn-primary" onclick="submitTambahWaktuCbt(\'' + jawabanId + '\', \'' + sesiId + '\', ' + existingExtra + ')" style="background:linear-gradient(135deg,#f59e0b,#d97706);border:none;padding:.65rem 1.6rem;border-radius:10px;font-weight:700;color:white;min-height:44px;display:flex;align-items:center;gap:.4rem;box-shadow:0 4px 12px rgba(217,119,6,.25);">' +
+            '        <i data-lucide="plus-circle" style="width:16px;height:16px;"></i> Simpan & Tambah Waktu' +
+            '      </button>' +
+            '    </div>' +
+            '  </div>' +
+            '</div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        showToast('Gagal membuka form kompensasi: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+function setPresetTambahWaktu(menit) {
+    var inp = document.getElementById('inputTambahWaktuMenit');
+    if (inp) {
+        inp.value = menit;
+        updatePresetHighlight(menit);
+    }
+}
+
+function updatePresetHighlight(val) {
+    val = parseInt(val);
+    var btns = document.querySelectorAll('.btn-preset-waktu');
+    btns.forEach(function(btn) {
+        var num = parseInt(btn.textContent.replace(/[^0-9]/g, ''));
+        if (num === val) {
+            btn.style.background = '#fef3c7';
+            btn.style.borderColor = '#f59e0b';
+            btn.style.color = '#b45309';
+            btn.style.fontWeight = '800';
+        } else {
+            btn.style.background = '#f1f5f9';
+            btn.style.borderColor = '#cbd5e1';
+            btn.style.color = '#334155';
+            btn.style.fontWeight = '700';
+        }
+    });
+}
+
+async function submitTambahWaktuCbt(jawabanId, sesiId, existingExtra) {
+    var inp = document.getElementById('inputTambahWaktuMenit');
+    var tambahan = parseInt(inp ? inp.value : 0);
+    if (isNaN(tambahan) || tambahan <= 0) {
+        showToast('Masukkan jumlah menit yang valid (minimal 1 menit).', 'warning');
         return;
     }
-    
-    showGlobalLoader('Membuka akses dan menambah waktu...');
-    try {
-        // Ambil data jawaban saat ini untuk mengetahui tambahan_waktu_menit yang sudah ada
-        const { data: curr, error: errC } = await supabaseClient.from('cbt_jawaban_siswa').select('tambahan_waktu_menit').eq('id', jawabanId).single();
-        if(errC) throw errC;
-        var existingTambahan = curr.tambahan_waktu_menit || 0;
 
-        const { error } = await supabaseClient.from('cbt_jawaban_siswa').update({
+    var doReset = document.getElementById('checkResetLockCbt') ? document.getElementById('checkResetLockCbt').checked : true;
+    showGlobalLoader('Menyimpan kompensasi waktu & menyinkronkan...');
+
+    try {
+        const { data: curr, error: errC } = await supabaseClient.from('cbt_jawaban_siswa')
+            .select('tambahan_waktu_menit, jawaban_json, waktu_mulai_mengerjakan').eq('id', jawabanId).single();
+        if (errC) throw errC;
+
+        var currentTotalExtra = parseInt(curr.tambahan_waktu_menit) || 0;
+        var newTotalExtra = currentTotalExtra + tambahan;
+        var jwbJson = curr.jawaban_json || {};
+
+        if (doReset) {
+            delete jwbJson._is_cheat_submitted;
+            if (jwbJson._tabSwitchCount) jwbJson._tabSwitchCount = 0;
+        }
+
+        var updatePayload = {
             status: 'mengerjakan',
-            tambahan_waktu_menit: existingTambahan + tambahan,
-            waktu_kumpul: null // reset waktu kumpul
-        }).eq('id', jawabanId);
-        if(error) throw error;
-        
-        showToast('Waktu berhasil ditambah ' + tambahan + ' menit. Siswa bisa melanjutkan.', 'success');
-        refreshMonitorCbt(sesiId);
+            tambahan_waktu_menit: newTotalExtra,
+            updated_at: new Date().toISOString()
+        };
+
+        if (doReset) {
+            updatePayload.tab_switch_count = 0;
+            updatePayload.waktu_kumpul = null;
+            updatePayload.jawaban_json = jwbJson;
+            updatePayload.is_cheat_submitted = false;
+        }
+
+        if (!curr.waktu_mulai_mengerjakan) {
+            updatePayload.waktu_mulai_mengerjakan = new Date().toISOString();
+        }
+
+        var { error } = await supabaseClient.from('cbt_jawaban_siswa').update(updatePayload).eq('id', jawabanId);
+        // Fallback jika is_cheat_submitted belum ada di skema
+        if (error) {
+            delete updatePayload.is_cheat_submitted;
+            var { error: errRetry } = await supabaseClient.from('cbt_jawaban_siswa').update(updatePayload).eq('id', jawabanId);
+            if (errRetry) throw errRetry;
+        }
+
+        var modal = document.getElementById('modalTambahWaktuCbt');
+        if (modal) modal.remove();
+
+        showToast('Kompensasi +' + tambahan + ' menit berhasil ditambahkan! Waktu live langsung tersinkron.', 'success');
+        if (sesiId) refreshMonitorCbt(sesiId);
     } catch (e) {
-        showToast('Gagal tambah waktu: ' + e.message, 'error');
-    } finally { hideGlobalLoader(); }
+        showToast('Gagal menambah waktu: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
 }
 
 async function izinkanLanjutUjianCbt(jawabanId, sesiId) {
@@ -617,7 +799,7 @@ async function showDetailJawabanSiswaCbt(jawabanId) {
     showGlobalLoader('Memuat detail jawaban...');
     try {
         const { data: jawabData } = await supabaseClient.from('cbt_jawaban_siswa')
-            .select('jawaban_json, nilai, siswa:siswa_id(nama_lengkap), sesi_ujian:sesi_id(asesmen_id)')
+            .select('jawaban_json, nilai, status, waktu_mulai_mengerjakan, tambahan_waktu_menit, siswa:siswa_id(nama_lengkap), sesi_ujian:sesi_id(asesmen_id)')
             .eq('id', jawabanId).single();
             
         if (!jawabData) throw new Error('Data jawaban tidak ditemukan');
@@ -629,27 +811,47 @@ async function showDetailJawabanSiswaCbt(jawabanId) {
             .select('*').eq('asesmen_id', asesmenId).order('nomor_soal', { ascending: true });
             
         var jawaban = jawabData.jawaban_json || {};
-        var html = '<div style="text-align:left; max-height:60vh; overflow-y:auto; padding-right:.5rem;">';
+        var totalSoal = soalList ? soalList.length : 0;
+        var answeredCount = 0;
+
+        if (soalList && soalList.length > 0) {
+            soalList.forEach(function(s) {
+                var key = 'soal_' + s.nomor_soal;
+                var val = jawaban[key];
+                if (val !== undefined && val !== null && String(val).trim().length > 0) {
+                    answeredCount++;
+                }
+            });
+        }
+
+        var percent = totalSoal > 0 ? Math.round((answeredCount / totalSoal) * 100) : 0;
+        var html = '<div style="text-align:left; max-height:55vh; overflow-y:auto; padding-right:.5rem;">';
         
         if (soalList && soalList.length > 0) {
             soalList.forEach(function(s) {
                 var key = 'soal_' + s.nomor_soal;
                 var jwb = jawaban[key] || '';
+                var isAnswered = String(jwb).trim().length > 0;
                 
-                html += '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1rem; margin-bottom:1rem;">';
-                html += '<div style="font-weight:700; margin-bottom:.5rem;">Soal ' + s.nomor_soal + ' <span style="font-weight:400;color:#64748b;font-size:.8rem;">(' + (s.tipe_soal==='pg'?'Pilihan Ganda':'Essay') + ')</span></div>';
-                html += '<div style="font-size:.9rem; color:#1e293b; margin-bottom:1rem;">' + (s.naskah_soal||'') + '</div>';
+                html += '<div style="background:#f8fafc; border:1px solid ' + (isAnswered ? '#cbd5e1' : '#fecaca') + '; border-radius:10px; padding:1rem; margin-bottom:1rem;">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">' +
+                        '  <div style="font-weight:700;">Soal ' + s.nomor_soal + ' <span style="font-weight:400;color:#64748b;font-size:.8rem;">(' + (s.tipe_soal==='pg'?'Pilihan Ganda':'Essay') + ')</span></div>' +
+                        '  <div>' + (isAnswered 
+                            ? '<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">✓ Terjawab</span>' 
+                            : '<span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:6px;font-size:.75rem;font-weight:700;">✕ Belum Dijawab</span>') + '</div>' +
+                        '</div>';
+                html += '<div style="font-size:.9rem; color:#1e293b; margin-bottom:1rem; line-height:1.4;">' + (s.naskah_soal||'') + '</div>';
                 
                 if (s.tipe_soal === 'pg') {
                     var isCorrect = (String(jwb).trim().toUpperCase() === String(s.kunci_jawaban || '').trim().toUpperCase().charAt(0));
-                    html += '<div style="display:flex; gap:1.5rem; font-size:.85rem; background:white; padding:.6rem; border-radius:8px; border:1px solid #e2e8f0;">';
-                    html += '<div>Jawaban Siswa: <strong style="color:' + (isCorrect ? '#10b981' : '#dc2626') + '; font-size:1rem;">' + (jwb || '-') + '</strong></div>';
-                    html += '<div>Kunci: <strong style="color:#10b981; font-size:1rem;">' + (s.kunci_jawaban || '-') + '</strong></div>';
+                    html += '<div style="display:flex; gap:1.5rem; font-size:.85rem; background:white; padding:.6rem .8rem; border-radius:8px; border:1px solid #e2e8f0; align-items:center; flex-wrap:wrap;">';
+                    html += '<div>Jawaban Siswa: ' + (isAnswered ? '<strong style="color:' + (isCorrect ? '#10b981' : '#dc2626') + '; font-size:1.05rem;">' + escHtml(jwb) + '</strong>' : '<span style="color:#ef4444;font-style:italic;">Belum memilih</span>') + '</div>';
+                    html += '<div>Kunci: <strong style="color:#10b981; font-size:1.05rem;">' + escHtml(s.kunci_jawaban || '-') + '</strong></div>';
                     html += '</div>';
                 } else {
                     html += '<div style="font-size:.85rem; color:#334155; background:white; padding:.8rem; border-radius:8px; border:1px solid #e2e8f0;">';
-                    html += '<div style="margin-bottom:.8rem;"><strong style="color:#0f172a;">Jawaban Siswa:</strong><div style="margin-top:.3rem;color:#475569;line-height:1.5;">' + (jwb || '<em>Tidak dijawab</em>') + '</div></div>';
-                    html += '<div style="border-top:1px dashed #cbd5e1; padding-top:.8rem;"><strong style="color:#0f172a;">Kunci/Keyword:</strong><div style="margin-top:.3rem;color:#10b981;line-height:1.5;">' + (s.kunci_jawaban || '-') + '</div></div>';
+                    html += '<div style="margin-bottom:.8rem;"><strong style="color:#0f172a;">Jawaban Siswa:</strong><div style="margin-top:.3rem;color:' + (isAnswered ? '#1e293b' : '#ef4444') + ';line-height:1.5;">' + (isAnswered ? escHtml(jwb) : '<em>Belum diisi oleh siswa</em>') + '</div></div>';
+                    html += '<div style="border-top:1px dashed #cbd5e1; padding-top:.8rem;"><strong style="color:#0f172a;">Kunci/Keyword:</strong><div style="margin-top:.3rem;color:#10b981;line-height:1.5;">' + escHtml(s.kunci_jawaban || '-') + '</div></div>';
                     html += '</div>';
                 }
                 
@@ -661,15 +863,26 @@ async function showDetailJawabanSiswaCbt(jawabanId) {
         
         html += '</div>';
         
-        var modalContent = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #e2e8f0;">' +
-                           '  <div style="text-align:left;"><h3 style="margin:0 0 .3rem 0;font-size:1.2rem;color:#0f172a;">Detail Jawaban Siswa</h3><div style="font-size:.9rem; color:#64748b;">Siswa: <strong style="color:#334155;">' + (jawabData.siswa ? jawabData.siswa.nama_lengkap : '') + '</strong> &nbsp;•&nbsp; Nilai Akhir: <strong style="color:#0369a1;">' + (jawabData.nilai != null ? jawabData.nilai : '-') + '</strong></div></div>' +
+        var modalContent = '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid #e2e8f0; gap:1rem;">' +
+                           '  <div style="text-align:left;">' +
+                           '    <h3 style="margin:0 0 .3rem 0;font-size:1.2rem;color:#0f172a;">Pantau / Intip Jawaban Siswa</h3>' +
+                           '    <div style="font-size:.88rem; color:#64748b;">Siswa: <strong style="color:#334155;">' + (jawabData.siswa ? jawabData.siswa.nama_lengkap : 'Siswa') + '</strong> &nbsp;•&nbsp; Status: <strong style="color:#0369a1;">' + (jawabData.status || '-').toUpperCase() + '</strong></div>' +
+                           '    <div style="margin-top:.4rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">' +
+                           '      <span style="background:' + (answeredCount === totalSoal ? '#dcfce7' : '#fef3c7') + ';color:' + (answeredCount === totalSoal ? '#15803d' : '#b45309') + ';padding:2px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">' + answeredCount + ' / ' + totalSoal + ' Soal Selesai (' + percent + '%)</span>' +
+                           '      ' + (jawabData.nilai != null ? '<span style="background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:6px;font-weight:700;font-size:.8rem;">Nilai Sementara: ' + jawabData.nilai + '</span>' : '') +
+                           '    </div>' +
+                           '  </div>' +
+                           '  <button onclick="document.getElementById(\'detailJwbModal\').remove(); showDetailJawabanSiswaCbt(\'' + jawabanId + '\');" class="btn btn-sm btn-outline" style="white-space:nowrap;display:flex;align-items:center;gap:4px;padding:.35rem .7rem;font-size:.8rem;" title="Muat ulang jawaban terbaru siswa"><i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Refresh</button>' +
                            '</div>' + html +
-                           '<div style="text-align:center; margin-top:1.5rem; padding-top:1rem; border-top:1px solid #e2e8f0;"><button class="btn btn-primary" onclick="document.getElementById(\'detailJwbModal\').remove()" style="padding:.6rem 2rem; border-radius:10px;">Tutup</button></div>';
+                           '<div style="text-align:center; margin-top:1.25rem; padding-top:1rem; border-top:1px solid #e2e8f0;"><button class="btn btn-primary" onclick="document.getElementById(\'detailJwbModal\').remove()" style="padding:.6rem 2.5rem; border-radius:10px; min-height:44px; font-weight:700;">Tutup</button></div>';
                            
+        var old = document.getElementById('detailJwbModal');
+        if (old) old.remove();
+
         var overlay = document.createElement('div');
         overlay.id = 'detailJwbModal';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;animation:fadeIn .2s ease;';
-        overlay.innerHTML = '<div style="background:white; border-radius:16px; padding:1.5rem 2rem; width:100%; max-width:650px; box-shadow:0 25px 60px rgba(0,0,0,.2);">' + modalContent + '</div>';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem;animation:fadeIn .2s ease;';
+        overlay.innerHTML = '<div style="background:white; border-radius:16px; padding:1.5rem; width:100%; max-width:650px; box-shadow:0 25px 60px rgba(0,0,0,.25);">' + modalContent + '</div>';
         document.body.appendChild(overlay);
         if (window.lucide) lucide.createIcons();
         
@@ -695,20 +908,41 @@ async function mulaiUjianCbtSiswa(asesmenId) {
 
         // Cek apakah waktu sesi ujian sudah berakhir
         if (asm.waktu_selesai_ujian && new Date() >= new Date(asm.waktu_selesai_ujian)) {
-            if (typeof cbtAutoEndSesiImmediate === 'function') cbtAutoEndSesiImmediate(null, asesmenId);
-            hideGlobalLoader();
-            showNotifModal('Ujian Telah Berakhir',
-                '<div style="text-align:center;padding:1rem 0;">' +
-                '<div style="background:#fee2e2;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
-                '<i data-lucide="clock" style="width:34px;height:34px;color:#dc2626;"></i></div>' +
-                '<h3 style="margin-bottom:.5rem;color:#991b1b;font-size:1.2rem;">Waktu Sesi Telah Berakhir</h3>' +
-                '<p style="color:#64748b;font-size:.9rem;line-height:1.6;margin-bottom:1rem;">' +
-                'Sesi ujian <strong>"' + escHtml(asm.judul) + '"</strong> telah berakhir pada pukul ' +
-                new Date(asm.waktu_selesai_ujian).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB.<br>' +
-                'Anda tidak dapat lagi mengikuti atau mengerjakan ujian ini.' +
-                '</p></div>', 'error');
-            if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
-            return;
+            // Cek apakah siswa ini memiliki kompensasi tambahan waktu aktif
+            var hasCompensatedStudent = false;
+            try {
+                if (currentUser && currentUser.id) {
+                    const { data: sD } = await supabaseClient.from('siswa').select('id').eq('user_id', currentUser.id).maybeSingle();
+                    if (sD) {
+                        const { data: jwEx } = await supabaseClient.from('cbt_jawaban_siswa')
+                            .select('id, tambahan_waktu_menit, status')
+                            .eq('siswa_id', sD.id)
+                            .gt('tambahan_waktu_menit', 0)
+                            .order('created_at', { ascending: false })
+                            .limit(1);
+                        if (jwEx && jwEx.length > 0 && jwEx[0].status === 'mengerjakan') {
+                            hasCompensatedStudent = true;
+                        }
+                    }
+                }
+            } catch (eC) { }
+
+            if (!hasCompensatedStudent) {
+                if (typeof cbtAutoEndSesiImmediate === 'function') cbtAutoEndSesiImmediate(null, asesmenId);
+                hideGlobalLoader();
+                showNotifModal('Ujian Telah Berakhir',
+                    '<div style="text-align:center;padding:1rem 0;">' +
+                    '<div style="background:#fee2e2;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;">' +
+                    '<i data-lucide="clock" style="width:34px;height:34px;color:#dc2626;"></i></div>' +
+                    '<h3 style="margin-bottom:.5rem;color:#991b1b;font-size:1.2rem;">Waktu Sesi Telah Berakhir</h3>' +
+                    '<p style="color:#64748b;font-size:.9rem;line-height:1.6;margin-bottom:1rem;">' +
+                    'Sesi ujian <strong>"' + escHtml(asm.judul) + '"</strong> telah berakhir pada pukul ' +
+                    new Date(asm.waktu_selesai_ujian).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB.<br>' +
+                    'Anda tidak dapat lagi mengikuti atau mengerjakan ujian ini.' +
+                    '</p></div>', 'error');
+                if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 50);
+                return;
+            }
         }
 
         // Jika user adalah siswa, cek apakah jenjang/kelasnya sesuai
@@ -893,10 +1127,26 @@ async function verifikasiTokenCbt(asesmenId) {
         // Double check kesesuaian kelas dan waktu ujian
         const { data: asmCheck } = await supabaseClient.from('asesmen').select('judul, kelas, waktu_selesai_ujian').eq('id', asesmenId).single();
         if (asmCheck && asmCheck.waktu_selesai_ujian && new Date() >= new Date(asmCheck.waktu_selesai_ujian)) {
-            if (typeof cbtAutoEndSesiImmediate === 'function') cbtAutoEndSesiImmediate(sesi.id, asesmenId);
-            var ovExpired = document.getElementById('cbtTokenOverlay');
-            if (ovExpired) ovExpired.remove();
-            throw new Error('Sesi ujian telah berakhir pada pukul ' + new Date(asmCheck.waktu_selesai_ujian).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB.');
+            // Cek apakah siswa ini memiliki kompensasi tambahan waktu aktif
+            var studentHasExtraTime = false;
+            try {
+                const { data: jwbExtra } = await supabaseClient.from('cbt_jawaban_siswa')
+                    .select('id, tambahan_waktu_menit, status')
+                    .eq('siswa_id', cbtSiswaId)
+                    .gt('tambahan_waktu_menit', 0)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                if (jwbExtra && jwbExtra.length > 0 && jwbExtra[0].status === 'mengerjakan') {
+                    studentHasExtraTime = true;
+                }
+            } catch (eExtra) { }
+
+            if (!studentHasExtraTime) {
+                if (typeof cbtAutoEndSesiImmediate === 'function') cbtAutoEndSesiImmediate(sesi.id, asesmenId);
+                var ovExpired = document.getElementById('cbtTokenOverlay');
+                if (ovExpired) ovExpired.remove();
+                throw new Error('Sesi ujian telah berakhir pada pukul ' + new Date(asmCheck.waktu_selesai_ujian).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB.');
+            }
         }
 
         if (asmCheck && typeof isKelasMatch === 'function') {
@@ -1013,6 +1263,25 @@ async function verifikasiTokenCbt(asesmenId) {
     }
 }
 
+// Helper hitung deadline absolut secara deterministik
+function calculateCbtDeadlineMs(mulaiVal, waktuMenitVal, selesaiUjianStr, tambahanMenitVal) {
+    var stMulai = mulaiVal ? new Date(mulaiVal) : new Date();
+    var baseLimitMs = stMulai.getTime() + ((parseInt(waktuMenitVal) || 60) * 60 * 1000);
+    if (selesaiUjianStr) {
+        var tSelesai = new Date(selesaiUjianStr).getTime();
+        if (!isNaN(tSelesai)) {
+            baseLimitMs = Math.min(baseLimitMs, tSelesai);
+        }
+    }
+    var extraMs = (parseInt(tambahanMenitVal) || 0) * 60 * 1000;
+    var targetMs = baseLimitMs + extraMs;
+    // Jika waktu dasar sudah lewat, kompensasi kendala teknis harus memberi waktu terhitung dari sekarang
+    if (extraMs > 0 && baseLimitMs < Date.now()) {
+        targetMs = Math.max(targetMs, Date.now() + extraMs);
+    }
+    return targetMs;
+}
+
 async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
     showGlobalLoader('Menyiapkan soal ujian...');
     try {
@@ -1035,20 +1304,16 @@ async function renderUiUjianCbt(asesmenId, sesiId, jawabanId, existingJawaban) {
         cbtWaktuMenit = parseInt(asm.waktu_menit) || 60;
         cbtTabSwitchCount = 0;
 
-        // Hitung deadline dari waktu mulai mengerjakan
+        window._cbtAsmCurrent = asm;
+
+        // Hitung deadline dari waktu mulai mengerjakan & kompensasi teknis
         const { data: myJawaban } = await supabaseClient.from('cbt_jawaban_siswa')
             .select('waktu_mulai_mengerjakan, tambahan_waktu_menit').eq('id', jawabanId).single();
-        var mulai = myJawaban ? new Date(myJawaban.waktu_mulai_mengerjakan) : new Date();
-        var tambahanMs = myJawaban && myJawaban.tambahan_waktu_menit ? myJawaban.tambahan_waktu_menit * 60 * 1000 : 0;
-        cbtDeadline = new Date(mulai.getTime() + (cbtWaktuMenit * 60 * 1000) + tambahanMs);
-
-        // Limit deadline to waktu_selesai_ujian jika ada
-        if (asm.waktu_selesai_ujian) {
-            var limitTutup = new Date(asm.waktu_selesai_ujian);
-            if (cbtDeadline > limitTutup) {
-                cbtDeadline = limitTutup;
-            }
-        }
+        var mulaiVal = (myJawaban && myJawaban.waktu_mulai_mengerjakan) ? myJawaban.waktu_mulai_mengerjakan : new Date().toISOString();
+        var tambahanVal = (myJawaban && myJawaban.tambahan_waktu_menit) ? parseInt(myJawaban.tambahan_waktu_menit) : 0;
+        
+        var targetDeadlineMs = calculateCbtDeadlineMs(mulaiVal, cbtWaktuMenit, asm.waktu_selesai_ujian, tambahanVal);
+        cbtDeadline = new Date(targetDeadlineMs);
 
         // Cek apakah waktu sudah habis
         if (new Date() >= cbtDeadline) {
@@ -1280,31 +1545,58 @@ function renderSoalCbt(index) {
     updateNavGridCbt();
 }
 
+// Debounce auto-save seketika (instant save) saat siswa memilih jawaban / mengetik essay
+var _cbtSaveDebounceTimer = null;
+function triggerCbtImmediateSave(delay) {
+    if (!cbtJawabanId) return;
+    if (_cbtSaveDebounceTimer) clearTimeout(_cbtSaveDebounceTimer);
+    _cbtSaveDebounceTimer = setTimeout(function() {
+        saveCbtJawabanToDb(cbtJawabanId, true);
+    }, delay != null ? delay : 250);
+}
+
+function flushCbtImmediateSave() {
+    if (_cbtSaveDebounceTimer) {
+        clearTimeout(_cbtSaveDebounceTimer);
+        _cbtSaveDebounceTimer = null;
+        if (cbtJawabanId) {
+            saveCbtJawabanToDb(cbtJawabanId, true);
+        }
+    }
+}
+
 function pilihJawabanPgCbt(nomorSoal, huruf) {
     var key = 'soal_' + nomorSoal;
     cbtJawabanMap[key] = huruf;
     renderSoalCbt(cbtCurrentSoalIndex);
+    // Simpan instan ke database agar langsung terbaca di menu Intip Pengawas
+    triggerCbtImmediateSave(200);
 }
 
 function simpanJawabanEssayCbt(nomorSoal, text) {
     var key = 'soal_' + nomorSoal;
     cbtJawabanMap[key] = text;
     updateNavGridCbt();
+    // Simpan essay dengan debounce 400ms saat mengetik
+    triggerCbtImmediateSave(400);
 }
 
 function toggleRaguCbt(nomorSoal, isRagu) {
     var key = 'ragu_' + nomorSoal;
     cbtJawabanMap[key] = isRagu;
     updateNavGridCbt();
+    triggerCbtImmediateSave(200);
 }
 
 function navigasiSoalCbt(direction) {
+    flushCbtImmediateSave();
     var newIndex = cbtCurrentSoalIndex + direction;
     if (newIndex < 0 || newIndex >= cbtSoalListCache.length) return;
     renderSoalCbt(newIndex);
 }
 
 function goToSoalCbt(index) {
+    flushCbtImmediateSave();
     if (index < 0 || index >= cbtSoalListCache.length) return;
     renderSoalCbt(index);
 }
@@ -1344,6 +1636,36 @@ function updateNavGridCbt() {
 function startCbtTimer(jawabanId) {
     if (cbtInterval) { clearInterval(cbtInterval); cbtInterval = null; }
 
+    var timerTickCount = 0;
+    async function checkLiveCompensation() {
+        if (!jawabanId) return;
+        try {
+            const { data: curJwb } = await supabaseClient
+                .from('cbt_jawaban_siswa')
+                .select('tambahan_waktu_menit, waktu_mulai_mengerjakan, status')
+                .eq('id', jawabanId)
+                .maybeSingle();
+
+            if (curJwb) {
+                var curExt = parseInt(curJwb.tambahan_waktu_menit) || 0;
+                var selesaiUjian = (window._cbtAsmCurrent && window._cbtAsmCurrent.waktu_selesai_ujian) ? window._cbtAsmCurrent.waktu_selesai_ujian : null;
+                var expectedMs = calculateCbtDeadlineMs(curJwb.waktu_mulai_mengerjakan, cbtWaktuMenit, selesaiUjian, curExt);
+
+                if (!cbtDeadline || Math.abs(expectedMs - cbtDeadline.getTime()) >= 2000) {
+                    var prevTime = cbtDeadline ? cbtDeadline.getTime() : Date.now();
+                    cbtDeadline = new Date(expectedMs);
+                    tickTimer(); // Segera render angka baru di layar!
+                    if (expectedMs > prevTime) {
+                        var addedMin = Math.round((expectedMs - prevTime) / 60000);
+                        if (addedMin > 0 && typeof showToast === 'function') {
+                            showToast('⏰ Pengawas menambahkan kompensasi waktu +' + addedMin + ' menit!', 'success');
+                        }
+                    }
+                }
+            }
+        } catch (eLive) { }
+    }
+
     function tickTimer() {
         if (!cbtDeadline) return;
         var now = new Date();
@@ -1372,13 +1694,35 @@ function startCbtTimer(jawabanId) {
             } else if (minutes < 10) {
                 box.style.background = 'rgba(245,158,11,.15)';
                 if (display) display.style.color = '#fcd34d';
+            } else {
+                box.style.background = 'rgba(255,255,255,.1)';
+                if (display) display.style.color = 'white';
             }
+        }
+
+        // Cek kompensasi waktu live setiap 3 detik
+        timerTickCount++;
+        if (timerTickCount % 3 === 0) {
+            checkLiveCompensation();
         }
     }
 
-    // Jalankan satu kali segera agar tidak tertunda 1 detik dengan tampilan '--:--'
+    // Jalankan segera
     tickTimer();
+    checkLiveCompensation(); // Cek langsung saat timer dinyalakan!
     cbtInterval = setInterval(tickTimer, 1000);
+
+    // Sync juga saat tab/layar HP dinyalakan kembali
+    window.addEventListener('focus', function() {
+        checkLiveCompensation();
+        tickTimer();
+    });
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            checkLiveCompensation();
+            tickTimer();
+        }
+    });
 }
 
 // ================= AUTO-SAVE =================
@@ -1402,6 +1746,29 @@ async function saveCbtJawabanToDb(jawabanId, silent) {
             tab_switch_count: cbtTabSwitchCount,
             updated_at: new Date().toISOString()
         }).eq('id', jawabanId);
+
+        // Periksa live jika pengawas memberikan kompensasi tambahan waktu
+        try {
+            const { data: curJwb } = await supabaseClient
+                .from('cbt_jawaban_siswa')
+                .select('waktu_mulai_mengerjakan, tambahan_waktu_menit')
+                .eq('id', jawabanId)
+                .maybeSingle();
+
+            if (curJwb) {
+                var curExt = parseInt(curJwb.tambahan_waktu_menit) || 0;
+                var selesaiUjian = (window._cbtAsmCurrent && window._cbtAsmCurrent.waktu_selesai_ujian) ? window._cbtAsmCurrent.waktu_selesai_ujian : null;
+                var targetDeadlineMs = calculateCbtDeadlineMs(curJwb.waktu_mulai_mengerjakan, cbtWaktuMenit, selesaiUjian, curExt);
+
+                if (!cbtDeadline || Math.abs(targetDeadlineMs - cbtDeadline.getTime()) >= 2000) {
+                    var diffM = cbtDeadline ? Math.round((targetDeadlineMs - cbtDeadline.getTime()) / 60000) : 0;
+                    cbtDeadline = new Date(targetDeadlineMs);
+                    if (diffM > 0 && typeof showToast === 'function') {
+                        showToast('⏰ Anda mendapatkan kompensasi waktu +' + diffM + ' menit dari pengawas!', 'success');
+                    }
+                }
+            }
+        } catch (errTime) { }
 
         if (!silent) {
             // Show subtle save indicator
@@ -2243,13 +2610,18 @@ async function cbtAutoResumeSession() {
 
         // Cek apakah jawaban masih berstatus 'mengerjakan' di database dan bukan terkena diskualifikasi
         var { data: jwb, error: jwbErr } = await supabaseClient.from('cbt_jawaban_siswa')
-            .select('id, status, jawaban_json, sesi_id, tab_switch_count')
+            .select('id, status, jawaban_json, sesi_id, tab_switch_count, tambahan_waktu_menit')
             .eq('id', session.jawabanId)
             .single();
 
         var isCheatResumeLocked = jwb && ((jwb.tab_switch_count && jwb.tab_switch_count > 3) || 
                                           (jwb.is_cheat_submitted === true) || 
                                           (jwb.jawaban_json && jwb.jawaban_json._is_cheat_submitted === true));
+
+        // Jika siswa mendapat kompensasi tambahan waktu dari pengawas (tambahan_waktu_menit > 0), abaikan lock lama
+        if (jwb && jwb.tambahan_waktu_menit > 0) {
+            isCheatResumeLocked = false;
+        }
 
         if (jwbErr || !jwb || jwb.status !== 'mengerjakan' || isCheatResumeLocked) {
             // Sesi sudah selesai/diblokir/diskualifikasi pelanggaran/tidak valid → hapus
@@ -2263,8 +2635,10 @@ async function cbtAutoResumeSession() {
             .eq('id', jwb.sesi_id)
             .single();
 
-        if (sesiErr || !sesi || sesi.status !== 'berjalan') {
-            // Sesi sudah ditutup guru → hapus
+        // Jika sesi berstatus selesai, tapi siswa memiliki tambahan waktu kompensasi aktif, tetap izinkan lanjut
+        var hasCompensation = jwb && jwb.tambahan_waktu_menit > 0;
+        if (sesiErr || !sesi || (sesi.status !== 'berjalan' && !hasCompensation)) {
+            // Sesi sudah ditutup guru & tidak ada kompensasi → hapus
             localStorage.removeItem('cbt_active_session');
             return;
         }
