@@ -6647,7 +6647,9 @@ async function loadSoalUjian() {
                 if (isAdmin) {
                     aksiHtml += '<button class="btn btn-sm" onclick="openMonitorCbt(\'' + a.id + '\')" style="background:linear-gradient(135deg,#0284c7,#0369a1);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;margin-right:.3rem;" title="Cek & pantau jawaban peserta ujian ini"><i data-lucide="file-check" style="width:11px;height:11px"></i> Cek Jawaban</button>';
                 }
-                aksiHtml += '<button class="btn btn-sm" onclick="lihatPesertaUjian(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;"><i data-lucide="users" style="width:11px;height:11px"></i> Peserta</button>';
+                if (currentRole !== 'siswa') {
+                    aksiHtml += '<button class="btn btn-sm" onclick="lihatPesertaUjian(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-size:.72rem;padding:.3rem .6rem;border-radius:6px;white-space:nowrap;"><i data-lucide="users" style="width:11px;height:11px"></i> Peserta</button>';
+                }
 
                 return '<tr style="opacity:.85;">' +
                     '<td style="text-align:center;">' + (i + 1) + '</td>' +
@@ -6658,7 +6660,7 @@ async function loadSoalUjian() {
                     '<td>' + tgl + '</td>' +
                     '<td><span style="color:var(--text-light);font-size:.82rem;text-decoration:line-through;">Link dinonaktifkan</span></td>' +
                     '<td><span class="badge" style="background:rgba(100,116,139,.1);color:#64748b;font-size:.75rem;">Kadaluarsa</span></td>' +
-                    '<td><div style="display:flex;gap:.3rem;flex-wrap:wrap;justify-content:center;">' + aksiHtml + '</div></td>' +
+                    '<td><div style="display:flex;gap:.3rem;flex-wrap:wrap;justify-content:center;">' + (aksiHtml || '<span style="color:var(--text-light);font-size:.8rem;">-</span>') + '</div></td>' +
                     '</tr>';
             }).join('');
         }
