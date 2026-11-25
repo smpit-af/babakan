@@ -827,10 +827,11 @@ function filterSiswaTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
+            '<td class="col-alamat" title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '"><div style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</div></td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
+            '<button class="btn btn-sm btn-outline" onclick="cetakBukuIndukSiswa(\'' + s.id + '\')" title="Cetak Buku Induk Siswa" style="border-color:#0284c7;color:#0284c7;padding:4px 8px;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></button> ' +
             '<button class="btn btn-sm btn-outline" onclick="viewDetailSiswa(\'' + s.id + '\')" title="Detail" style="border-color:#3b82f6;color:#3b82f6;padding:4px 8px;"><i data-lucide="eye" style="width:14px;height:14px;"></i></button> ' +
             '<button class="btn btn-sm btn-warning" onclick="editSiswa(\'' + s.id + '\')" title="Edit" style="padding:4px 8px;"><i data-lucide="edit" style="width:14px;height:14px;"></i></button> ' +
             '<button class="btn btn-sm btn-danger" onclick="deleteSiswa(\'' + s.id + '\',\'' + (s.nama_lengkap || '').replace(/'/g, "\\'") + '\')" title="Hapus" style="padding:4px 8px;"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>' +
@@ -909,7 +910,7 @@ function filterSiswaPindahTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
+            '<td class="col-alamat" title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '"><div style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</div></td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
@@ -991,7 +992,7 @@ function filterSiswaDikeluarkanTable() {
             '<td>' + (s.nama_ibu || '-') + '</td>' +
             '<td>' + (s.nomor_hp || '-') + '</td>' +
             '<td>' + (s.email || '-') + '</td>' +
-            '<td title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</td>' +
+            '<td class="col-alamat" title="' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '"><div style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (typeof escHtml === 'function' ? escHtml(s.alamat || '-') : (s.alamat || '-')) + '</div></td>' +
             '<td>' + statusBadge + '</td>' +
             '<td class="col-freeze-aksi" style="text-align:center; white-space:nowrap;">' +
             '<div style="display:inline-flex;gap:4px;align-items:center;justify-content:center;">' +
@@ -1033,7 +1034,8 @@ function openSiswaModal() {
 function closeSiswaModal() { document.getElementById('siswaModal').classList.remove('active'); }
 
 function viewDetailSiswa(id) {
-    var s = siswaList.find(function (x) { return x.id === id; });
+    window.currentViewDetailSiswaId = id;
+    var s = (typeof siswaList !== 'undefined' ? siswaList : []).find(function (x) { return x.id === id; });
     if (!s) return;
 
     document.getElementById('detailSiswaNama').innerText = s.nama_lengkap || '-';
@@ -1327,8 +1329,8 @@ async function loadAlumniData() {
         }
         tbody.innerHTML = alumniList.map(function (a, i) {
             var sekolahTujuan = a.sekolah_tujuan || '<em style="color:var(--text-light)">Belum diisi</em>';
-            return '<tr><td>' + (i + 1) + '</td><td>' + (a.asal_sekolah || '-') + '</td><td>' + (a.nama_lengkap || '-') + '</td><td>' + (a.jenis_kelamin || '-') + '</td><td>' + (a.nisn || '-') + '</td><td>' + (a.nama_ayah || '-') + '</td><td>' + (a.nama_ibu || '-') + '</td><td>' + (a.nomor_hp || '-') + '</td><td>' + (a.alamat || '-') + '</td><td>' + sekolahTujuan + '</td>' +
-                '<td style="text-align:center;"><button class="btn btn-sm btn-warning" onclick="editAlumni(\'' + a.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button></td></tr>';
+            return '<tr><td>' + (i + 1) + '</td><td>' + (a.asal_sekolah || '-') + '</td><td>' + (a.nama_lengkap || '-') + '</td><td>' + (a.jenis_kelamin || '-') + '</td><td>' + (a.nisn || '-') + '</td><td>' + (a.nama_ayah || '-') + '</td><td>' + (a.nama_ibu || '-') + '</td><td>' + (a.nomor_hp || '-') + '</td><td class="col-alamat" title="' + (typeof escHtml === 'function' ? escHtml(a.alamat || '-') : (a.alamat || '-')) + '"><div style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (typeof escHtml === 'function' ? escHtml(a.alamat || '-') : (a.alamat || '-')) + '</div></td><td>' + sekolahTujuan + '</td>' +
+                '<td style="text-align:center;"><button class="btn btn-sm btn-outline" onclick="cetakBukuIndukSiswa(\'' + a.id + '\')" title="Cetak Buku Induk" style="border-color:#0ea5e9;color:#0ea5e9;padding:4px 8px;margin-right:4px;"><i data-lucide="book-open" style="width:14px;height:14px;"></i></button><button class="btn btn-sm btn-warning" onclick="editAlumni(\'' + a.id + '\')" title="Edit"><i data-lucide="edit" style="width:14px;height:14px;"></i></button></td></tr>';
         }).join('');
         if (window.lucide) lucide.createIcons();
     } catch (e) { showToast('Gagal muat alumni: ' + e.message, 'error'); }
@@ -5959,16 +5961,37 @@ async function submitSalinanAsDraft(id) {
         async function () {
             showGlobalLoader('Memindahkan ke antrean review...');
             try {
+                // 1. Ambil data asesmen saat ini untuk membersihkan label "(Copy)" dari judul
+                const { data: currAsm, error: errFetch } = await supabaseClient
+                    .from('asesmen')
+                    .select('judul')
+                    .eq('id', id)
+                    .single();
+                if (errFetch) throw errFetch;
+
+                var cleanJudul = (currAsm.judul || '').replace(/\s*\(Copy\)\s*/gi, ' ').trim();
                 var newStatus = (currentRole === 'admin' || currentRole === 'kurikulum') ? 'draft' : 'menunggu_review';
+
                 const { error } = await supabaseClient.from('asesmen').update({
+                    judul: cleanJudul || currAsm.judul,
+                    status: 'draft',
                     review_status: newStatus,
+                    catatan_revisi: null,
                     updated_at: new Date().toISOString()
                 }).eq('id', id);
                 if (error) throw error;
+
                 showToast('Salinan berhasil dipindahkan ke antrean Review & Draft!', 'success');
                 if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
                 if (typeof loadReviewDraftList === 'function') loadReviewDraftList();
-            if (typeof loadSalinanTerbitList === 'function') loadSalinanTerbitList();
+
+                // Otomatis arahkan ke tab Review & Draft Soal
+                if (typeof switchAsesmenTab === 'function') {
+                    var tabs = document.querySelectorAll('.asesmen-tab');
+                    if (tabs && tabs.length > 1) {
+                        switchAsesmenTab('review', tabs[1]);
+                    }
+                }
             } catch (e) {
                 showToast('Gagal: ' + e.message, 'error');
             } finally {
@@ -6349,11 +6372,20 @@ async function saveUjianSettings() {
 
 // --- Load data untuk menu Soal Ujian ---
 async function loadSoalUjian() {
+    var cardContainer = document.getElementById('ujianAktifCardContainer');
     var tbodyAktif = document.getElementById('ujianAktifTbody');
     var tbodyNonaktif = document.getElementById('ujianNonaktifTbody');
-    if (!tbodyAktif || !tbodyNonaktif || !supabaseClient) return;
+    if ((!cardContainer && !tbodyAktif) || !tbodyNonaktif || !supabaseClient) return;
 
-    tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    if (cardContainer) {
+        cardContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align:center; padding: 2.5rem; color: var(--text-light);">' +
+            '<div style="font-size:1.5rem;margin-bottom:.5rem;">⏳</div>' +
+            '<div>Memuat daftar ujian aktif...</div>' +
+            '</div>';
+    }
+    if (tbodyAktif) {
+        tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
+    }
     tbodyNonaktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">Memuat...</td></tr>';
 
     try {
@@ -6466,19 +6498,27 @@ async function loadSoalUjian() {
             }
         }
 
-        // ===== Render Tabel Aktif (termasuk pending) =====
+        // ===== Render Kartu Ujian Aktif (Modern Card Layout) =====
+        var renderTarget = cardContainer || tbodyAktif;
         if (aktifList.length === 0) {
             var emptyAktifMsg = currentRole === 'siswa'
                 ? 'Belum ada soal ujian yang aktif untuk kelas Anda (' + (sKelas || 'Tingkat Anda') + '). Hubungi guru atau proktor ujian.'
                 : 'Belum ada soal ujian yang aktif, silahkan hubungi admin';
-            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">' + emptyAktifMsg + '</td></tr>';
-        } else {
-            tbodyAktif.innerHTML = aktifList.map(function (a, i) {
-                var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            if (cardContainer) {
+                cardContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;color:var(--text-light);">' +
+                    '<div style="font-size:2.5rem;margin-bottom:.75rem;">📋</div>' +
+                    '<div style="font-size:1rem;font-weight:600;color:#64748b;">' + emptyAktifMsg + '</div>' +
+                    '</div>';
+            } else if (tbodyAktif) {
+                tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-light)">' + emptyAktifMsg + '</td></tr>';
+            }
+        } else if (cardContainer) {
+            // ====== RENDER SEBAGAI KARTU MODERN (BUKAN TABEL) ======
+            cardContainer.innerHTML = aktifList.map(function (a, i) {
+                var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '-';
                 var isPending = a._ujian_status === 'pending';
                 var isSusulan = a.judul && a.judul.indexOf('(Susulan') !== -1;
 
-                // Cek kesesuaian kelas (strict untuk role siswa)
                 var isAllowed = true;
                 if (currentRole === 'siswa') {
                     if (!siswaInfo || typeof isKelasMatch !== 'function') {
@@ -6493,38 +6533,102 @@ async function loadSoalUjian() {
                 var isCheatLocked = sAns && ((sAns.tab_switch_count && sAns.tab_switch_count > 3) ||
                     (sAns.jawaban_json && sAns.jawaban_json._is_cheat_submitted === true));
                 var isSelesaiNormal = sAns && sAns.status === 'selesai' && !isCheatLocked;
+                var isMengerjakan = sAns && sAns.status === 'mengerjakan' && !isCheatLocked;
 
-                var linkBtn, statusBadge;
+                // Accent color based on status
+                var accentClass = '';
+                if (isCheatLocked) accentClass = 'locked';
+                else if (isSelesaiNormal) accentClass = 'done';
+                else if (isSusulan) accentClass = 'susulan';
+
+                // Status Badge
+                var statusBadge;
                 if (isPending) {
-                    linkBtn = '<span style="color:#94a3b8;font-size:.82rem;">Belum diaktifkan</span>';
-                    statusBadge = '<span class="badge" style="background:rgba(148,163,184,.12);color:#94a3b8;font-size:.75rem;">—</span>';
+                    statusBadge = '<span style="background:rgba(148,163,184,.12);color:#94a3b8;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;">Menunggu Aktivasi</span>';
                 } else if (!isAllowed) {
-                    linkBtn = '<button class="btn btn-sm" disabled style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:not-allowed;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;" title="Ujian ini dikhususkan untuk kelas ' + escHtml(a.kelas || '-') + '"><i data-lucide="lock" style="width:13px;height:13px"></i> Bukan Kelas Anda</button>';
-                    statusBadge = '<span class="badge" style="background:#fef2f2;color:#dc2626;font-size:.75rem;font-weight:700;">Bukan Kelas Anda</span>';
+                    statusBadge = '<span style="background:#fef2f2;color:#dc2626;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;">Bukan Kelas Anda</span>';
                 } else if (isCheatLocked) {
-                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;" title="Ujian dihentikan karena pelanggaran > 3x. Butuh izin pengawas untuk lanjut."><i data-lucide="shield-alert" style="width:13px;height:13px"></i> Terkunci (>3x)</button>';
-                    statusBadge = '<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;">Pelanggaran (&gt;3x)</span>';
+                    statusBadge = '<span style="background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="shield-alert" style="width:11px;height:11px;"></i> Terkunci</span>';
                 } else if (isSelesaiNormal) {
-                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#f1f5f9;color:#059669;border:1px solid #cbd5e1;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="check-circle" style="width:13px;height:13px"></i> Sudah Selesai</button>';
-                    statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Sudah Selesai</span>';
+                    statusBadge = '<span style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="check-circle" style="width:11px;height:11px;"></i> Selesai</span>';
+                } else if (isMengerjakan) {
+                    statusBadge = '<span style="background:#fef3c7;color:#b45309;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="loader" style="width:11px;height:11px;"></i> Sedang Dikerjakan</span>';
                 } else {
-                    linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer;"><i data-lucide="radio" style="width:13px;height:13px"></i> Kerjakan CBT</button>';
-                    statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Aktif</span>';
+                    statusBadge = '<span style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:3px;"><i data-lucide="radio" style="width:11px;height:11px;"></i> Aktif</span>';
                 }
                 if (isSusulan) {
-                    statusBadge += ' <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">Susulan</span>';
+                    statusBadge += ' <span style="background:#fef3c7;color:#92400e;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:5px;">Susulan</span>';
                 }
-                return '<tr>' +
-                    '<td style="text-align:center;">' + (i + 1) + '</td>' +
-                    '<td style="font-weight:600;">' + escHtml(a.judul || '-') + '</td>' +
-                    '<td>' + escHtml(a.mata_pelajaran || '-') + '</td>' +
-                    '<td>' + escHtml(a.kelas || '-') + '</td>' +
-                    '<td>' + escHtml(a.tipe_ujian || '-') + '</td>' +
-                    '<td>' + tgl + '</td>' +
-                    '<td style="text-align:center;">' + (a.waktu_menit || '-') + '</td>' +
-                    '<td>' + linkBtn + '</td>' +
-                    '<td>' + statusBadge + '</td>' +
-                    '</tr>';
+
+                // Susulan badge for mapel
+                var mapelBadge = '<span class="ujian-card-mapel"><i data-lucide="book-open" style="width:12px;height:12px;"></i> ' + escHtml(a.mata_pelajaran || '-') + '</span>';
+
+                // CTA Button
+                var ctaBtn;
+                if (isPending) {
+                    ctaBtn = '<button disabled class="ujian-card-btn" style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;cursor:not-allowed;box-shadow:none !important;"><i data-lucide="clock" style="width:16px;height:16px;"></i> Belum Diaktifkan</button>';
+                } else if (!isAllowed) {
+                    ctaBtn = '<button disabled class="ujian-card-btn" style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;cursor:not-allowed;box-shadow:none !important;" title="Ujian ini untuk kelas ' + escHtml(a.kelas || '-') + '"><i data-lucide="lock" style="width:16px;height:16px;"></i> Bukan Kelas Anda</button>';
+                } else if (isCheatLocked) {
+                    ctaBtn = '<button onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" class="ujian-card-btn" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;box-shadow:0 4px 12px rgba(220,38,38,.15) !important;" title="Hubungi pengawas untuk membuka akses"><i data-lucide="shield-alert" style="width:16px;height:16px;"></i> Terkunci — Hubungi Pengawas</button>';
+                } else if (isSelesaiNormal) {
+                    ctaBtn = '<button onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" class="ujian-card-btn" style="background:#f1f5f9;color:#059669;border:1px solid #a7f3d0;box-shadow:0 4px 12px rgba(5,150,105,.12) !important;"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> Sudah Selesai — Lihat Detail</button>';
+                } else if (isMengerjakan) {
+                    ctaBtn = '<button onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" class="ujian-card-btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;border:none;"><i data-lucide="play" style="width:16px;height:16px;"></i> Lanjutkan Mengerjakan</button>';
+                } else {
+                    ctaBtn = '<button onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" class="ujian-card-btn" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;"><i data-lucide="play-circle" style="width:16px;height:16px;"></i> Kerjakan CBT</button>';
+                }
+
+                // Waktu tutup info
+                var tutupInfo = '';
+                if (a.waktu_selesai_ujian) {
+                    var dtTutup = new Date(a.waktu_selesai_ujian);
+                    tutupInfo = '<div class="ujian-card-meta-item"><i data-lucide="alarm-clock"></i> <span>Tutup: <strong>' + dtTutup.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB</strong></span></div>';
+                }
+
+                return '<div class="ujian-card">' +
+                    '<div class="ujian-card-accent ' + accentClass + '"></div>' +
+                    '<div>' +
+                    '  <div class="ujian-card-badge-row">' +
+                    '    ' + mapelBadge +
+                    '    ' + statusBadge +
+                    '  </div>' +
+                    '  <h4 class="ujian-card-title">' + escHtml(a.judul || '-') + '</h4>' +
+                    '  <div class="ujian-card-meta-list">' +
+                    '    <div class="ujian-card-meta-item"><i data-lucide="users"></i> <span>Kelas: <strong>' + escHtml(a.kelas || '-') + '</strong></span></div>' +
+                    '    <div class="ujian-card-meta-item"><i data-lucide="file-text"></i> <span>Tipe: <strong>' + escHtml(a.tipe_ujian || '-') + '</strong></span></div>' +
+                    '    <div class="ujian-card-meta-item"><i data-lucide="calendar"></i> <span>Tanggal: <strong>' + tgl + '</strong></span></div>' +
+                    '    <div class="ujian-card-meta-item"><i data-lucide="timer"></i> <span>Durasi: <strong>' + (a.waktu_menit || '-') + ' Menit</strong></span></div>' +
+                    tutupInfo +
+                    '  </div>' +
+                    '</div>' +
+                    ctaBtn +
+                    '</div>';
+            }).join('');
+            if (window.lucide) lucide.createIcons();
+        } else if (tbodyAktif) {
+            // Fallback: render sebagai tabel lama jika card container tidak ada
+            tbodyAktif.innerHTML = aktifList.map(function (a, i) {
+                var tgl = a.tanggal_pelaksanaan ? new Date(a.tanggal_pelaksanaan).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                var isPending = a._ujian_status === 'pending';
+                var isSusulan = a.judul && a.judul.indexOf('(Susulan') !== -1;
+                var isAllowed = true;
+                if (currentRole === 'siswa') {
+                    if (!siswaInfo || typeof isKelasMatch !== 'function') isAllowed = false;
+                    else isAllowed = isKelasMatch(sKelas, sTingkat, a.kelas);
+                }
+                var sesi = sesiMap[a.id];
+                var sAns = sesi ? studentAnswersMap[sesi.id] : null;
+                var isCheatLocked = sAns && ((sAns.tab_switch_count && sAns.tab_switch_count > 3) || (sAns.jawaban_json && sAns.jawaban_json._is_cheat_submitted === true));
+                var isSelesaiNormal = sAns && sAns.status === 'selesai' && !isCheatLocked;
+                var linkBtn, statusBadge;
+                if (isPending) { linkBtn = '<span style="color:#94a3b8;font-size:.82rem;">Belum diaktifkan</span>'; statusBadge = '<span class="badge" style="background:rgba(148,163,184,.12);color:#94a3b8;font-size:.75rem;">—</span>'; }
+                else if (!isAllowed) { linkBtn = '<button class="btn btn-sm" disabled style="background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:not-allowed;"><i data-lucide="lock" style="width:13px;height:13px"></i> Bukan Kelas Anda</button>'; statusBadge = '<span class="badge" style="background:#fef2f2;color:#dc2626;font-size:.75rem;font-weight:700;">Bukan Kelas Anda</span>'; }
+                else if (isCheatLocked) { linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:pointer;"><i data-lucide="shield-alert" style="width:13px;height:13px"></i> Terkunci</button>'; statusBadge = '<span class="badge" style="background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;">Pelanggaran</span>'; }
+                else if (isSelesaiNormal) { linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:#f1f5f9;color:#059669;border:1px solid #cbd5e1;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:pointer;"><i data-lucide="check-circle" style="width:13px;height:13px"></i> Sudah Selesai</button>'; statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Selesai</span>'; }
+                else { linkBtn = '<button class="btn btn-sm" onclick="mulaiUjianCbtSiswa(\'' + a.id + '\')" style="background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;border:none;font-weight:700;font-size:.78rem;padding:.4rem .8rem;border-radius:8px;cursor:pointer;"><i data-lucide="radio" style="width:13px;height:13px"></i> Kerjakan CBT</button>'; statusBadge = '<span class="badge" style="background:rgba(5,150,105,.1);color:#059669;font-size:.75rem;font-weight:700;">Aktif</span>'; }
+                if (isSusulan) statusBadge += ' <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.7rem;">Susulan</span>';
+                return '<tr><td style="text-align:center;">' + (i+1) + '</td><td style="font-weight:600;">' + escHtml(a.judul||'-') + '</td><td>' + escHtml(a.mata_pelajaran||'-') + '</td><td>' + escHtml(a.kelas||'-') + '</td><td>' + escHtml(a.tipe_ujian||'-') + '</td><td>' + tgl + '</td><td style="text-align:center;">' + (a.waktu_menit||'-') + '</td><td>' + linkBtn + '</td><td>' + statusBadge + '</td></tr>';
             }).join('');
         }
 
@@ -6561,8 +6665,14 @@ async function loadSoalUjian() {
 
         if (window.lucide) lucide.createIcons();
     } catch (e) {
-        tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
-        tbodyNonaktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">Gagal: ' + e.message + '</td></tr>';
+        var errMsg = 'Gagal: ' + e.message;
+        if (cardContainer) {
+            cardContainer.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--danger);">' + errMsg + '</div>';
+        }
+        if (tbodyAktif) {
+            tbodyAktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">' + errMsg + '</td></tr>';
+        }
+        tbodyNonaktif.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--danger)">' + errMsg + '</td></tr>';
     }
 }
 
@@ -7945,3 +8055,537 @@ async function publishToCbtNative() {
 }
 
 // ============================================================
+
+
+// ============================================================
+// FEATURE 2: LULUSKAN ANGKATAN MASSAL (ARSIP ALUMNI)
+// ============================================================
+function openModalLuluskanMassal() {
+    var modal = document.getElementById('modalLuluskanMassal');
+    if (!modal) return showToast('Modal Luluskan Massal tidak ditemukan.', 'error');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    // Populate dropdown kelas target (utamakan kelas tingkat 9, atau semua kelas)
+    var select = document.getElementById('luluskanKelasSelect');
+    if (select) {
+        select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+        var kelas9 = [];
+        var kelasLain = [];
+        (typeof masterKelasList !== 'undefined' ? masterKelasList : []).forEach(function (k) {
+            if (k.tingkat == 9 || k.tingkat == '9' || (k.nama_kelas || '').indexOf('9') !== -1) {
+                kelas9.push(k);
+            } else {
+                kelasLain.push(k);
+            }
+        });
+
+        if (kelas9.length > 0) {
+            var optg9 = document.createElement('optgroup');
+            optg9.label = 'Kelas Tingkat 9 (Tingkat Akhir)';
+            kelas9.forEach(function (k) {
+                var opt = document.createElement('option');
+                opt.value = k.id;
+                opt.textContent = k.nama_kelas;
+                optg9.appendChild(opt);
+            });
+            select.appendChild(optg9);
+        }
+
+        if (kelasLain.length > 0) {
+            var optgLain = document.createElement('optgroup');
+            optgLain.label = 'Kelas Lainnya';
+            kelasLain.forEach(function (k) {
+                var opt = document.createElement('option');
+                opt.value = k.id;
+                opt.textContent = k.nama_kelas;
+                optgLain.appendChild(opt);
+            });
+            select.appendChild(optgLain);
+        }
+    }
+
+    // Default Tahun Ajaran & Tanggal Kelulusan
+    var curYear = new Date().getFullYear();
+    var thInput = document.getElementById('luluskanTahunAjaran');
+    if (thInput && !thInput.value) {
+        thInput.value = (curYear - 1) + '/' + curYear;
+    }
+    var tglInput = document.getElementById('luluskanTanggal');
+    if (tglInput && !tglInput.value) {
+        tglInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    var tbody = document.getElementById('luluskanSiswaTableBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Silakan pilih kelas di atas terlebih dahulu.</td></tr>';
+
+    var counter = document.getElementById('countSelectedLuluskan');
+    if (counter) counter.textContent = '0';
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeModalLuluskanMassal() {
+    var modal = document.getElementById('modalLuluskanMassal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+async function onKelasLuluskanChange() {
+    var kelasId = document.getElementById('luluskanKelasSelect') ? document.getElementById('luluskanKelasSelect').value : '';
+    var tbody = document.getElementById('luluskanSiswaTableBody');
+    var counter = document.getElementById('countSelectedLuluskan');
+    var cbAll = document.getElementById('cbPilihSemuaLuluskan');
+
+    if (!tbody) return;
+
+    if (!kelasId) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">Silakan pilih kelas di atas terlebih dahulu.</td></tr>';
+        if (counter) counter.textContent = '0';
+        return;
+    }
+
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">Memuat data siswa kelas...</td></tr>';
+
+    try {
+        var filtered = (typeof siswaList !== 'undefined' ? siswaList : []).filter(function (s) {
+            return s.kelas_id === kelasId && s.status !== 'Lulus' && s.status !== 'Pindah' && s.status !== 'Dikeluarkan';
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#ef4444;">Tidak ada siswa aktif di kelas ini (mungkin sudah diluluskan atau belum ada siswa).</td></tr>';
+            if (counter) counter.textContent = '0';
+            return;
+        }
+
+        tbody.innerHTML = filtered.map(function (s, i) {
+            var jkBadge = s.jenis_kelamin === 'L' ? '<span style="color:#2563eb;font-weight:600;">L</span>' : (s.jenis_kelamin === 'P' ? '<span style="color:#ec4899;font-weight:600;">P</span>' : '-');
+            return '<tr>' +
+                '<td style="text-align:center; padding:8px;"><input type="checkbox" class="cb-luluskan-siswa" value="' + s.id + '" checked onchange="updateCountLuluskan()" style="width:18px;height:18px;accent-color:#8b5cf6;cursor:pointer;" /></td>' +
+                '<td style="text-align:center; padding:8px; color:#64748b;">' + (i + 1) + '</td>' +
+                '<td style="padding:8px; font-weight:600; color:#1e293b;">' + (s.nama_lengkap || '-') + '</td>' +
+                '<td style="padding:8px; color:#475569;">' + (s.nisn || '-') + '</td>' +
+                '<td style="text-align:center; padding:8px;">' + jkBadge + '</td>' +
+                '</tr>';
+        }).join('');
+
+        if (counter) counter.textContent = filtered.length;
+        if (cbAll) cbAll.checked = true;
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1rem; color:var(--danger);">Gagal memuat: ' + e.message + '</td></tr>';
+    }
+}
+
+function updateCountLuluskan() {
+    var cbs = document.querySelectorAll('.cb-luluskan-siswa');
+    var checked = document.querySelectorAll('.cb-luluskan-siswa:checked');
+    var counter = document.getElementById('countSelectedLuluskan');
+    if (counter) counter.textContent = checked.length;
+    var cbAll = document.getElementById('cbPilihSemuaLuluskan');
+    if (cbAll) cbAll.checked = cbs.length > 0 && cbs.length === checked.length;
+}
+
+function togglePilihSemuaLuluskan(cb) {
+    var cbs = document.querySelectorAll('.cb-luluskan-siswa');
+    cbs.forEach(function (c) { c.checked = cb.checked; });
+    var counter = document.getElementById('countSelectedLuluskan');
+    if (counter) counter.textContent = cb.checked ? cbs.length : 0;
+}
+
+async function eksekusiLuluskanMassal() {
+    var selectedCbs = Array.from(document.querySelectorAll('.cb-luluskan-siswa:checked'));
+    var selectedIds = selectedCbs.map(function (c) { return c.value; });
+
+    if (selectedIds.length === 0) {
+        return showToast('Pilih minimal 1 siswa untuk diluluskan!', 'warning');
+    }
+
+    var tahunAjaran = document.getElementById('luluskanTahunAjaran') ? document.getElementById('luluskanTahunAjaran').value.trim() : '';
+    var tanggalLulus = document.getElementById('luluskanTanggal') ? document.getElementById('luluskanTanggal').value : new Date().toISOString().split('T')[0];
+
+    if (!confirm('Yakin ingin meluluskan ' + selectedIds.length + ' siswa?\n\nStatus siswa akan diubah menjadi "Lulus" dan otomatis dipindahkan ke tab Data Alumni.')) {
+        return;
+    }
+
+    showGlobalLoader('Meluluskan ' + selectedIds.length + ' siswa massal...');
+    try {
+        // 1. Update status siswa menjadi 'Lulus'
+        const { error: errUpdate } = await supabaseClient
+            .from('siswa')
+            .update({
+                status: 'Lulus',
+                updated_at: new Date().toISOString()
+            })
+            .in('id', selectedIds);
+
+        if (errUpdate) throw errUpdate;
+
+        // 2. Insert riwayat kelulusan ke mutasi_siswa
+        try {
+            var mutasiRecords = selectedIds.map(function (id) {
+                var sw = (typeof siswaList !== 'undefined' ? siswaList : []).find(function (x) { return x.id === id; }) || {};
+                return {
+                    siswa_id: id,
+                    nama_lengkap: sw.nama_lengkap || '-',
+                    jenis_kelamin: sw.jenis_kelamin || null,
+                    kelas_id: sw.kelas_id || null,
+                    nisn: sw.nisn || null,
+                    tipe_mutasi: 'Keluar',
+                    tanggal_mutasi: tanggalLulus,
+                    keterangan: 'Lulus Angkatan ' + (tahunAjaran || new Date().getFullYear())
+                };
+            });
+            await supabaseClient.from('mutasi_siswa').insert(mutasiRecords);
+        } catch (mErr) {
+            console.warn('Riwayat mutasi siswa gagal dicatat:', mErr);
+        }
+
+        showToast('Alhamdulillah! ' + selectedIds.length + ' siswa berhasil diluluskan ke Data Alumni.', 'success');
+        closeModalLuluskanMassal();
+
+        // Refresh tabel
+        if (typeof loadSiswaData === 'function') await loadSiswaData();
+        if (typeof loadAlumniData === 'function') await loadAlumniData();
+
+    } catch (e) {
+        showToast('Gagal meluluskan siswa: ' + e.message, 'error');
+    } finally {
+        hideGlobalLoader();
+    }
+}
+
+// ============================================================
+// FEATURE 3: CETAK BUKU INDUK SISWA FORMAT STANDAR DIKNAS
+// ============================================================
+async function cetakBukuIndukSiswa(siswaId) {
+    if (!siswaId) {
+        siswaId = window.currentViewDetailSiswaId;
+    }
+    if (!siswaId) {
+        return showToast('ID Siswa tidak ditemukan.', 'error');
+    }
+
+    var s = null;
+    if (typeof siswaList !== 'undefined') {
+        s = siswaList.find(function (x) { return x.id === siswaId; });
+    }
+    if (!s && typeof alumniList !== 'undefined') {
+        s = alumniList.find(function (x) { return x.id === siswaId; });
+    }
+
+    if (!s) {
+        try {
+            showGlobalLoader('Memuat data buku induk...');
+            const { data, error } = await supabaseClient.from('siswa').select('*, master_kelas(nama_kelas)').eq('id', siswaId).single();
+            if (error) throw error;
+            s = data;
+        } catch (e) {
+            return showToast('Gagal mengambil data siswa: ' + e.message, 'error');
+        } finally {
+            hideGlobalLoader();
+        }
+    }
+
+    var kelasNama = s.master_kelas ? s.master_kelas.nama_kelas : (s.kelas || '-');
+    var ttl = (s.tempat_lahir ? s.tempat_lahir + ', ' : '') + (s.tanggal_lahir ? new Date(s.tanggal_lahir).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-');
+    var jkFull = s.jenis_kelamin === 'L' ? 'Laki-laki' : (s.jenis_kelamin === 'P' ? 'Perempuan' : (s.jenis_kelamin || '-'));
+    var todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    var fotoHtml = s.foto
+        ? '<img src="' + s.foto + '" style="width:100%;height:100%;object-fit:cover;" />'
+        : '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:9pt;color:#94a3b8;text-align:center;padding:4px;">Pas Foto<br>3 x 4 cm</div>';
+
+    var printHtml = `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Buku Induk - ${s.nama_lengkap || 'Siswa'}</title>
+<style>
+@page { size: A4 portrait; margin: 15mm 18mm 15mm 20mm; }
+body { font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; color: #000; line-height: 1.35; margin: 0; padding: 0; }
+.kop-container { text-align: center; margin-bottom: 5mm; border-bottom: 3px double #000; padding-bottom: 3mm; }
+.kop-container img { max-width: 100%; max-height: 28mm; }
+h2.title { text-align: center; font-size: 13pt; text-transform: uppercase; letter-spacing: 1.5px; margin: 2mm 0 1mm; font-weight: 800; }
+.subtitle { text-align: center; font-size: 9.5pt; color: #222; margin: 0 0 4mm; }
+.section-header { font-weight: bold; font-size: 10.5pt; background: #e2e8f0; padding: 1.5mm 3mm; margin: 3mm 0 1.5mm; border-left: 4px solid #1e3a8a; text-transform: uppercase; }
+table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 2mm; }
+table.data-table td { padding: 1.8mm 2mm; vertical-align: top; font-size: 10pt; }
+table.data-table td.label-col { width: 34%; font-weight: 600; color: #111; }
+table.data-table td.sep-col { width: 3%; text-align: center; }
+table.data-table td.val-col { width: 63%; }
+.foto-frame { width: 30mm; height: 40mm; border: 1px solid #333; margin: 0 auto; overflow: hidden; background: #fafafa; }
+.ttd-grid { display: flex; justify-content: space-between; margin-top: 8mm; page-break-inside: avoid; }
+.ttd-box { width: 45%; text-align: center; font-size: 10pt; }
+.ttd-space { height: 18mm; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+<div class="kop-container">
+  <img src="img/kop-surat.png?v=20260503" onerror="this.src='img/kop-surat.jpg?v=20260503'" alt="Kop Surat SMPIT Al-Fathonah" />
+</div>
+
+<h2 class="title">Lembar Buku Induk Peserta Didik</h2>
+<p class="subtitle">Nomor Induk Siswa Nasional (NISN): <strong>${s.nisn || '-'}</strong> &nbsp;|&nbsp; Kelas: <strong>${kelasNama}</strong></p>
+
+<div class="section-header">A. Identitas Peserta Didik</div>
+<div style="display:flex; gap:4mm; align-items:flex-start;">
+  <table class="data-table" style="flex:1;">
+    <tr><td class="label-col">1. Nama Lengkap</td><td class="sep-col">:</td><td class="val-col"><strong>${s.nama_lengkap || '-'}</strong></td></tr>
+    <tr><td class="label-col">2. Nomor Induk Siswa (NIS)</td><td class="sep-col">:</td><td class="val-col">${s.nis || '-'}</td></tr>
+    <tr><td class="label-col">3. NISN</td><td class="sep-col">:</td><td class="val-col">${s.nisn || '-'}</td></tr>
+    <tr><td class="label-col">4. Nomor Induk Kependudukan (NIK)</td><td class="sep-col">:</td><td class="val-col">${s.nik || '-'}</td></tr>
+    <tr><td class="label-col">5. Nomor Kartu Keluarga (KK)</td><td class="sep-col">:</td><td class="val-col">${s.nomor_kk || '-'}</td></tr>
+    <tr><td class="label-col">6. Jenis Kelamin</td><td class="sep-col">:</td><td class="val-col">${jkFull}</td></tr>
+    <tr><td class="label-col">7. Tempat, Tanggal Lahir</td><td class="sep-col">:</td><td class="val-col">${ttl}</td></tr>
+    <tr><td class="label-col">8. Agama</td><td class="sep-col">:</td><td class="val-col">${s.agama || 'Islam'}</td></tr>
+    <tr><td class="label-col">9. Kewarganegaraan</td><td class="sep-col">:</td><td class="val-col">Indonesia</td></tr>
+    <tr><td class="label-col">10. Tinggal di Pesantren (Mondok)</td><td class="sep-col">:</td><td class="val-col">${s.mondok || 'Tidak'}</td></tr>
+    <tr><td class="label-col">11. Status Peserta Didik</td><td class="sep-col">:</td><td class="val-col"><strong>${s.status || 'Aktif'}</strong></td></tr>
+  </table>
+  <div style="width:34mm; text-align:center;">
+    <div class="foto-frame">${fotoHtml}</div>
+    <div style="font-size:8pt; color:#666; margin-top:1.5mm;">Foto 3 x 4 cm</div>
+  </div>
+</div>
+
+<div class="section-header">B. Keterangan Tempat Tinggal</div>
+<table class="data-table">
+  <tr><td class="label-col">1. Alamat Lengkap</td><td class="sep-col">:</td><td class="val-col">${s.alamat || '-'}</td></tr>
+  <tr><td class="label-col">2. Nomor Telepon / WhatsApp</td><td class="sep-col">:</td><td class="val-col">${s.nomor_hp || '-'}</td></tr>
+  <tr><td class="label-col">3. Alamat Email</td><td class="sep-col">:</td><td class="val-col">${s.email || '-'}</td></tr>
+</table>
+
+<div class="section-header">C. Keterangan Pendidikan Sebelumnya</div>
+<table class="data-table">
+  <tr><td class="label-col">1. Asal Sekolah (SD/MI)</td><td class="sep-col">:</td><td class="val-col">${s.asal_sekolah || '-'}</td></tr>
+  <tr><td class="label-col">2. Diterima di SMPIT Al-Fathonah</td><td class="sep-col">:</td><td class="val-col">Kelas ${kelasNama}</td></tr>
+</table>
+
+<div class="section-header">D. Keterangan Orang Tua / Wali</div>
+<table class="data-table">
+  <tr><td class="label-col">1. Nama Ayah Kandung</td><td class="sep-col">:</td><td class="val-col">${s.nama_ayah || '-'}</td></tr>
+  <tr><td class="label-col">2. NIK Ayah</td><td class="sep-col">:</td><td class="val-col">${s.nik_ayah || '-'}</td></tr>
+  <tr><td class="label-col">3. Nama Ibu Kandung</td><td class="sep-col">:</td><td class="val-col">${s.nama_ibu || '-'}</td></tr>
+  <tr><td class="label-col">4. NIK Ibu</td><td class="sep-col">:</td><td class="val-col">${s.nik_ibu || '-'}</td></tr>
+  <tr><td class="label-col">5. Nama Wali (Bila ada)</td><td class="sep-col">:</td><td class="val-col">${s.nama_wali || '-'}</td></tr>
+</table>
+
+<div class="ttd-grid">
+  <div class="ttd-box">
+    <div>Mengetahui,</div>
+    <div>Orang Tua / Wali Siswa</div>
+    <div class="ttd-space"></div>
+    <div style="border-bottom:1px solid #000; display:inline-block; min-width:45mm; font-weight:600;">${s.nama_ayah || s.nama_ibu || '...........................................'}</div>
+  </div>
+  <div class="ttd-box">
+    <div>Babakan, ${todayStr}</div>
+    <div>Kepala SMPIT AL-FATHONAH</div>
+    <div class="ttd-space"></div>
+    <div style="border-bottom:1px solid #000; display:inline-block; min-width:45mm; font-weight:700;">H. Ahmad Maulana, M.Pd.</div>
+    <div style="font-size:8.5pt; color:#444;">NIP. -</div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    var pWin = window.open('', '_blank', 'width=850,height=750');
+    if (!pWin) return showToast('Popup browser diblokir. Izinkan popup untuk mencetak.', 'warning');
+    pWin.document.open();
+    pWin.document.write(printHtml);
+    pWin.document.close();
+    pWin.onload = function () {
+        setTimeout(function () { pWin.print(); }, 400);
+    };
+}
+
+// ============================================================
+// FEATURE 6: EKSPOR REKAP ABSENSI BULANAN (MATRIKS TANGGAL 1-31)
+// ============================================================
+function openModalRekapAbsensiBulanan() {
+    var modal = document.getElementById('modalRekapAbsensiBulanan');
+    if (!modal) return showToast('Modal Rekap Absensi Bulanan tidak ditemukan.', 'error');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    // Populate dropdown kelas
+    var select = document.getElementById('absenFilterKelas');
+    if (select) {
+        select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+        (typeof masterKelasList !== 'undefined' ? masterKelasList : []).forEach(function (k) {
+            select.innerHTML += '<option value="' + k.id + '">' + k.nama_kelas + '</option>';
+        });
+        if (select.options.length > 1) {
+            select.selectedIndex = 1; // Auto select kelas pertama
+        }
+    }
+
+    // Default bulan ini (YYYY-MM)
+    var bulanInput = document.getElementById('absenFilterBulan');
+    if (bulanInput && !bulanInput.value) {
+        bulanInput.value = new Date().toISOString().slice(0, 7);
+    }
+
+    renderMatriksAbsensi();
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeModalRekapAbsensiBulanan() {
+    var modal = document.getElementById('modalRekapAbsensiBulanan');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+function renderMatriksAbsensi() {
+    var kelasId = document.getElementById('absenFilterKelas') ? document.getElementById('absenFilterKelas').value : '';
+    var bulanVal = document.getElementById('absenFilterBulan') ? document.getElementById('absenFilterBulan').value : '';
+
+    var thead = document.getElementById('theadMatriksAbsensi');
+    var tbody = document.getElementById('tbodyMatriksAbsensi');
+    if (!thead || !tbody) return;
+
+    if (!kelasId || !bulanVal) {
+        thead.innerHTML = '<tr><th colspan="40" style="text-align:center; padding:1.5rem; color:#94a3b8;">Pilih kelas dan bulan terlebih dahulu.</th></tr>';
+        tbody.innerHTML = '';
+        return;
+    }
+
+    var parts = bulanVal.split('-');
+    var year = parseInt(parts[0], 10);
+    var month = parseInt(parts[1], 10);
+    var daysInMonth = new Date(year, month, 0).getDate();
+
+    var namaBulan = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    var kelasObj = (typeof masterKelasList !== 'undefined' ? masterKelasList : []).find(function (k) { return k.id === kelasId; });
+    var namaKelas = kelasObj ? kelasObj.nama_kelas : '-';
+
+    window._absenMatriksInfo = { namaKelas: namaKelas, namaBulan: namaBulan, year: year, month: month, daysInMonth: daysInMonth };
+
+    // Siswa di kelas terpilih
+    var siswaDiKelas = (typeof siswaList !== 'undefined' ? siswaList : []).filter(function (s) {
+        return s.kelas_id === kelasId && s.status !== 'Lulus' && s.status !== 'Pindah' && s.status !== 'Dikeluarkan';
+    }).sort(function (a, b) { return (a.nama_lengkap || '').localeCompare(b.nama_lengkap || ''); });
+
+    // Build thead
+    var th = '<tr>' +
+        '<th style="position:sticky;left:0;z-index:3;background:#4338ca;color:#fff;padding:8px 6px;width:35px;text-align:center;border:1px solid #3730a3;">No</th>' +
+        '<th style="position:sticky;left:35px;z-index:3;background:#4338ca;color:#fff;padding:8px 10px;min-width:170px;text-align:left;border:1px solid #3730a3;">Nama Lengkap Siswa</th>' +
+        '<th style="background:#4338ca;color:#fff;padding:8px 4px;width:35px;text-align:center;border:1px solid #3730a3;">L/P</th>';
+
+    for (var d = 1; d <= daysInMonth; d++) {
+        var dayOfWeek = new Date(year, month - 1, d).getDay();
+        var isSunday = (dayOfWeek === 0);
+        var bg = isSunday ? '#ef4444' : '#4338ca';
+        th += '<th style="background:' + bg + ';color:#fff;padding:6px 2px;width:26px;min-width:26px;text-align:center;border:1px solid rgba(255,255,255,0.2);font-size:0.7rem;" title="' + (isSunday ? 'Hari Ahad / Libur' : 'Tanggal ' + d) + '">' + d + '</th>';
+    }
+
+    th += '<th style="background:#059669;color:#fff;padding:6px 4px;width:32px;text-align:center;border:1px solid #047857;" title="Hadir">H</th>' +
+        '<th style="background:#d97706;color:#fff;padding:6px 4px;width:32px;text-align:center;border:1px solid #b45309;" title="Sakit">S</th>' +
+        '<th style="background:#2563eb;color:#fff;padding:6px 4px;width:32px;text-align:center;border:1px solid #1d4ed8;" title="Izin">I</th>' +
+        '<th style="background:#dc2626;color:#fff;padding:6px 4px;width:32px;text-align:center;border:1px solid #b91c1c;" title="Alpa / Tanpa Keterangan">A</th>' +
+        '<th style="background:#4f46e5;color:#fff;padding:6px 6px;width:45px;text-align:center;border:1px solid #3730a3;" title="Persentase Kehadiran">%</th>' +
+        '</tr>';
+    thead.innerHTML = th;
+
+    if (siswaDiKelas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="' + (daysInMonth + 8) + '" style="text-align:center; padding:2rem; color:#94a3b8;">Tidak ada data siswa aktif di kelas ini.</td></tr>';
+        return;
+    }
+
+    var tb = '';
+    siswaDiKelas.forEach(function (s, i) {
+        var jk = s.jenis_kelamin === 'L' ? 'L' : (s.jenis_kelamin === 'P' ? 'P' : '-');
+        tb += '<tr>' +
+            '<td style="position:sticky;left:0;z-index:2;background:#fff;text-align:center;padding:6px 4px;border:1px solid #e2e8f0;font-weight:600;">' + (i + 1) + '</td>' +
+            '<td style="position:sticky;left:35px;z-index:2;background:#fff;padding:6px 10px;border:1px solid #e2e8f0;white-space:nowrap;font-weight:600;color:#1e293b;">' + (s.nama_lengkap || '-') + '</td>' +
+            '<td style="text-align:center;padding:6px 4px;border:1px solid #e2e8f0;color:#64748b;">' + jk + '</td>';
+
+        for (var d = 1; d <= daysInMonth; d++) {
+            var dayOfWeek = new Date(year, month - 1, d).getDay();
+            var isSunday = (dayOfWeek === 0);
+            var cellBg = isSunday ? '#fee2e2' : '#ffffff';
+            var cellText = isSunday ? '<span style="color:#dc2626;font-weight:bold;font-size:0.68rem;">✕</span>' : '';
+            tb += '<td style="text-align:center;padding:4px 2px;border:1px solid #e2e8f0;background:' + cellBg + ';">' + cellText + '</td>';
+        }
+
+        // Summary columns blank template
+        tb += '<td style="text-align:center;padding:4px;border:1px solid #e2e8f0;background:#f0fdf4;"></td>' +
+            '<td style="text-align:center;padding:4px;border:1px solid #e2e8f0;background:#fffbeb;"></td>' +
+            '<td style="text-align:center;padding:4px;border:1px solid #e2e8f0;background:#eff6ff;"></td>' +
+            '<td style="text-align:center;padding:4px;border:1px solid #e2e8f0;background:#fef2f2;"></td>' +
+            '<td style="text-align:center;padding:4px;border:1px solid #e2e8f0;background:#faf5ff;font-weight:600;"></td>' +
+            '</tr>';
+    });
+
+    tbody.innerHTML = tb;
+}
+
+function exportMatriksAbsensiExcel() {
+    var info = window._absenMatriksInfo;
+    if (!info) return showToast('Pilih kelas dan render matriks terlebih dahulu.', 'warning');
+    if (typeof XLSX === 'undefined') return showToast('Library XLSX belum termuat.', 'error');
+
+    var table = document.getElementById('tabelMatriksAbsensi');
+    if (!table) return;
+
+    var wb = XLSX.utils.book_new();
+    var ws = XLSX.utils.table_to_sheet(table, { raw: true });
+    XLSX.utils.book_append_sheet(wb, ws, 'Absensi ' + info.namaKelas);
+    var filename = 'Rekap_Presensi_' + info.namaKelas.replace(/\s+/g, '_') + '_' + info.namaBulan.replace(/\s+/g, '_') + '.xlsx';
+    XLSX.writeFile(wb, filename);
+    showToast('File Excel rekap absensi berhasil diunduh!', 'success');
+}
+
+function cetakMatriksAbsensiPrint() {
+    var info = window._absenMatriksInfo;
+    if (!info) return showToast('Pilih kelas dan render matriks terlebih dahulu.', 'warning');
+
+    var table = document.getElementById('tabelMatriksAbsensi');
+    if (!table) return;
+
+    var printWin = window.open('', '_blank', 'width=1150,height=750');
+    if (!printWin) return showToast('Popup diblokir oleh browser.', 'warning');
+
+    printWin.document.write(`<!DOCTYPE html><html><head>
+<meta charset="utf-8">
+<title>Rekap Absensi ${info.namaKelas} - ${info.namaBulan}</title>
+<style>
+@page { size: A4 landscape; margin: 8mm; }
+body { font-family: Arial, sans-serif; font-size: 8pt; margin: 0; padding: 4mm; color: #000; }
+.kop { text-align: center; margin-bottom: 3mm; border-bottom: 2px solid #000; padding-bottom: 2mm; }
+.kop img { max-width: 100%; max-height: 22mm; }
+h3 { text-align: center; font-size: 11pt; margin: 2mm 0; text-transform: uppercase; }
+table { width: 100%; border-collapse: collapse; margin-top: 3mm; }
+th, td { border: 1px solid #000; padding: 2.5px 3px; font-size: 7.2pt; text-align: center; }
+th { background: #e5e7eb !important; color: #000 !important; font-weight: bold; }
+td:nth-child(2) { text-align: left; white-space: nowrap; font-weight: 600; }
+.ttd-row { display: flex; justify-content: space-between; margin-top: 6mm; page-break-inside: avoid; }
+.ttd-box { text-align: center; width: 40%; font-size: 8.5pt; }
+@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head><body>
+<div class="kop"><img src="img/kop-surat.png?v=20260503" onerror="this.src='img/kop-surat.jpg?v=20260503'" alt="Kop SMPIT" /></div>
+<h3>REKAPITULASI PRESENSI BULANAN PESERTA DIDIK<br><span style="font-size:9.5pt;font-weight:normal;">Kelas: ${info.namaKelas} &nbsp;|&nbsp; Bulan: ${info.namaBulan}</span></h3>
+${table.outerHTML}
+<div class="ttd-row">
+  <div class="ttd-box">
+    <div>Mengetahui,</div>
+    <div>Kepala SMPIT AL-FATHONAH</div>
+    <div style="height:15mm;"></div>
+    <div style="font-weight:bold; text-decoration:underline;">H. Ahmad Maulana, M.Pd.</div>
+  </div>
+  <div class="ttd-box">
+    <div>Babakan, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+    <div>Wali Kelas ${info.namaKelas}</div>
+    <div style="height:15mm;"></div>
+    <div style="font-weight:bold; text-decoration:underline;">...................................................</div>
+  </div>
+</div>
+</body></html>`);
+    printWin.document.close();
+    printWin.onload = function () { setTimeout(function () { printWin.print(); }, 400); };
+}
