@@ -17,7 +17,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css?v=20261125_cbt4" />
+  <link rel="stylesheet" href="style.css?v=20261126_cbt5" />
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -6332,6 +6332,31 @@
     </div>
   </div>
 
+  <!-- ========== MODAL ANALISIS BUTIR SOAL CBT (Khusus Guru/Admin) ========== -->
+  <div class="modal-overlay" id="modalAnalisisButirSoal" style="align-items:center; justify-content:center; z-index:99999; backdrop-filter:blur(6px); background:rgba(0,0,0,0.55); display:none;" onclick="if(event.target === this) closeAnalisisButirSoalModal()">
+    <div class="modal" style="width:96% !important; max-width:1200px !important; max-height:92vh; border-radius:20px; display:flex; flex-direction:column; overflow:hidden; padding:0 !important; box-shadow:0 25px 70px rgba(0,0,0,0.35); border:none; background:#ffffff;">
+      <div style="background:linear-gradient(135deg, #4338ca 0%, #312e81 100%); color:white; padding:1.25rem 1.75rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:2; flex-wrap:wrap; gap:.75rem;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; color:#c7d2fe; border:1px solid rgba(255,255,255,0.2); flex-shrink:0;">
+            <i data-lucide="bar-chart-3" style="width:22px; height:22px;"></i>
+          </div>
+          <div>
+            <h3 id="analisisModalTitle" style="margin:0; font-size:1.2rem; font-weight:800; color:#fff; letter-spacing:-0.3px;">Analisis Butir Soal Ujian (Item Analysis)</h3>
+            <span style="font-size:0.82rem; color:#c7d2fe;">Evaluasi Tingkat Kesukaran (P), Daya Pembeda (D), dan Efektivitas Pengecoh Pilihan Ganda</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <button onclick="closeAnalisisButirSoalModal()" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15); width:38px; height:38px; border-radius:10px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .2s;" onmouseover="this.style.background='rgba(239,68,68,0.8)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'" title="Tutup Modal (Esc atau klik di luar)">
+            <i data-lucide="x" style="width:20px; height:20px;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="analisisModalBody" style="padding:1.5rem; overflow-y:auto; flex:1; background:#ffffff;">
+        <!-- Injected via openAnalisisButirSoalCbt -->
+      </div>
+    </div>
+  </div>
+
   <!-- ========== MODAL REVIEW & TERBITKAN SOAL (Admin/Kurikulum) ========== -->
   <div class="modal-overlay admin-review-overlay" id="adminReviewModal" style="align-items:center; justify-content:center; z-index:99999; backdrop-filter:blur(6px); background:rgba(0,0,0,0.55);" onclick="if(event.target === this) closeAdminReviewModal()">
     <div class="modal admin-review-dialog">
@@ -7889,12 +7914,12 @@
   <!-- App JS (Modular) -->
   <script src="js/utils.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/master_data.js?v=20261125_cbt4"></script>
+  <script src="js/master_data.js?v=20261126_cbt5"></script>
   <script src="js/keuangan.js"></script>
   <script src="js/asesmen.js"></script>
-  <script src="js/dashboard_ui.js?v=20261125_cbt4"></script>
+  <script src="js/dashboard_ui.js?v=20261126_cbt5"></script>
   <script src="js/asesmen_tabs.js"></script>
-  <script src="js/cbt_native.js?v=20261125_cbt4"></script>
+  <script src="js/cbt_native.js?v=20261126_cbt5"></script>
   <script src="js/wali_kelas.js"></script>
 
   <!-- Dashboard Init -->
